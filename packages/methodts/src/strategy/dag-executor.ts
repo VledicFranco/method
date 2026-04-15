@@ -23,6 +23,7 @@ import type {
   ScriptNodeConfig,
   StrategyNodeConfig,
   ContextLoadNodeConfig,
+  CrossAppInvokeNodeConfig,
   SubStrategySource,
   SubStrategyResult,
   HumanApprovalResolver,
@@ -149,6 +150,68 @@ export class ContextLoadError extends Error {
   }
 }
 
+// ── CrossAppNodeExecutor Port (PRD-067) ─────────────────────────
+
+/**
+ * CrossAppNodeExecutor — Port for dispatching cross-app-invoke DAG nodes.
+ *
+ * PRD-067 §7.3: a cross-app-invoke node targets an operation on another
+ * Cortex tenant app. methodts cannot import `@method/runtime` (lower layer
+ * can't see upper), so the runtime implements this port as a thin wrapper
+ * over the `CrossAppInvoker` port and injects it at composition time.
+ *
+ * Owner:    @method/methodts (defines contract)
+ * Producer: @method/runtime (CrossAppNodeExecutorImpl wrapping CrossAppInvoker)
+ * Consumer: DagStrategyExecutor (calls it for cross-app-invoke nodes)
+ * Status:   frozen (Track A simulator surfaces — PRD-067 §6)
+ *
+ * The dispatcher is responsible for:
+ *   - Projecting `config.input_projection` dot-paths into the operation input
+ *   - Calling the `CrossAppInvoker` port
+ *   - Merging the output per `config.output_merge` (spread vs namespace)
+ *   - Surfacing typed errors (depth cap, scope missing, target unknown,
+ *     target error) as regular throws so the DAG gate machinery can resolve
+ *     them as node failures (G-FAILURE-ISOLATION)
+ */
+export interface CrossAppNodeExecutor {
+  /**
+   * Execute a cross-app-invoke node and return its merged output.
+   *
+   * @param dag - The full strategy DAG (for cross-cutting context)
+   * @param node - The node being executed (id, outputs, depends_on, ...)
+   * @param config - The cross-app-invoke node configuration
+   * @param inputBundle - Filtered artifact bundle for this node's declared inputs
+   * @param sessionId - Session ID (used to default the idempotency key)
+   * @returns Node output (merged per output_merge), cost, and wall-clock duration
+   */
+  executeCrossAppInvokeNode(
+    dag: StrategyDAG,
+    node: StrategyNode,
+    config: CrossAppInvokeNodeConfig,
+    inputBundle: Record<string, unknown>,
+    sessionId: string,
+  ): Promise<{
+    output: Record<string, unknown>;
+    cost_usd: number;
+    num_turns: number;
+    duration_ms: number;
+  }>;
+}
+
+/** Thrown by the executor when a cross-app-invoke node is encountered but
+ *  no CrossAppNodeExecutor is wired. Matches the runtime's
+ *  `CrossAppNotConfiguredError` shape at the methodts boundary. */
+export class CrossAppNodeExecutorNotConfiguredError extends Error {
+  readonly code = 'CROSS_APP_NODE_EXECUTOR_NOT_CONFIGURED' as const;
+  constructor(nodeId: string) {
+    super(
+      `Strategy DAG node "${nodeId}" is a cross-app-invoke node but no CrossAppNodeExecutor was wired into the DagStrategyExecutor. ` +
+        `Inject one via the constructor (production: CrossAppNodeExecutorImpl wrapping CortexCrossAppInvoker; tests/demos: wrap InProcessCrossAppInvoker).`,
+    );
+    this.name = 'CrossAppNodeExecutorNotConfiguredError';
+  }
+}
+
 // ── Execution State ─────────────────────────────────────────────
 
 interface ExecutionState {
@@ -183,6 +246,10 @@ export class DagStrategyExecutor {
     private contextLoadExecutor?: ContextLoadExecutor | null,
     /** Internal: shared chain reference for cycle detection across nested executors. */
     sharedChain?: string[],
+    /** PRD-067: optional CrossAppNodeExecutor for cross-app-invoke nodes.
+     *  When null/undefined, cross-app-invoke nodes throw
+     *  `CrossAppNodeExecutorNotConfiguredError` on dispatch. */
+    private crossAppNodeExecutor?: CrossAppNodeExecutor | null,
   ) {
     this.executionChain = sharedChain ?? [];
   }
@@ -703,6 +770,18 @@ export class DagStrategyExecutor {
       );
     } else if (node.config.type === "context-load") {
       return this.executeContextLoadNode(node, node.config as ContextLoadNodeConfig);
+    } else if (node.config.type === "cross-app-invoke") {
+      // PRD-067: dispatch cross-app-invoke via the injected CrossAppNodeExecutor port.
+      if (!this.crossAppNodeExecutor) {
+        throw new CrossAppNodeExecutorNotConfiguredError(node.id);
+      }
+      return this.crossAppNodeExecutor.executeCrossAppInvokeNode(
+        dag,
+        node,
+        node.config as CrossAppInvokeNodeConfig,
+        inputBundle,
+        this.currentSessionId,
+      );
     } else if (node.config.type === "strategy") {
       const stratResult = await this.executeStrategyNode(
         dag,
@@ -879,6 +958,7 @@ ${config.script}`,
       this.humanApprovalResolver,
       this.contextLoadExecutor,
       this.executionChain, // shared by reference — cycle detection works across levels
+      this.crossAppNodeExecutor, // PRD-067: carry cross-app dispatch into sub-strategies
     );
 
     const startMs = Date.now();

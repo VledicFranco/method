@@ -19,6 +19,7 @@ export type {
   HumanApprovalResolver,
   ContextLoadExecutor,
   SemanticNodeExecutor,
+  CrossAppNodeExecutor,
 } from './strategy-executor.js';
 
 // ── Reusable adapter implementations (opt-in — consumers may roll their own) ──
@@ -80,3 +81,21 @@ export {
   validatePactPipeline,
 } from './pacta-strategy.js';
 export type { PactStrategyConfig, PactStrategyPipeline } from './pacta-strategy.js';
+
+// ── Cross-app (PRD-067, Track A) ────────────────────────────────
+export { InProcessCrossAppInvoker } from './in-process-cross-app-invoker.js';
+export type {
+  InProcessCrossAppHandler,
+  InProcessCrossAppInvokerOptions,
+} from './in-process-cross-app-invoker.js';
+export {
+  CortexCrossAppInvoker,
+  CortexCrossAppInvokerNotImplementedError,
+} from './cortex-cross-app-invoker.stub.js';
+export type { CortexCrossAppInvokerOptions } from './cortex-cross-app-invoker.stub.js';
+export {
+  CrossAppNodeExecutorImpl,
+  applyInputProjection,
+  applyOutputMerge,
+} from './cross-app-node-executor.js';
+export type { CrossAppNodeExecutorOptions } from './cross-app-node-executor.js';

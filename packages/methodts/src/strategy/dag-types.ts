@@ -170,23 +170,72 @@ export interface ContextLoadNodeConfig {
   readonly output_key: string;
 }
 
+/**
+ * PRD-067: Configuration for a cross-app-invoke node — dispatches an
+ * operation on another Cortex tenant app.
+ *
+ * The runtime dispatches this node through the `CrossAppInvoker` port
+ * (`@method/runtime/ports/cross-app-invoker.ts`). The port is implemented by
+ * either:
+ *   - `InProcessCrossAppInvoker` (simulator, shipping in PRD-067 Track A)
+ *   - `CortexCrossAppInvoker` (live adapter, BLOCKED on Cortex PRD-080)
+ *
+ * Surface freeze: 2026-04-15 — see
+ * `.method/sessions/fcd-design-prd-067-multi-app-strategy/prd.md` §6.2.
+ *
+ * Compose-time guard: the target_app MUST be declared in the tenant app's
+ * `requires.apps[]` manifest block (PRD-067 §6.1 `allowedTargetAppIds`).
+ * The runtime validates this via `assertCrossAppTargetsAllowed` before
+ * walking the DAG.
+ */
+export interface CrossAppInvokeNodeConfig {
+  readonly type: 'cross-app-invoke';
+  /** Target Cortex app id — must match a manifest-declared dep
+   *  (`requires.apps[]`). Dynamic/runtime-resolved ids are rejected at
+   *  compose time. */
+  readonly target_app: string;
+  /** Operation name on the target app. Per Cortex PRD-080 cross-app calls
+   *  address operations, never tools. */
+  readonly operation: string;
+  /** Maps operation input field names to dot-paths into this node's
+   *  artifact bundle. Example: `{ label: "$.classify.classified_label" }`
+   *  projects the upstream classify node's output into the operation's
+   *  `label` field. Dot-path syntax mirrors methodts context-load. */
+  readonly input_projection: Readonly<Record<string, string>>;
+  /** How to merge the target's output back into the DAG bundle.
+   *    - "spread":    Object.assign(bundle, output) — flat merge
+   *    - "namespace": bundle[node.id] = output — keys under the node id (default)
+   *  Default is "namespace" because it avoids accidental key collisions
+   *  when multiple cross-app-invoke nodes run in parallel. */
+  readonly output_merge?: 'spread' | 'namespace';
+  /** Optional idempotency key template — templated against node context.
+   *  When absent the runtime defaults to `${sessionId}:${nodeId}`. */
+  readonly idempotency_key?: string;
+  /** Optional per-node timeout override (milliseconds). */
+  readonly timeout_ms?: number;
+  /** Optional per-node budget cap (USD) — hard ceiling enforced by the
+   *  adapter before dispatch. Defaults to the DAG's per-node budget. */
+  readonly max_cost_usd?: number;
+}
+
 /** Union of all node configuration types. */
 export type NodeConfig =
   | MethodologyNodeConfig
   | ScriptNodeConfig
   | StrategyNodeConfig
   | SemanticNodeConfig
-  | ContextLoadNodeConfig;
+  | ContextLoadNodeConfig
+  | CrossAppInvokeNodeConfig;
 
 /** A node in the strategy DAG. */
 export interface StrategyNode {
   readonly id: string;
-  readonly type: "methodology" | "script" | "strategy" | "semantic" | "context-load";
+  readonly type: "methodology" | "script" | "strategy" | "semantic" | "context-load" | "cross-app-invoke";
   readonly depends_on: readonly string[];
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
   readonly gates: readonly DagGateConfig[];
-  readonly config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig | ContextLoadNodeConfig;
+  readonly config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig | ContextLoadNodeConfig | CrossAppInvokeNodeConfig;
   readonly refresh_context?: boolean;
 }
 
@@ -241,7 +290,7 @@ export interface StrategyYaml {
     dag: {
       nodes: Array<{
         id: string;
-        type: "methodology" | "script" | "strategy" | "semantic" | "context-load";
+        type: "methodology" | "script" | "strategy" | "semantic" | "context-load" | "cross-app-invoke";
         // methodology node fields
         methodology?: string;
         method_hint?: string;
@@ -261,6 +310,14 @@ export interface StrategyYaml {
         query?: string;
         topK?: number;
         filterParts?: string[];
+        // cross-app-invoke node fields (PRD-067)
+        target_app?: string;
+        operation?: string;
+        input_projection?: Record<string, string>;
+        output_merge?: 'spread' | 'namespace';
+        idempotency_key?: string;
+        timeout_ms?: number;
+        max_cost_usd?: number;
         // common fields
         inputs?: string[];
         outputs?: string[];

@@ -82,6 +82,50 @@ export interface TokenContext {
 }
 
 /**
+ * PRD-067: cross-app continuation context.
+ *
+ * Present only when the continuation arose from or is awaiting a
+ * `cross-app-invoke` node. Absent for pure in-app pacts — envelopes
+ * serialised pre-PRD-067 round-trip byte-identically
+ * (G-ENVELOPE-BACKWARD-COMPAT).
+ *
+ * Surface freeze: 2026-04-15 — additive extension of S5 `version: 1` per
+ * S5 §9 ("Additional envelope fields — MUST keep version: 1 semantics
+ * compatible; add optional fields only.").
+ */
+export interface CrossAppContinuationContext {
+  /** Node id in the caller's DAG that triggered the cross-app call. */
+  readonly callerNodeId: string;
+  /** Target app id the caller dispatched to. */
+  readonly targetAppId: string;
+  /** Operation name on the target app. */
+  readonly operation: string;
+  /** Originating request id on the caller side — lets the resumption path
+   *  correlate with the caller's audit entry. Matches
+   *  `tokenContext.originatingRequestId` of the emitting envelope. */
+  readonly originatingRequestId: string;
+  /** Cortex PRD-080 decisionId returned on the outbound invoke — lookup key
+   *  for audit correlation and (when async) callee-completion polling. */
+  readonly targetDecisionId: string;
+  /**
+   * Phase of the cross-app call (PRD-067 §6.3):
+   *   - "awaiting_callee" — caller suspended, callee's pact is running in
+   *     its own app's job queue; resumption happens when the caller's
+   *     ctx.events subscription receives
+   *     `method.cross_app.target_event.type=completed`.
+   *   - "completed" — output merged into DAG bundle, envelope moves on.
+   *   - "failed" — target returned error; strategy gate decides retry.
+   */
+  readonly phase: 'awaiting_callee' | 'completed' | 'failed';
+  /** Populated only when `phase === 'completed'` — opaque JSON merged by
+   *  the `output_merge` policy of the caller node. */
+  readonly calleeOutput?: Readonly<Record<string, unknown>>;
+  /** Populated only when `phase === 'failed'` — human-readable reason for
+   *  the gate decision. */
+  readonly failureReason?: string;
+}
+
+/**
  * The canonical continuation envelope. Frozen wire schema at `version: 1`.
  *
  * Extension rule: additional OPTIONAL fields may be added without a
@@ -119,6 +163,19 @@ export interface ContinuationEnvelope {
 
   /** Opaque tracing id spanning the full pact lifecycle. */
   traceId: string;
+
+  /**
+   * PRD-067: OPTIONAL cross-app continuation context.
+   *
+   * Present only when this continuation arose from or is awaiting a
+   * `cross-app-invoke` node. Absent for pure in-app pacts; an envelope
+   * serialised pre-PRD-067 round-trips byte-identically when this field is
+   * missing (G-ENVELOPE-BACKWARD-COMPAT).
+   *
+   * This is an ADDITIVE extension of S5 `version: 1` per S5 §9 and does not
+   * require a `version: 2` bump. See `CrossAppContinuationContext` above.
+   */
+  readonly crossApp?: CrossAppContinuationContext;
 }
 
 /**
