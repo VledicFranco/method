@@ -40,7 +40,13 @@ export const BuildConfigSchema = z.object({
     plan: z.string().default("s-fcd-plan"),
     implement: z.string().default("s-fcd-commission-orch"),
     review: z.string().default("s-fcd-review"),
-  }).default({}),
+  }).default({
+    explore: "explore-codebase",
+    design: "s-fcd-design",
+    plan: "s-fcd-plan",
+    implement: "s-fcd-commission-orch",
+    review: "s-fcd-review",
+  }),
 });
 
 export type BuildConfig = z.infer<typeof BuildConfigSchema>;
