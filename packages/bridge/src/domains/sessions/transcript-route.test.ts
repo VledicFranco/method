@@ -9,7 +9,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registerTranscriptRoutes } from './transcript-route.js';
-import type { SessionPool } from './pool.js';
+import type { SessionPool } from '@method/runtime/sessions';
 import type { TranscriptReader, SessionSummary, TranscriptTurn } from './transcript-reader.js';
 
 // ── Stubs ─────────────────────────────────────────────────────

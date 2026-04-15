@@ -4,9 +4,10 @@ import { writeFileSync, appendFileSync, unlinkSync } from 'node:fs';
 import { exec as nodeExec } from 'node:child_process';
 import { runStartupRecovery } from './startup-recovery.js';
 import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
-import { SessionCheckpointSink } from './shared/event-bus/session-checkpoint-sink.js';
+import { SessionCheckpointSink } from '@method/runtime/event-bus';
 import Fastify from 'fastify';
-import { createPool } from './domains/sessions/pool.js';
+// PRD-057 / S2 §3.3 / C5: session pool + channels moved to @method/runtime/sessions.
+import { createPool, createSessionChannels } from '@method/runtime/sessions';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
 import { createTokenTracker } from './domains/tokens/tracker.js';
 import { registerTokenRoutes } from './domains/tokens/routes.js';
@@ -14,7 +15,6 @@ import { registerTranscriptRoutes } from './domains/sessions/transcript-route.js
 import { createTranscriptReader } from './domains/sessions/transcript-reader.js';
 import { registerStrategyRoutes } from './domains/strategies/strategy-routes.js';
 import { TriggerRouter, scanAndRegisterTriggers, registerTriggerRoutes } from './domains/triggers/index.js';
-import { createSessionChannels } from './domains/sessions/channels.js';
 import { registerSessionRoutes } from './domains/sessions/routes.js';
 import { createSessionPersistenceStore } from './domains/sessions/session-persistence.js';
 import { registerPersistenceRoutes } from './domains/sessions/persistence-routes.js';
@@ -35,11 +35,11 @@ import { setStrategyRoutesEventBus, setStrategyRoutesPool } from './domains/stra
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
 // PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles unified event persistence
-import { loadSessionsConfig } from './domains/sessions/config.js';
+// PRD-057 / S2 §3.6 / C7: config schemas live in @method/runtime/config.
+import { loadSessionsConfig, loadStrategiesConfig } from '@method/runtime/config';
 import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
 import { loadGenesisConfig } from './domains/genesis/config.js';
-import { loadStrategiesConfig } from './domains/strategies/config.js';
 import { loadClusterConfig } from './domains/cluster/config.js';
 import { ClusterDomain } from './domains/cluster/core.js';
 import { registerClusterRoutes } from './domains/cluster/routes.js';
@@ -55,11 +55,18 @@ import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisS
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
 import { createBuildDomain, StrategyExecutorAdapter } from './domains/build/index.js';
-import { StrategyExecutor } from './domains/strategies/strategy-executor.js';
+import { StrategyExecutor } from '@method/runtime/strategy';
 import { loadExecutorConfig } from './domains/strategies/strategy-routes.js';
 import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
-import { createCostGovernorDomain, loadCostGovernorConfig } from './domains/cost-governor/index.js';
-import { CognitiveSink } from './domains/sessions/cognitive-sink.js';
+// PRD-057 / S2 §3.5 / C4: cost-governor factory moved to @method/runtime.
+// Bridge keeps its Fastify route registration locally.
+import { createCostGovernor, loadCostGovernorConfig } from '@method/runtime/cost-governor';
+import { registerCostGovernorRoutes } from './domains/cost-governor/routes.js';
+// PRD-057 / S2 §14 Q6 / C7: cognitive sink class renamed to CognitiveEventBusSink
+// and lives in @method/runtime/sessions. Bridge-side alias shim removed.
+import { CognitiveEventBusSink } from '@method/runtime/sessions';
+// PRD-057 / S2 §6 / C7: inject bridge PTY/print session factory into createPool.
+import { createBridgeSessionProviderFactory } from './domains/sessions/factory.js';
 
 // ── Domain configuration (Zod-validated, env-backed) ──────────
 const sessionsConfig = loadSessionsConfig();
@@ -87,13 +94,15 @@ const clusterConfig = loadClusterConfig({
   mkdirSync: (p, opts) => fsProvider.mkdirSync(p, opts),
 });
 
-// Strategies domain
-import { setRetroWriterFs } from './domains/strategies/retro-writer.js';
+// Strategies domain — engine logic now lives in @method/runtime/strategy (PRD-057 / S2 §3.2 / C2)
+import {
+  setRetroWriterFs,
+  setStrategyParserYaml,
+  setRetroGeneratorYaml,
+  EventBusHumanApprovalResolver,
+  FsSubStrategySource,
+} from '@method/runtime/strategy';
 import { setStrategyRoutesPorts, setStrategyRoutesHumanApprovalResolver, setStrategyRoutesSubStrategySource } from './domains/strategies/strategy-routes.js';
-import { setStrategyParserYaml } from './domains/strategies/strategy-parser.js';
-import { setRetroGeneratorYaml } from './domains/strategies/retro-generator.js';
-import { BridgeHumanApprovalResolver } from './domains/strategies/human-approval-resolver.js';
-import { BridgeSubStrategySource } from './domains/strategies/sub-strategy-source.js';
 setRetroWriterFs(fsProvider);
 setStrategyRoutesPorts(fsProvider, yamlLoader);
 setStrategyParserYaml(yamlLoader);
@@ -170,16 +179,24 @@ setProjectRoutesEventBus(eventBus);
 
 // PRD-044: Wire HumanApprovalResolver and SubStrategySource into the strategies domain.
 // Created once at startup and reused across all executions (singleton lifecycle).
-const humanApprovalResolver = new BridgeHumanApprovalResolver(eventBus);
-const subStrategySource = new BridgeSubStrategySource(
+// PRD-057 / S2 §3.2 / C2: classes renamed and moved to @method/runtime/strategy.
+const humanApprovalResolver = new EventBusHumanApprovalResolver(eventBus);
+const subStrategySource = new FsSubStrategySource(
   process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies',
   fsProvider,
 );
 setStrategyRoutesHumanApprovalResolver(humanApprovalResolver);
 setStrategyRoutesSubStrategySource(subStrategySource);
 
-// PRD 041: CognitiveSink — adapts algebra-level CognitiveEvents to BridgeEvent bus
-const cognitiveSink = new CognitiveSink(eventBus);
+// PRD 041 / PRD-057 C7: CognitiveEventBusSink — adapts algebra-level CognitiveEvents
+// to RuntimeEvent bus. (Bridge-side `CognitiveSink` alias retired; runtime owns the name.)
+const cognitiveSink = new CognitiveEventBusSink(eventBus);
+
+// PRD-057 / S2 §6 / C7: bridge-side SessionProviderFactory produces PTY/print/cognitive
+// sessions. Injected into the runtime pool so the provider boundary is explicit.
+const bridgeSessionProviderFactory = createBridgeSessionProviderFactory({
+  eventBus,
+});
 
 const pool = createPool({
   maxSessions: sessionsConfig.maxSessions,
@@ -189,6 +206,7 @@ const pool = createPool({
   fsProvider,
   eventBus,
   cognitiveSink,
+  providerFactory: bridgeSessionProviderFactory,
 });
 
 // Adaptive oversight: wire pool into strategy routes for auto-spawn on escalation
@@ -213,7 +231,7 @@ const transcriptReader = createTranscriptReader({
 });
 
 // PRD 026 Phase 4: GenesisSink replaces polling loop (module-scoped for shutdown disposal)
-let genesisSink: import('./shared/event-bus/genesis-sink.js').GenesisSink | null = null;
+let genesisSink: import('@method/runtime/event-bus').GenesisSink | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 
@@ -569,17 +587,21 @@ async function start() {
     });
     buildDomain.registerRoutes(app);
 
-    // PRD 051: Register Cost Governor domain
+    // PRD 051 / PRD-057 C4: Register Cost Governor.
+    // Factory lives in @method/runtime/cost-governor (transport-free).
+    // Route registration stays in bridge (Fastify coupling).
     const costGovernorConfig = loadCostGovernorConfig();
-    const costGovernorDomain = costGovernorConfig.enabled
-      ? createCostGovernorDomain({
+    const costGovernor = costGovernorConfig.enabled
+      ? createCostGovernor({
           eventBus,
           fileSystem: fsProvider,
           config: costGovernorConfig,
+          // No appId: bridge is the process-wide cost governor.
+          // Agent-runtime (PRD-058) wires per-tenant AppId scoping.
         })
       : null;
-    if (costGovernorDomain) {
-      costGovernorDomain.registerRoutes(app);
+    if (costGovernor) {
+      registerCostGovernorRoutes(app, costGovernor);
       app.log.info('Cost Governor domain enabled');
     }
 

@@ -16,17 +16,14 @@ import {
   generateRetro,
   computeCriticalPath,
   retroToYaml,
-} from './retro-generator.js';
-import type { StrategyRetro } from './retro-generator.js';
-import { saveRetro } from './retro-writer.js';
-import type { StrategyExecutionResult, NodeResult } from './strategy-executor.js';
-import type { StrategyDAG } from './strategy-parser.js';
-import type { ArtifactBundle } from './artifact-store.js';
+  saveRetro,
+  setRetroGeneratorYaml,
+  setRetroWriterFs,
+  setStrategyParserYaml,
+} from '@method/runtime/strategy';
+import type { StrategyRetro, StrategyExecutionResult, NodeResult, StrategyDAG, ArtifactBundle } from '@method/runtime/strategy';
 import { JsYamlLoader } from '../../ports/yaml-loader.js';
 import { NodeFileSystemProvider } from '../../ports/file-system.js';
-import { setRetroGeneratorYaml } from './retro-generator.js';
-import { setRetroWriterFs } from './retro-writer.js';
-import { setStrategyParserYaml } from './strategy-parser.js';
 import { setStrategyRoutesPorts } from './strategy-routes.js';
 
 // PRD 024: Configure ports for tests

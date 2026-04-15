@@ -11,7 +11,8 @@
     { "path": "../pacta-provider-claude-cli" },
     { "path": "../pacta-provider-anthropic" },
     { "path": "../pacta-provider-ollama" },
-    { "path": "../pacta-testkit" }
+    { "path": "../pacta-testkit" },
+    { "path": "../runtime" }
   ],
   "include": ["src"]
 }

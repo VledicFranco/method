@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "references": [
+    { "path": "../types" },
+    { "path": "../methodts" },
+    { "path": "../pacta" },
+    { "path": "../pacta-testkit" },
+    { "path": "../fca-index" }
+  ],
+  "include": ["src"]
+}

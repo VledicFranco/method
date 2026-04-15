@@ -1,5 +1,5 @@
 /**
- * WebSocketSink — Pushes BridgeEvents to WebSocket subscribers via WsHub (PRD 026).
+ * WebSocketSink — Pushes RuntimeEvents to WebSocket subscribers via WsHub (PRD 026).
  *
  * Replaces the ad-hoc wsHub.publish() calls in server-entry.ts. Maps event
  * domains to WebSocket topics for backward compatibility during migration:
@@ -12,7 +12,10 @@
  * the unified event store (PRD 026 Phase 4).
  */
 
-import type { EventSink, BridgeEvent } from '../../ports/event-bus.js';
+// PRD-057 / S2 §3.4 / C3: EventSink + RuntimeEvent port interfaces live in
+// @method/runtime/ports. WebSocketSink stays in bridge because it depends on
+// @fastify/websocket (transport-bound; S2 §5.1).
+import type { EventSink, RuntimeEvent } from '@method/runtime/ports';
 import type { WsHub, Topic } from '../websocket/hub.js';
 
 // ── Domain → Topic mapping (legacy compatibility) ───────────────
@@ -32,11 +35,11 @@ export class WebSocketSink implements EventSink {
 
   constructor(private readonly wsHub: WsHub) {}
 
-  onEvent(event: BridgeEvent): void {
+  onEvent(event: RuntimeEvent): void {
     const topic = DOMAIN_TOPIC_MAP[event.domain];
     if (!topic) return; // Domains without a topic mapping are silently skipped
 
-    // PRD 026 Phase 4: Send full BridgeEvent (not just payload) so frontend
+    // PRD 026 Phase 4: Send full RuntimeEvent (not just payload) so frontend
     // event store receives the unified schema with domain, type, severity, etc.
     this.wsHub.publish(topic, event, (filter) => {
       // AND all applicable filter dimensions — every specified filter must match.
@@ -58,7 +61,7 @@ export class WebSocketSink implements EventSink {
     });
   }
 
-  onError(error: Error, event: BridgeEvent): void {
+  onError(error: Error, event: RuntimeEvent): void {
     // WebSocket errors are non-fatal — log and continue
     console.error(`[WebSocketSink] Error dispatching ${event.type}: ${error.message}`);
   }

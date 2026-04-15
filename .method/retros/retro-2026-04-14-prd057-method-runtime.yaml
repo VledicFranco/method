@@ -1,0 +1,168 @@
+retrospective:
+  session_id: "PRD-057-METHOD-RUNTIME"
+  methodology: P2-SD
+  method: "M2-DIMPL"
+  project_card_id: I2-METHOD
+  prd: "PRD-057"
+  branch: "feat/prd-057-method-runtime"
+  pr: 175
+  scope: "@method/runtime package extraction (C1–C7, closed by C7)"
+
+  hardest_decision:
+    step: "C7_bridge_test_validation"
+    decision: >
+      Whether to skip `npm run bridge:test` when the 1Password CLI (`op`)
+      was present on PATH but no active session was signed in. The start
+      script's detection only checks for `op` existence, so the bridge
+      attempted `op run --env-file=.env.tpl` and failed before Fastify
+      could bind. PRD-057 §SC-9 and §13.5 make `bridge:test` a hard
+      validation gate.
+    outcome: >
+      Chose to temporarily rename `.env.tpl` → `.env.tpl.prd057-c7-bridge-test`
+      for a single boot cycle so the start script's fallback took the
+      `.env` path (local secrets already present), then restored the
+      template. This kept PRD-057 scope disciplined — we did not modify
+      `scripts/start-bridge.js`'s detection logic to harden the fallback
+      (which would have been a genuinely useful fix but belongs to a
+      separate infrastructure PRD, not C7 cleanup). The bridge booted
+      cleanly on port 3457, /health returned 200, strategy files were
+      registered, and the pool initialized with the injected
+      `createBridgeSessionProviderFactory`.
+    guidance_gap: true
+
+  observations:
+    - step: "C7_shim_deletion"
+      type: success
+      description: >
+        Five shim files deleted in one pass with zero downstream breakage:
+        `bridge/domains/sessions/cognitive-sink.ts`, three
+        `bridge/domains/*/config.ts` re-exports, and `bridge/ports/session-pool.ts`.
+        The C1–C6 discipline of carrying shims forward while each commission
+        landed green meant C7 was purely mechanical — nine `import` rewrites
+        in bridge source + one `ports/index.ts` barrel edit. Full build
+        stayed green at every step.
+      evidence: "commit <c7-shims>; bridge test suite stayed at 9 pre-existing failures (no regressions)"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "C7_gate_activation"
+      type: success
+      description: >
+        `G-BRIDGE-USES-RUNTIME-PORTS` flip from `it.skip` → `it` passed on
+        first run. The gate's forbidden-pattern regex caught nothing because
+        the C2–C6 sweeps were exhaustive. This is the expected outcome
+        but not a given — if any import had slipped through, the gate would
+        have caught it on gate-activation rather than in CI weeks later.
+        The per-commission "grep → rewrite → shim" ritual paid off.
+      evidence: "architecture.test.ts: 1/1 pass on activation; test suite exit 0 for gate subtest"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "C7_event_type_snapshot"
+      type: surprise
+      description: >
+        The initial `EVENT_TYPE_MANIFEST` was built from a grep of `CostEventType`
+        union members, which over-captured: `cost.clock_discontinuity` and
+        `cost.prediction_diverged` are declared in the type union but not
+        emitted by any current source path. The snapshot test failed on
+        first run flagging "expected but not found in source". Pivoted the
+        manifest intent: snapshot what is **emitted**, not what is
+        **declared**, and documented the reservation inline. This is a
+        subtle design distinction — declared-but-not-emitted strings are
+        wire-format reservations (a producer might arrive tomorrow), so
+        the manifest comment explicitly covers the re-add path.
+      evidence: "event-types.snapshot.test.ts comments; test passed after pivot (1/1 green)"
+      severity: MEDIUM
+      improvement_target: abstract_method
+
+    - step: "C7_factory_wiring"
+      type: success
+      description: >
+        Wiring `createBridgeSessionProviderFactory` into `createPool`'s
+        `providerFactory` option was one composition-root edit. The factory
+        was designed C5-first as a thin dispatcher (print-mode → claudeCli,
+        cognitive-mode → anthropic/ollama), so its contract matched
+        `SessionProviderFactory` exactly. Bridge boot confirmed the pool
+        now routes through the factory instead of the built-in fallbacks.
+      evidence: "server-entry.ts:187-204 edit; /health 200 with active_sessions=0 max_sessions=3"
+      severity: LOW
+      improvement_target: abstract_method
+
+    - step: "C7_pre_existing_failures"
+      type: success
+      description: >
+        Verified the same 3 runtime + 9 bridge pre-existing failures
+        documented in PR #175's C1-C6 evidence block. No new failures
+        introduced by C7 changes (one new runtime test added — the
+        event-type snapshot — passes).
+      evidence: "runtime 548/551 pass (baseline 547/550 + 1 new snapshot); bridge 9/9 same failing file list"
+      severity: LOW
+      improvement_target: none
+
+  card_feedback:
+    - rule_id: DR-01
+      verdict: helpful
+      note: >
+        Registry untouched across C1–C7. Extraction discipline held —
+        this PRD was a "pure library refactor, no contract change" and
+        the registry invariant made that explicit.
+
+    - rule_id: DR-03
+      verdict: helpful
+      note: >
+        "Domain packages have zero transport dependencies" is the core
+        invariant PRD-057 enforces. `G-RUNTIME-ZERO-TRANSPORT` catches
+        any future fastify/ws/node-pty import into runtime. DR-03 is no
+        longer aspirational — it is machine-enforced for `@method/runtime`.
+
+    - rule_id: DR-12
+      verdict: helpful
+      note: >
+        Architecture docs stayed horizontal. The S2 co-design record
+        (`fcd-surface-runtime-package-boundary/decision.md`) was the
+        single source of truth throughout C1–C7. PRD-057 referenced it
+        by §§ instead of copying. This held even under the snapshot-test
+        redesign — pivoting "declared vs emitted" was an implementation
+        detail, not an S2 amendment.
+
+    - rule_id: PR-03
+      verdict: helpful
+      note: >
+        Retro placed in `.method/retros/` per rule. C7 is a natural
+        retro boundary because it closes PRD-057; earlier commissions
+        were intermediate (green builds, no closure).
+
+  proposed_deltas:
+    - target: scripts/start-bridge.js
+      location: "isOpAvailable()"
+      current: >
+        Detection checks only `where op` / `which op`. When `op` is on
+        PATH but no session is signed in, `op run` fails and the bridge
+        exits before fallback to `.env`.
+      proposed: >
+        Additionally probe `op whoami` (fast: <50ms when signed in,
+        <200ms when not). Treat unsigned state as equivalent to `op`
+        not being installed, and take the `.env` fallback path. This
+        eliminates the C7-style "temporarily rename .env.tpl" workaround
+        for local agents running without an active `op` session.
+      rationale: >
+        The current behavior is correct for CI and for signed-in users,
+        but a subtle footgun for agents spun up without an interactive
+        session. The probe is cheap and matches the documented CLAUDE.md
+        fallback contract ("Fallback: plain `.env` file if `op` is not
+        available").
+
+    - target: docs/arch/event-bus.md (if exists, else create)
+      location: "stability guarantees"
+      current: "(likely silent on wire format stability)"
+      proposed: >
+        Document the event-type snapshot gate (G-EVENT-TYPE-SNAPSHOT)
+        as the authoritative list of stable RuntimeEvent type strings.
+        Note that reserved-but-not-emitted strings (e.g. `cost.clock_discontinuity`)
+        live in `CostEventType` union and must be re-added to the
+        manifest when a producer lands.
+      rationale: >
+        PRD-058/059 (downstream consumers) need to know which event
+        strings are stable and which are reserved future-use. The
+        snapshot gate captures the emitted set; the union types capture
+        the reserved set; documentation should surface both.

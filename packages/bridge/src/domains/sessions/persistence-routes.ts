@@ -9,7 +9,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { SessionPersistenceStore } from './session-persistence.js';
-import type { SessionPool } from './pool.js';
+import type { SessionPool } from '@method/runtime/sessions';
 
 export interface PersistenceRouteDeps {
   persistence: SessionPersistenceStore;

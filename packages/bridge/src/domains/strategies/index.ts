@@ -1,32 +1,62 @@
-// Strategy module barrel exports (PRD 017)
-// Pure logic lives locally (formerly in @method/core); bridge-only items (transport, I/O) are also here.
+// PRD-057 / S2 §3.2 / C2: strategy engine moved to @method/runtime/strategy.
+// This barrel now re-exports the runtime surface for any in-tree consumer that
+// still imports from the bridge strategies domain. Bridge-only items (HTTP
+// routes, env-driven config loader) stay local.
 
-// Artifact Store
-export type { ArtifactVersion, ArtifactBundle, ArtifactStore } from './artifact-store.js';
-export { InMemoryArtifactStore, createArtifactStore } from './artifact-store.js';
+// ── Re-exports from @method/runtime/strategy ────────────────────
+export {
+  // Artifact store
+  InMemoryArtifactStore,
+  createArtifactStore,
+  // Gates
+  evaluateGateExpression,
+  evaluateGate,
+  buildRetryFeedback,
+  getDefaultRetries,
+  getDefaultTimeout,
+  // Parser
+  parseStrategyYaml,
+  parseStrategyObject,
+  validateStrategyDAG,
+  topologicalSort,
+  // Executor
+  StrategyExecutor,
+  // Retro
+  generateRetro,
+  computeCriticalPath,
+  retroToYaml,
+  saveRetro,
+} from '@method/runtime/strategy';
 
-// Gates
-export type { GateType, GateConfig, GateContext, GateResult } from './gates.js';
-export { getDefaultRetries, getDefaultTimeout, evaluateGateExpression, evaluateGate, buildRetryFeedback } from './gates.js';
-
-// Strategy Parser
-export type { StrategyYaml, MethodologyNodeConfig, ScriptNodeConfig, StrategyNode, OversightRule, StrategyGate, StrategyDAG, StrategyValidationResult } from './strategy-parser.js';
-export { parseStrategyYaml, parseStrategyObject, validateStrategyDAG, topologicalSort } from './strategy-parser.js';
-
-// Backward-compatible alias
-export type { StrategyValidationResult as ValidationResult } from './strategy-parser.js';
-
-// Strategy Executor
-export type { NodeStatus, NodeResult, OversightEvent, ExecutionState, ExecutionStateSnapshot, StrategyExecutionResult, StrategyExecutorConfig } from './strategy-executor.js';
-export { StrategyExecutor } from './strategy-executor.js';
-
-// Retro Generator (pure logic)
-export type { StrategyRetro } from './retro-generator.js';
-export { generateRetro, computeCriticalPath, retroToYaml } from './retro-generator.js';
+export type {
+  ArtifactVersion,
+  ArtifactBundle,
+  ArtifactStore,
+  GateType,
+  GateConfig,
+  GateContext,
+  GateResult,
+  StrategyYaml,
+  MethodologyNodeConfig,
+  ScriptNodeConfig,
+  StrategyNode,
+  OversightRule,
+  StrategyGate,
+  StrategyDAG,
+  StrategyValidationResult,
+  StrategyValidationResult as ValidationResult,
+  NodeStatus,
+  NodeResult,
+  OversightEvent,
+  ExecutionState,
+  ExecutionStateSnapshot,
+  StrategyExecutionResult,
+  StrategyExecutorConfig,
+  StrategyRetro,
+} from '@method/runtime/strategy';
 
 // loadExecutorConfig lives in bridge (DR-03: env access in bridge only)
 export { loadExecutorConfig } from './strategy-routes.js';
 
-// Bridge-only exports (transport and I/O)
-export { saveRetro } from './retro-writer.js';
+// Bridge-only exports (transport — HTTP routes)
 export { registerStrategyRoutes, evictStaleExecutions, setStrategyRoutesEventBus } from './strategy-routes.js';

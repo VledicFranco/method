@@ -31,7 +31,7 @@ export function setStrategyRoutesEventBus(bus: EventBus): void {
 }
 
 // Adaptive oversight: SessionPool port for auto-spawning oversight sessions
-import type { SessionPool } from '../../ports/session-pool.js';
+import type { SessionPool } from '@method/runtime/sessions';
 let _pool: SessionPool | null = null;
 
 /** Configure SessionPool for adaptive oversight auto-spawn. Called from composition root. */
@@ -39,9 +39,10 @@ export function setStrategyRoutesPool(pool: SessionPool): void {
   _pool = pool;
 }
 
-// PRD-044: HumanApprovalResolver + BridgeSubStrategySource ports
-import type { SubStrategySource, HumanApprovalResolver } from './strategy-executor.js';
-import { BridgeSubStrategySource } from './sub-strategy-source.js';
+// PRD-044: HumanApprovalResolver + SubStrategySource ports
+// PRD-057 / S2 §3.2 / C2: engine logic moved to @method/runtime/strategy.
+import type { SubStrategySource, HumanApprovalResolver } from '@method/runtime/strategy';
+import { FsSubStrategySource } from '@method/runtime/strategy';
 
 let _humanApprovalResolver: HumanApprovalResolver | null = null;
 let _subStrategySource: SubStrategySource | null = null;
@@ -56,11 +57,18 @@ export function setStrategyRoutesSubStrategySource(source: SubStrategySource): v
   _subStrategySource = source;
 }
 
-import { parseStrategyYaml, validateStrategyDAG } from './strategy-parser.js';
-import type { StrategyYaml } from './strategy-parser.js';
-import { StrategyExecutor } from './strategy-executor.js';
-import type { StrategyExecutorConfig, StrategyExecutionResult, ContextLoadExecutor } from './strategy-executor.js';
-import { ContextLoadExecutorImpl } from './context-load-executor.js';
+import {
+  parseStrategyYaml,
+  validateStrategyDAG,
+  StrategyExecutor,
+  ContextLoadExecutorImpl,
+} from '@method/runtime/strategy';
+import type {
+  StrategyYaml,
+  StrategyExecutorConfig,
+  StrategyExecutionResult,
+  ContextLoadExecutor,
+} from '@method/runtime/strategy';
 
 /** Build executor config from environment variables with defaults (DR-03: env access in bridge only) */
 export function loadExecutorConfig(): StrategyExecutorConfig {
@@ -93,9 +101,8 @@ if (VOYAGE_API_KEY) {
     console.error('[fca-index] context-load executor failed to initialize:', msg);
   });
 }
-import { generateRetro } from './retro-generator.js';
-import { saveRetro } from './retro-writer.js';
-import type { StrategyDAG } from './strategy-parser.js';
+import { generateRetro, saveRetro } from '@method/runtime/strategy';
+import type { StrategyDAG } from '@method/runtime/strategy';
 
 // ── In-memory execution store ──────────────────────────────────
 
@@ -288,7 +295,7 @@ export function registerStrategyRoutes(
     // PRD-044: Resolve sub-strategy source (default: scan .method/strategies/ in cwd)
     const subStrategyDir = process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies';
     const subStrategySource = _subStrategySource
-      ?? new BridgeSubStrategySource(subStrategyDir, _fs ?? new NodeFileSystemProvider());
+      ?? new FsSubStrategySource(subStrategyDir, _fs ?? new NodeFileSystemProvider());
 
     // Create executor with claudeCliProvider, wiring PRD-044 ports
     const executor = new StrategyExecutor(

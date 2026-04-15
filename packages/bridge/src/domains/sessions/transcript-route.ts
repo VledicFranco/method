@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import type { SessionPool } from './pool.js';
+import type { SessionPool } from '@method/runtime/sessions';
 import type { TranscriptReader } from './transcript-reader.js';
 import { collapseToolRounds } from './transcript-reader.js';
 
