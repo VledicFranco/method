@@ -48,6 +48,7 @@ export type {
   AgentBudgetExhausted,
   AgentError,
   AgentCompleted,
+  PactDeadLetterEvent,
 } from './events.js';
 
 // Provider port (base + optional capabilities)
