@@ -113,7 +113,7 @@ export type { CreateAgentOptions, Agent, AgentState } from './engine/create-agen
 
 // Middleware
 export { budgetEnforcer, BudgetExhaustedError } from './middleware/budget-enforcer.js';
-export type { BudgetState } from './middleware/budget-enforcer.js';
+export type { BudgetState, BudgetEnforcerOptions } from './middleware/budget-enforcer.js';
 export { outputValidator } from './middleware/output-validator.js';
 export { throttler } from './middleware/throttler.js';
 export type { ThrottlerOptions } from './middleware/throttler.js';
