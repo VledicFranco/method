@@ -13,6 +13,7 @@
     { "path": "packages/pacta-provider-ollama" },
     { "path": "packages/cluster" },
     { "path": "packages/runtime" },
+    { "path": "packages/agent-runtime" },
     { "path": "packages/method-ctl" },
     { "path": "packages/bridge" },
     { "path": "packages/fca-index" }
