@@ -16,7 +16,10 @@ import type {
   Method,
   Step,
 } from "@method/methodts";
-import type { MethodologySource } from "../../ports/methodology-source.js";
+import type {
+  MethodologySource,
+  MethodologyChange,
+} from "../../ports/methodology-source.js";
 
 // ── Types matching core's output shapes ──
 
@@ -1252,5 +1255,43 @@ export class MethodologySessionStore {
         ? `${completedRecord.methodId} completed. \u03B4_\u03A6 re-evaluated \u2192 ${routeResult.selectedMethod.id} selected. Call methodology_load_method to begin.`
         : `${completedRecord.methodId} completed. Methodology complete \u2014 no further methods needed.`,
     };
+  }
+
+  /**
+   * PRD-064 / S7 §6.4 — listener target for `MethodologySource.onChange`.
+   *
+   * Drops cached routing decisions keyed on the changed methodologyId so
+   * that the next `methodology_route` call re-reads from source. In-flight
+   * sessions finish on their original methodology snapshot (`step` state
+   * is never mutated mid-run, per S7 §5.5). Called from the composition
+   * root via `methodologySource.onChange?.(store.onMethodologyChange)`.
+   *
+   * The bridge currently uses `StdlibSource` which never emits, so this
+   * is a no-op path in production. It's the seam the Cortex deployment
+   * uses to invalidate routing-decision caches without restarting active
+   * session state.
+   */
+  onMethodologyChange(change: MethodologyChange): void {
+    if (change.kind === 'reloaded') {
+      // Full cache invalidation — drop nothing persistent (route results
+      // are recomputed from source on every call today), but reset any
+      // in-memory methodology session transition state to force a
+      // fresh re-route on the next call.
+      for (const session of this.methodologySessions.values()) {
+        if (session.status === 'transitioning') {
+          session.currentMethodId = null;
+        }
+      }
+      return;
+    }
+    if (change.kind === 'removed' || change.kind === 'updated' || change.kind === 'added') {
+      // Targeted invalidation — any session currently bound to the
+      // affected methodology falls back to re-route on next transition.
+      for (const session of this.methodologySessions.values()) {
+        if (session.methodologyId === change.methodologyId && session.status === 'transitioning') {
+          session.currentMethodId = null;
+        }
+      }
+    }
   }
 }
