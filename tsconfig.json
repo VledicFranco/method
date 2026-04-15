@@ -16,6 +16,7 @@
     { "path": "packages/agent-runtime" },
     { "path": "packages/method-ctl" },
     { "path": "packages/bridge" },
-    { "path": "packages/fca-index" }
+    { "path": "packages/fca-index" },
+    { "path": "samples/cortex-incident-triage-agent" }
   ]
 }
