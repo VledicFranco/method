@@ -118,25 +118,26 @@ loop (Wave N+1 doesn't fire until Wave N is fully merged to master).
 
 ## 3. Live state tracker (loop updates this)
 
-**Master head:** `22d2a73` (at mission start)
+**Master head:** `f1af887` (Wave 2 merged — PR #186 PRD-062 job-executor)
 
 **Wave state:**
 
 | Wave | PRD | Branch | PR | Status |
 |---|---|---|---|---|
-| 1 | 061 | feat/prd-061-session-store | TBD | pending |
-| 1 | 063 | feat/prd-063-event-connector | TBD | pending |
-| 1 | 064 | feat/prd-064-methodology-source | TBD | pending |
-| 1 | 065 | feat/prd-065-conformance-testkit | TBD | pending |
-| 2 | 062 | feat/prd-062-job-executor | TBD | blocked on Wave 1 |
-| 2 | 066 | feat/prd-066-mcp-transport | TBD | blocked on Wave 1 |
-| 3 | 067 | feat/prd-067-cross-app-sim | TBD | blocked on Wave 2 |
-| 3 | 068 | feat/prd-068-cognitive-apps | TBD | blocked on Wave 2 |
+| 1 | 061 | feat/prd-061-session-store | #182 | **merged** |
+| 1 | 063 | feat/prd-063-event-connector | #181 | **merged** |
+| 1 | 064 | feat/prd-064-methodology-source | #183 | **merged** |
+| 1 | 065 | feat/prd-065-conformance-testkit | #184 | **merged** |
+| 2 | 062 | feat/prd-062-job-executor | #186 | **merged** |
+| 2 | 066 | feat/prd-066-mcp-transport | #185 | **merged** |
+| 3 | 067 | feat/prd-067-cross-app-sim | **#188** | **commissioned** (Gate 1 passed, awaiting Gate 2 audit) |
+| 3 | 068 | feat/prd-068-cognitive-apps | **#187** | **commissioned** (Gate 1 passed, awaiting Gate 2 audit) |
 
 **Iteration log:** (agent appends here each wake)
 
 - **2026-04-15 kickoff** — mission doc committed at `0b71030`. Wave 1 fired in background: 4 async subagents (PRD-061 session-store, PRD-063 event-connector, PRD-064 methodology-source, PRD-065 conformance-testkit). Each in its own worktree at `.claude/worktrees/agent-<id>/`. First wake-up scheduled for ~25 min.
 - **2026-04-15 protocol update** — **adaptation triggered by user feedback + mid-flight LSP diagnostics** showing partial work in worktree states: PRD-061 (`checkpoint-sink-impl.ts` type mismatches + uninitialized `_workerId`), PRD-064 (`MethodologyChange` missing export + `MethodologyDocument` index-signature failures), PRD-065 (missing fixture files + broken imports, `TokenUsage` mismatch). These are subagent-in-flight states but confirm the risk pattern. Protocol tightened: §Quality bar replaced with 5-gate pipeline, §4 decision tree rewritten with Gate-2 locally-run completeness audit, TRUST MODEL added. Subagent "complete" reports are no longer sufficient — loop independently runs Gate 2 (`npm run build` + grep markers + file count + gates + tests) LOCALLY before advancing status. Continuation cap = 2 rounds before escalation.
+- **2026-04-15 resume** — computer restart interrupted Wave 3. Waves 1 + 2 fully merged to master. On resume: WIP for both Wave 3 PRDs existed on `feat/prd-068-cognitive-apps` working tree (23 dirty files, `npm run build` green, new PRD-067 tests green, pre-existing 4 runtime failures on master excluded per §7). Split + committed under clean FCA bucketing — PRD-067 (runtime+methodts cross-app files, 14 files, +1786 LOC) to `feat/prd-067-cross-app-sim` → PR #188; PRD-068 (agent-runtime cortical-workspace + 3 tenant-app samples, 24 files, +2416 LOC) to `feat/prd-068-cognitive-apps` → PR #187. Known gap flagged for /fcd-review: memory sample missing README + e2e tests (monitor/planner have both). Next: loop runs Gate 2 locally on each PR, then fires Gate 4 /fcd-review subagents.
 
 **Escalation markers:** (agent creates files at `.method/sessions/ESCALATION-*.md` if an architectural contradiction arises; list them here)
 
