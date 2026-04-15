@@ -1,0 +1,49 @@
+# CODEOWNERS — method-1
+#
+# Introduced by PRD-060 (MethodAgentPort bilateral ratification, 2026-04-14)
+# to protect ratified surface decision records from unilateral modification.
+# See `co-design/CHANGES.md` §Change classes and PRD-060 §9 (G-RATIFIED).
+#
+# Syntax reference: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-features/customizing-your-repository/about-code-owners
+# Owners listed on a line are the required reviewers for any PR touching the
+# matched paths. The last matching line wins.
+
+# -----------------------------------------------------------------------------
+# Ratified surface decision records — protected per PRD-060
+# -----------------------------------------------------------------------------
+#
+# Any change to a frozen or needs-follow-up `decision.md` under
+# `.method/sessions/fcd-surface-*/` must be reviewed by the method Surface
+# Advocate. This is the structural guard against the "just ship it" PR that
+# bypasses the change-control SOP in `co-design/CHANGES.md`.
+#
+# Lines are ordered from least specific to most specific; GitHub CODEOWNERS
+# applies the last matching pattern, so surface-specific overrides go below
+# the catch-all.
+
+# Catch-all for every surface decision.md (covers all 9 surfaces S1–S9).
+/.method/sessions/fcd-surface-*/decision.md @VledicFranco
+
+# Explicit per-surface listings — kept in sync with docs/roadmap-cortex-consumption.md §10.
+# Each line protects the authoritative decision.md for one ratified surface.
+/.method/sessions/fcd-surface-method-agent-port/decision.md          @VledicFranco
+/.method/sessions/fcd-surface-runtime-package-boundary/decision.md   @VledicFranco
+/.method/sessions/fcd-surface-cortex-service-adapters/decision.md    @VledicFranco
+/.method/sessions/fcd-surface-session-store/decision.md              @VledicFranco
+/.method/sessions/fcd-surface-job-backed-executor/decision.md        @VledicFranco
+/.method/sessions/fcd-surface-event-connector/decision.md            @VledicFranco
+/.method/sessions/fcd-surface-methodology-source/decision.md         @VledicFranco
+/.method/sessions/fcd-surface-conformance-testkit/decision.md        @VledicFranco
+/.method/sessions/fcd-surface-mcp-cortex-transport/decision.md       @VledicFranco
+
+# -----------------------------------------------------------------------------
+# Ratification artifacts — any change routes through the method Surface Advocate
+# -----------------------------------------------------------------------------
+#
+# `co-design/` is the governance directory established by PRD-060. Every file
+# here is part of the meta-contract; casual edits are categorically not
+# allowed. See `co-design/CHANGES.md` for the amendment workflow.
+
+/co-design/                                @VledicFranco
+/co-design/CHANGES.md                      @VledicFranco
+/co-design/method-agent-port.md            @VledicFranco
