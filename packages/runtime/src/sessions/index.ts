@@ -109,6 +109,11 @@ export {
   SESSION_LIFECYCLE_TYPES,
   SessionStoreError,
   isSessionStoreError,
+  DEFAULT_SESSION_STORE_FIXTURES,
+  resumeMidTurnFixture,
+  staleLeaseTheftFixture,
+  schemaVersionRejectionFixture,
+  runSessionStoreConformance,
 } from './session-store/index.js';
 export type {
   SessionStore,
@@ -133,4 +138,7 @@ export type {
   PerformResumeArgs,
   ResumeOutcome,
   InMemorySessionStoreOptions,
+  SessionStoreConformanceFixture,
+  SessionStoreFactory,
+  FixtureResult,
 } from './session-store/index.js';

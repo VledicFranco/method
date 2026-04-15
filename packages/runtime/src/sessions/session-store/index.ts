@@ -50,3 +50,17 @@ export type {
 
 export { createInMemorySessionStore } from './in-memory-session-store.js';
 export type { InMemorySessionStoreOptions } from './in-memory-session-store.js';
+
+// ── Conformance fixtures (PRD-061 §8.2) ──
+export {
+  DEFAULT_SESSION_STORE_FIXTURES,
+  resumeMidTurnFixture,
+  staleLeaseTheftFixture,
+  schemaVersionRejectionFixture,
+  runSessionStoreConformance,
+} from './conformance.js';
+export type {
+  SessionStoreConformanceFixture,
+  SessionStoreFactory,
+  FixtureResult,
+} from './conformance.js';
