@@ -120,4 +120,22 @@ describe('@method/runtime — architecture gates (PRD-057 / S2 §11)', () => {
 
   // G-BRIDGE-USES-RUNTIME-PORTS is asserted on the bridge side (bridge's
   // architecture test). Activated in C7 per PRD-057 §8.
+
+  // ── PRD-064 / S7 §11 ───────────────────────────────────────────
+  it('G-METHODOLOGY-SOURCE-CORE-SYNC: core reads remain synchronous', () => {
+    const portPath = join(srcDir, 'ports', 'methodology-source.ts');
+    const src = readFileSync(portPath, 'utf-8');
+    assert.ok(
+      !/\blist\s*\(\s*\)\s*:\s*Promise</.test(src),
+      'list() must remain synchronous',
+    );
+    assert.ok(
+      !/\bgetMethod\s*\([^)]*\)\s*:\s*Promise</.test(src),
+      'getMethod() must remain synchronous',
+    );
+    assert.ok(
+      !/\bgetMethodology\s*\([^)]*\)\s*:\s*Promise</.test(src),
+      'getMethodology() must remain synchronous',
+    );
+  });
 });
