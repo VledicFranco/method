@@ -33,13 +33,54 @@ export type {
   CortexLlmFacade,
   CortexAuditFacade,
   CortexEventsFacade,
+  CortexEventsCtx,
   CortexStorageFacade,
   CortexJobsFacade,
   CortexScheduleFacade,
   CortexAuthFacade,
   CortexLogger,
+  MethodTopicDescriptor,
+  EventClassificationLevel,
+  EventFieldClassification,
+  RuntimeEventAuditMapping,
 } from './cortex/ctx-types.js';
 export { assertCtxCompatibility } from './cortex/assert-ctx-compatibility.js';
+
+// ── CortexEventConnector (PRD-063 / S6) ──────────────────────────
+export {
+  CortexEventConnector,
+  wrapPublishAsEmit,
+} from './cortex/event-connector.js';
+export type {
+  CortexEventConnectorConfig,
+  CortexEventConnectorDeps,
+} from './cortex/event-connector.js';
+export {
+  METHOD_TOPIC_REGISTRY,
+  METHOD_TOPIC_COUNT,
+  METHOD_RUNTIME_EVENT_AUDIT_MAP,
+  RUNTIME_EVENT_TYPE_TO_TOPIC,
+} from './cortex/event-topic-registry.js';
+export {
+  mapRuntimeEventToEnvelope,
+  mapRuntimeEventOrThrow,
+  METHOD_AUDIT_ONLY_RUNTIME_EVENT_TYPES,
+} from './cortex/event-envelope-mapper.js';
+export type {
+  CortexEnvelope,
+  EnvelopeMapResult,
+  EnvelopeMapperConfig,
+  MapOutcome,
+} from './cortex/event-envelope-mapper.js';
+export {
+  generateManifestEmitSection,
+  emitEntriesToYaml,
+} from './cortex/manifest-emit-section.js';
+export type {
+  ManifestEmitEntry,
+  ManifestEmitOptions,
+  ManifestEmitClassification,
+} from './cortex/manifest-emit-section.js';
 
 // ── Errors (new taxonomy) ────────────────────────────────────────
 export {

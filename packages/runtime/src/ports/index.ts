@@ -6,7 +6,7 @@ export type { YamlLoader } from './yaml-loader.js';
 export type { NativeSessionDiscovery, NativeSessionInfo } from './native-session-discovery.js';
 
 // ── Methodology source + in-memory test double ──
-export type { MethodologySource } from './methodology-source.js';
+export type { MethodologySource, MethodologyChange } from './methodology-source.js';
 export { InMemorySource } from './in-memory-source.js';
 
 // ── Event bus ──
@@ -73,3 +73,35 @@ export type { Projection } from './projection.js';
 export type { ProjectionStore, StartResult } from './projection-store.js';
 export type { EventReader } from './event-reader.js';
 export type { EventRotator, RotateOptions, RotateResult } from './event-rotator.js';
+
+// ── Session store (PRD-061 / S4) ──
+// NOTE: `SessionSnapshot` is re-exported under `PersistedSessionSnapshot` to
+// avoid a name clash with `./session-pool.js`'s runtime snapshot type. Deep
+// import from `./session-store-types.js` when the original name is needed.
+export type { SessionStore } from './session-store.js';
+export type {
+  SessionStatus,
+  PactRef,
+  SessionSnapshot as PersistedSessionSnapshot,
+  EventCursor,
+  AgentStateBlob,
+  BudgetReservation,
+  NextAction,
+  Checkpoint,
+  CheckpointMeta,
+  ResumeOptions,
+  ResumeContext,
+} from './session-store-types.js';
+export type {
+  SessionStoreErrorCode,
+  SessionStoreErrorOptions,
+} from './session-store-errors.js';
+export {
+  SessionStoreError,
+  isSessionStoreError,
+} from './session-store-errors.js';
+export type {
+  CheckpointSink,
+  CheckpointSinkOptions,
+  CheckpointCapture,
+} from './checkpoint-sink.js';

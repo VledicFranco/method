@@ -1,0 +1,227 @@
+{
+  "date": "2026-04-15",
+  "topics": [
+    {
+      "topic": "method.session.started",
+      "count": 120,
+      "p50_bytes": 16743,
+      "p95_bytes": 102761,
+      "p99_bytes": 102761,
+      "max_bytes": 102761,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.session.prompt.completed",
+      "count": 120,
+      "p50_bytes": 16788,
+      "p95_bytes": 102806,
+      "p99_bytes": 102806,
+      "max_bytes": 102806,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.session.ended",
+      "count": 120,
+      "p50_bytes": 16751,
+      "p95_bytes": 102774,
+      "p99_bytes": 102774,
+      "max_bytes": 102774,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.session.stale",
+      "count": 120,
+      "p50_bytes": 16735,
+      "p95_bytes": 102753,
+      "p99_bytes": 102753,
+      "max_bytes": 102753,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.session.error",
+      "count": 120,
+      "p50_bytes": 16735,
+      "p95_bytes": 102753,
+      "p99_bytes": 102753,
+      "max_bytes": 102753,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.strategy.started",
+      "count": 120,
+      "p50_bytes": 16748,
+      "p95_bytes": 102766,
+      "p99_bytes": 102766,
+      "max_bytes": 102766,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.strategy.completed",
+      "count": 120,
+      "p50_bytes": 16756,
+      "p95_bytes": 102774,
+      "p99_bytes": 102774,
+      "max_bytes": 102774,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.strategy.failed",
+      "count": 120,
+      "p50_bytes": 16744,
+      "p95_bytes": 102762,
+      "p99_bytes": 102762,
+      "max_bytes": 102762,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.strategy.gate",
+      "count": 120,
+      "p50_bytes": 16775,
+      "p95_bytes": 102793,
+      "p99_bytes": 102793,
+      "max_bytes": 102793,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.strategy.gate.awaiting_approval",
+      "count": 120,
+      "p50_bytes": 16877,
+      "p95_bytes": 66238,
+      "p99_bytes": 66238,
+      "max_bytes": 66238,
+      "truncated_count": 40
+    },
+    {
+      "topic": "method.strategy.gate.approval_response",
+      "count": 120,
+      "p50_bytes": 16859,
+      "p95_bytes": 102877,
+      "p99_bytes": 102877,
+      "max_bytes": 102877,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.trigger.fired",
+      "count": 120,
+      "p50_bytes": 16735,
+      "p95_bytes": 102753,
+      "p99_bytes": 102753,
+      "max_bytes": 102753,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.methodology.step_started",
+      "count": 120,
+      "p50_bytes": 16783,
+      "p95_bytes": 102801,
+      "p99_bytes": 102801,
+      "max_bytes": 102801,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.methodology.step_completed",
+      "count": 120,
+      "p50_bytes": 16807,
+      "p95_bytes": 66119,
+      "p99_bytes": 66119,
+      "max_bytes": 66119,
+      "truncated_count": 40
+    },
+    {
+      "topic": "method.tool.used",
+      "count": 120,
+      "p50_bytes": 16768,
+      "p95_bytes": 102786,
+      "p99_bytes": 102786,
+      "max_bytes": 102786,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.agent.error",
+      "count": 120,
+      "p50_bytes": 16725,
+      "p95_bytes": 102743,
+      "p99_bytes": 102743,
+      "max_bytes": 102743,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.agent.completed",
+      "count": 120,
+      "p50_bytes": 16741,
+      "p95_bytes": 102759,
+      "p99_bytes": 102759,
+      "max_bytes": 102759,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.budget.warning",
+      "count": 120,
+      "p50_bytes": 16756,
+      "p95_bytes": 102774,
+      "p99_bytes": 102774,
+      "max_bytes": 102774,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.budget.exhausted",
+      "count": 120,
+      "p50_bytes": 16764,
+      "p95_bytes": 102782,
+      "p99_bytes": 102782,
+      "max_bytes": 102782,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.cost.rate_limited",
+      "count": 120,
+      "p50_bytes": 16748,
+      "p95_bytes": 102766,
+      "p99_bytes": 102766,
+      "max_bytes": 102766,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.cost.account_saturated",
+      "count": 120,
+      "p50_bytes": 16768,
+      "p95_bytes": 102786,
+      "p99_bytes": 102786,
+      "max_bytes": 102786,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.cost.integrity_violation",
+      "count": 120,
+      "p50_bytes": 16776,
+      "p95_bytes": 102794,
+      "p99_bytes": 102794,
+      "max_bytes": 102794,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.system.bridge_state",
+      "count": 120,
+      "p50_bytes": 16758,
+      "p95_bytes": 102785,
+      "p99_bytes": 102785,
+      "max_bytes": 102785,
+      "truncated_count": 0
+    },
+    {
+      "topic": "method.system.recovery",
+      "count": 120,
+      "p50_bytes": 16766,
+      "p95_bytes": 102790,
+      "p99_bytes": 102790,
+      "max_bytes": 102790,
+      "truncated_count": 0
+    }
+  ],
+  "sns_limit_bytes": 262144,
+  "truncation_threshold_bytes": 32768,
+  "max_envelope_bytes": 102877,
+  "headroom_ratio": 0.6075553894042969,
+  "pass": true,
+  "failing_topics": []
+}

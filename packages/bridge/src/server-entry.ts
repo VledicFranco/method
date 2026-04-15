@@ -467,6 +467,14 @@ registerRegistryRoutes(app, { fs: fsProvider, yaml: yamlLoader });
 
 const methodologySource = new StdlibSource();
 const methodologyStore = new MethodologySessionStore(methodologySource);
+// PRD-064 / S7 §6.4: subscribe the session store to methodology-source
+// change notifications. StdlibSource is a no-op emitter; the wiring is
+// in place so that a Cortex deployment (swapping in `CortexMethodologySource`
+// from `@method/agent-runtime`) drops routing caches on admin edits
+// without a bridge restart.
+methodologySource.onChange?.((change) => {
+  methodologyStore.onMethodologyChange(change);
+});
 registerMethodologyRoutes(app, methodologyStore, {
   pool,
   eventBus,
