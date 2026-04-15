@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@method/fca-index": "*",
+    "@method/methodts": "*",
     "@modelcontextprotocol/sdk": "^1.10.2",
     "zod": "^3.0.0"
   },
