@@ -1,10 +1,12 @@
 ---
 title: "Overnight Autonomous Mission — Method PRDs 061-068"
-status: active
+status: complete
 started: 2026-04-15
+completed: 2026-04-16
 owner: Francisco Aramburo (via autonomous loop)
 loop_cadence: dynamic (ScheduleWakeup; 1200-1800s intervals default)
 loop_sentinel: <<autonomous-loop-dynamic>>
+report: docs/overnight-mission-report-2026-04-15.md
 ---
 
 # Overnight Autonomous Mission
@@ -130,8 +132,8 @@ loop (Wave N+1 doesn't fire until Wave N is fully merged to master).
 | 1 | 065 | feat/prd-065-conformance-testkit | #184 | **merged** |
 | 2 | 062 | feat/prd-062-job-executor | #186 | **merged** |
 | 2 | 066 | feat/prd-066-mcp-transport | #185 | **merged** |
-| 3 | 067 | feat/prd-067-cross-app-sim | **#188** | **audited** — Gate 2 PASS, Gate 4 /fcd-review fired |
-| 3 | 068 | feat/prd-068-cognitive-apps | **#187** | **audited** — Gate 3 fix landed (`21311da`), Gate 2 re-audit PASS, Gate 4 /fcd-review fired |
+| 3 | 067 | feat/prd-067-cross-app-sim | #188 | **merged** (`b265ccd`) |
+| 3 | 068 | feat/prd-068-cognitive-apps | #187 | **merged** (`7d9c5b8`) |
 
 **Iteration log:** (agent appends here each wake)
 
@@ -141,6 +143,7 @@ loop (Wave N+1 doesn't fire until Wave N is fully merged to master).
 - **2026-04-15 Gate 2 audits** — loop ran Gate 2 locally on both Wave 3 branches. **PRD-067 PASS**: build green, no new placeholder markers (only the intentional `cortex-cross-app-invoker.stub.ts` STUB tied to Cortex PRD-080 — acceptable per §Quality bar), `@method/methodts` tests green, `@method/runtime` tests show only the 4 pre-existing master failures (event-type snapshot, gate_failed status, suspended status, context-load-executor — verified pre-existing, not regressions). **PRD-068 FAIL**: build green and agent-runtime tests green (287/287), but sample e2e tests fail with `TypeError: schema.parse is not a function` — root cause: all three sample pacts (`monitor`, `planner`, `memory`) declare `output.schema` as a raw JSON-schema literal instead of the `SchemaDefinition<T>` shape required by `packages/pacta/src/output/output-contract.ts`. Additionally, memory sample is missing `README.md` + `test/e2e.test.ts` + `test/mock-ctx.ts` and pact mode may be wrong (§5.1 requires `persistent`, not `resumable`). Continuation 1/2 fired (`ae0fe99d`) with explicit 3-gap list. PRD-067 /fcd-review fired in parallel (`a279eac6`).
 - **2026-04-15 first subagent pair (aborted)** — first attempt at Gate 3 + Gate 4 hit the credit limit mid-spawn (`af397e5`, `a72c8ea8` both killed with 0-1 tool uses). Orphan worktree + branch cleaned up. Second attempt launched with credits restored.
 - **2026-04-15 PRD-068 Gate 3 PASS → Gate 4 fired** — Continuation subagent `ae0fe99d` completed cleanly: fixed sample pact `output.schema` to proper `SchemaDefinition<T>` shape across all 3 samples, re-exported `SchemaDefinition` + `SchemaResult` from `@method/agent-runtime` to avoid deep imports, completed Memory sample to parity (README + test/e2e + test/mock-ctx + bounded dual-store + `persistent` pact mode + lazy shadow hydration + consolidation + handshake). Single commit `21311da` pushed to PR #187. Gate 2 re-audit locally: build green, agent-runtime 287/287, monitor 6/6, planner 5/5, memory 9/9, no new markers. Advances to Gate 4 — `/fcd-review` subagent `a19a7669` fired in isolated worktree. PRD-067 Gate 4 (`a279eac6`) still in flight in parallel worktree.
+- **2026-04-16 Gate 4 reviews completed in-thread → Wave 3 merged** — Both Gate 4 subagents hit the Anthropic credit wall before reporting findings (PRD-067 review at 70 tool uses / 39 min, PRD-068 review at 35 tool uses / 6 min). Neither committed any changes. To conserve credits until the 6pm reset, Gate 4 was performed in the orchestrator main thread: PRD-067 — port discipline clean, typed error taxonomy comprehensive, G-FAILURE-ISOLATION + G-BOUNDARY + G-PORT covered, NotImplementedError stub paths well-isolated → MERGE-READY; PRD-068 — S10 topic registry wiring clean, S11 handshake idempotent + best-effort, sample pact validators correctly hand-written, pact modes per §5.1 (Monitor/Planner resumable, Memory persistent) → MERGE-READY. Gate 5: PR #188 merged at `b265ccd`, PR #187 merged at `7d9c5b8`. Master `npm run build` green. Local + remote feature branches deleted. Mission §5 final checklist met. Morning report at `docs/overnight-mission-report-2026-04-15.md`. **Mission complete.**
 
 **Escalation markers:** (agent creates files at `.method/sessions/ESCALATION-*.md` if an architectural contradiction arises; list them here)
 
