@@ -242,6 +242,128 @@ export const METHOD_TOPIC_REGISTRY: readonly MethodTopicDescriptor[] = [
     description: 'Bridge recovery sequence started or completed — observable startup milestone.',
     schemaRef: './schemas/method/system-recovery.schema.json',
   },
+
+  // ── Cortical workspace — PRD-068 S10 (13) ───────────────────────
+  // The `method.cortex.workspace.*` topic family is the shared coordination
+  // substrate for cognitive tenant apps (Monitor, Planner, Memory, ...).
+  // Keyed by `traceId` (same as S5 ContinuationEnvelope.traceId) so a
+  // reasoning episode is globally joinable across per-app audit streams.
+  {
+    topic: 'method.cortex.workspace.session_opened',
+    sourceEventTypes: ['cortical.workspace.session_opened'],
+    schemaVersion: 1,
+    classifications: [
+      { field: '$.taskDescription', level: 1 },
+      { field: '$.goalStatement', level: 1 },
+    ],
+    description:
+      'Root tenant app opens a cortical-workspace reasoning session for a traceId.',
+    schemaRef: './schemas/method/cortex/workspace-session-opened.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.session_closed',
+    sourceEventTypes: ['cortical.workspace.session_closed'],
+    schemaVersion: 1,
+    classifications: [{ field: '$.summary', level: 1 }],
+    description:
+      'Root tenant app closes a cortical-workspace session — modules flush per-traceId shadows.',
+    schemaRef: './schemas/method/cortex/workspace-session-closed.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.state',
+    sourceEventTypes: ['cortical.workspace.state'],
+    schemaVersion: 1,
+    classifications: [{ field: '$.stateSnapshot', level: 1 }],
+    description:
+      'Workspace state snapshot (summary-sized; full artifacts live via storage refs).',
+    schemaRef: './schemas/method/cortex/workspace-state.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.anomaly',
+    sourceEventTypes: ['cortical.workspace.anomaly'],
+    schemaVersion: 1,
+    classifications: [{ field: '$.detail', level: 1 }],
+    description: 'Monitor detected an anomaly (conflict/drift/stall/violation).',
+    schemaRef: './schemas/method/cortex/workspace-anomaly.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.confidence',
+    sourceEventTypes: ['cortical.workspace.confidence'],
+    schemaVersion: 1,
+    classifications: [],
+    description: 'Monitor emits a scalar confidence signal to the workspace.',
+    schemaRef: './schemas/method/cortex/workspace-confidence.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.plan_updated',
+    sourceEventTypes: ['cortical.workspace.plan_updated'],
+    schemaVersion: 1,
+    classifications: [
+      { field: '$.planSummary', level: 1 },
+      { field: '$.changedSteps[*]', level: 1 },
+    ],
+    description: 'Planner emitted a revised plan (summary + changed steps).',
+    schemaRef: './schemas/method/cortex/workspace-plan-updated.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.goal',
+    sourceEventTypes: ['cortical.workspace.goal'],
+    schemaVersion: 1,
+    classifications: [{ field: '$.statement', level: 1 }],
+    description: 'Planner (re)declared a goal in the workspace.',
+    schemaRef: './schemas/method/cortex/workspace-goal.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.memory_query',
+    sourceEventTypes: ['cortical.workspace.memory_query'],
+    schemaVersion: 1,
+    classifications: [],
+    description: 'A participant asked Memory for a recall (episodic or semantic).',
+    schemaRef: './schemas/method/cortex/workspace-memory-query.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.memory_recalled',
+    sourceEventTypes: ['cortical.workspace.memory_recalled'],
+    schemaVersion: 1,
+    classifications: [{ field: '$.entries[*]', level: 2 }],
+    description: 'Memory returned recall entries for a prior query.',
+    schemaRef: './schemas/method/cortex/workspace-memory-recalled.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.memory_consolidated',
+    sourceEventTypes: ['cortical.workspace.memory_consolidated'],
+    schemaVersion: 1,
+    classifications: [],
+    description: 'Memory completed a consolidation pass (episodic -> semantic).',
+    schemaRef: './schemas/method/cortex/workspace-memory-consolidated.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.module_online',
+    sourceEventTypes: ['cortical.workspace.module_online'],
+    schemaVersion: 1,
+    classifications: [],
+    description:
+      'Handshake: a cognitive module announces presence (JOIN / HEARTBEAT).',
+    schemaRef: './schemas/method/cortex/workspace-module-online.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.module_offline',
+    sourceEventTypes: ['cortical.workspace.module_offline'],
+    schemaVersion: 1,
+    classifications: [],
+    description:
+      'Handshake: a cognitive module announces graceful LEAVE (peers also infer implicit offline after 90s without heartbeat).',
+    schemaRef: './schemas/method/cortex/workspace-module-offline.schema.json',
+  },
+  {
+    topic: 'method.cortex.workspace.degraded',
+    sourceEventTypes: ['cortical.workspace.degraded'],
+    schemaVersion: 1,
+    classifications: [],
+    description:
+      'A module signals it is operating in degraded mode (budget exhausted, missing peer, timeout).',
+    schemaRef: './schemas/method/cortex/workspace-degraded.schema.json',
+  },
 ] as const;
 
 // Assert freeze count at type level. Any edit here breaks CI (see gates.test.ts).
@@ -330,6 +452,54 @@ export const METHOD_RUNTIME_EVENT_AUDIT_MAP: ReadonlyMap<string, RuntimeEventAud
     ['system.bridge_crash', { auditEventType: 'method.system.bridge_crash' }],
     ['system.recovery_started', { auditEventType: 'method.system.recovery_started' }],
     ['system.recovery_completed', { auditEventType: 'method.system.recovery_completed' }],
+
+    // Cortical workspace (PRD-068 S10)
+    [
+      'cortical.workspace.session_opened',
+      { auditEventType: 'method.cortex.workspace.session_opened' },
+    ],
+    [
+      'cortical.workspace.session_closed',
+      { auditEventType: 'method.cortex.workspace.session_closed' },
+    ],
+    ['cortical.workspace.state', { auditEventType: 'method.cortex.workspace.state' }],
+    [
+      'cortical.workspace.anomaly',
+      { auditEventType: 'method.cortex.workspace.anomaly' },
+    ],
+    [
+      'cortical.workspace.confidence',
+      { auditEventType: 'method.cortex.workspace.confidence' },
+    ],
+    [
+      'cortical.workspace.plan_updated',
+      { auditEventType: 'method.cortex.workspace.plan_updated' },
+    ],
+    ['cortical.workspace.goal', { auditEventType: 'method.cortex.workspace.goal' }],
+    [
+      'cortical.workspace.memory_query',
+      { auditEventType: 'method.cortex.workspace.memory_query' },
+    ],
+    [
+      'cortical.workspace.memory_recalled',
+      { auditEventType: 'method.cortex.workspace.memory_recalled' },
+    ],
+    [
+      'cortical.workspace.memory_consolidated',
+      { auditEventType: 'method.cortex.workspace.memory_consolidated' },
+    ],
+    [
+      'cortical.workspace.module_online',
+      { auditEventType: 'method.cortex.workspace.module_online' },
+    ],
+    [
+      'cortical.workspace.module_offline',
+      { auditEventType: 'method.cortex.workspace.module_offline' },
+    ],
+    [
+      'cortical.workspace.degraded',
+      { auditEventType: 'method.cortex.workspace.degraded' },
+    ],
   ]);
 
 /**

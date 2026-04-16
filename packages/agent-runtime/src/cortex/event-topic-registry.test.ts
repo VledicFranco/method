@@ -19,15 +19,27 @@ import {
 } from './event-topic-registry.js';
 
 describe('METHOD_TOPIC_REGISTRY', () => {
-  it('S6 §3.3: ships the exact topic set enumerated in the mapping table', () => {
+  it('S6 §3.3 + PRD-068 S10: ships 24 core runtime topics + 13 cortical-workspace topics = 37 total', () => {
     // S6 §3.3 summary line states "21 distinct topics" but the enumerated
     // mapping table lists 24 unique topic names after applying the
     // documented merges (session.killed+dead → ended, gate_passed+failed
     // → gate, bridge_* → bridge_state, recovery_* → recovery). We ship
     // 24 faithful to the mapping table; the "21" summary is a counting
     // typo in S6 that does not affect the frozen data.
-    assert.equal(METHOD_TOPIC_COUNT, 24);
-    assert.equal(METHOD_TOPIC_REGISTRY.length, 24);
+    //
+    // PRD-068 S10 extends the registry with the `method.cortex.workspace.*`
+    // topic family — 13 topics for the cognitive-module coordination
+    // substrate. Extension (not mutation) is allowed per S6 §2.3 (new
+    // topics can be appended without re-freezing the surface).
+    assert.equal(METHOD_TOPIC_COUNT, 37);
+    assert.equal(METHOD_TOPIC_REGISTRY.length, 37);
+  });
+
+  it('PRD-068 S10: 13 method.cortex.workspace.* topics registered', () => {
+    const workspace = METHOD_TOPIC_REGISTRY.filter((d) =>
+      d.topic.startsWith('method.cortex.workspace.'),
+    );
+    assert.equal(workspace.length, 13);
   });
 
   it('every topic name is prefixed with method.', () => {

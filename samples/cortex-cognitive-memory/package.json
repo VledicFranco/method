@@ -1,0 +1,15 @@
+{
+  "name": "sample-cortex-cognitive-memory",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PRD-068 Wave 1 — Memory cognitive module as a Cortex tenant app. Wraps pacta's MemoryModuleV3 + in-memory-dual-store; emits method.cortex.workspace.memory_recalled + .memory_consolidated; persistent pact backed by ctx.storage.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/agent-runtime": "*",
+    "@method/pacta": "*"
+  }
+}

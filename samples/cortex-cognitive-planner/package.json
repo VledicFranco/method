@@ -1,0 +1,15 @@
+{
+  "name": "sample-cortex-cognitive-planner",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PRD-068 Wave 1 — Planner cognitive module as a Cortex tenant app. Wraps pacta's Planner; emits method.cortex.workspace.plan_updated + .goal; reacts to anomaly + memory_recalled events.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@method/agent-runtime": "*",
+    "@method/pacta": "*"
+  }
+}
