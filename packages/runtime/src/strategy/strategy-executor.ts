@@ -20,6 +20,7 @@ import {
   DagStrategyExecutor,
   type DagNodeExecutor,
   type ContextLoadExecutor,
+  type CrossAppNodeExecutor,
 } from '@method/methodts/strategy/dag-executor.js';
 import type { StrategyExecutorConfig, SubStrategySource, HumanApprovalResolver } from '@method/methodts/strategy/dag-types.js';
 import type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
@@ -36,7 +37,7 @@ export type {
   HumanApprovalResolver,
 } from '@method/methodts/strategy/dag-types.js';
 
-export type { ContextLoadExecutor } from '@method/methodts/strategy/dag-executor.js';
+export type { ContextLoadExecutor, CrossAppNodeExecutor } from '@method/methodts/strategy/dag-executor.js';
 
 // Re-export SemanticNodeExecutor port type for the composition root
 export type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
@@ -297,6 +298,7 @@ export class StrategyExecutor {
     humanApprovalResolver?: HumanApprovalResolver | null,
     _semanticNodeExecutor?: SemanticNodeExecutor | null,
     contextLoadExecutor?: ContextLoadExecutor | null,
+    crossAppNodeExecutor?: CrossAppNodeExecutor | null,
   ) {
     // NOTE: semanticNodeExecutor is accepted for API compatibility but not yet
     // wired to DagStrategyExecutor. The methodts-side support for semantic
@@ -322,6 +324,7 @@ export class StrategyExecutor {
       humanApprovalResolver ?? null,
       contextLoadExecutor ?? null,
       undefined, // sharedChain — not used at top level
+      crossAppNodeExecutor ?? null, // PRD-067: cross-app-invoke dispatch
     );
   }
 

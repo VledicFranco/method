@@ -28,6 +28,7 @@ import type {
   SemanticNodeConfig,
   SemanticAlgorithm,
   ContextLoadNodeConfig,
+  CrossAppInvokeNodeConfig,
   StrategyValidationResult,
 } from "./dag-types.js";
 
@@ -78,7 +79,7 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
       timeout_ms: g.timeout_ms ?? getDefaultTimeout(g.type),
     }));
 
-    let config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig | ContextLoadNodeConfig;
+    let config: MethodologyNodeConfig | ScriptNodeConfig | StrategyNodeConfig | SemanticNodeConfig | ContextLoadNodeConfig | CrossAppInvokeNodeConfig;
 
     if (rawNode.type === "methodology") {
       config = {
@@ -109,6 +110,20 @@ export function parseStrategyObject(obj: StrategyYaml): StrategyDAG {
         topK: rawNode.topK,
         filterParts: rawNode.filterParts,
         output_key: rawNode.output_key ?? "",
+      };
+    } else if (rawNode.type === "cross-app-invoke") {
+      // PRD-067: cross-app-invoke node — dispatches to another Cortex tenant app
+      // via the CrossAppInvoker port. target_app + operation are mandatory
+      // structurally; shape validation runs in validateStrategyDAG below.
+      config = {
+        type: "cross-app-invoke",
+        target_app: rawNode.target_app ?? "",
+        operation: rawNode.operation ?? "",
+        input_projection: rawNode.input_projection ?? {},
+        output_merge: rawNode.output_merge,
+        idempotency_key: rawNode.idempotency_key,
+        timeout_ms: rawNode.timeout_ms,
+        max_cost_usd: rawNode.max_cost_usd,
       };
     } else {
       config = {
@@ -225,6 +240,32 @@ export function validateStrategyDAG(dag: StrategyDAG): StrategyValidationResult 
       if (!semConfig.output_key || semConfig.output_key.trim() === "") {
         errors.push(
           `Node "${node.id}": semantic node must have a non-empty "output_key" field`,
+        );
+      }
+    }
+  }
+
+  // PRD-067: Check cross-app-invoke nodes have non-empty target_app + operation
+  for (const node of dag.nodes) {
+    if (node.config.type === "cross-app-invoke") {
+      const caiConfig = node.config as CrossAppInvokeNodeConfig;
+      if (!caiConfig.target_app || caiConfig.target_app.trim() === "") {
+        errors.push(
+          `Node "${node.id}": cross-app-invoke node must have a non-empty "target_app" field`,
+        );
+      }
+      if (!caiConfig.operation || caiConfig.operation.trim() === "") {
+        errors.push(
+          `Node "${node.id}": cross-app-invoke node must have a non-empty "operation" field`,
+        );
+      }
+      if (
+        caiConfig.output_merge !== undefined &&
+        caiConfig.output_merge !== "spread" &&
+        caiConfig.output_merge !== "namespace"
+      ) {
+        errors.push(
+          `Node "${node.id}": cross-app-invoke output_merge must be "spread" or "namespace" (got "${caiConfig.output_merge}")`,
         );
       }
     }
@@ -351,6 +392,30 @@ function dfs(
 
   color.set(nodeId, 2); // BLACK
   return null;
+}
+
+// ── Cross-App Target Extraction (PRD-067) ──────────────────────
+
+/**
+ * Collect the set of target_app ids declared by cross-app-invoke nodes in
+ * the DAG. Returns an empty set when no cross-app-invoke nodes exist.
+ *
+ * The strategy executor feeds this into `assertCrossAppTargetsAllowed`
+ * (`@method/runtime/ports/cross-app-invoker.ts`) at compose time so a DAG
+ * targeting an app not in `requires.apps[]` fails fast — mirroring Cortex's
+ * deploy-time app-dep graph check at the Method layer (PRD-067 §6.1 §12.6).
+ */
+export function collectCrossAppTargets(dag: StrategyDAG): readonly string[] {
+  const targets = new Set<string>();
+  for (const node of dag.nodes) {
+    if (node.config.type === "cross-app-invoke") {
+      const caiConfig = node.config as CrossAppInvokeNodeConfig;
+      if (caiConfig.target_app && caiConfig.target_app.trim() !== "") {
+        targets.add(caiConfig.target_app);
+      }
+    }
+  }
+  return [...targets].sort();
 }
 
 // ── Topological Sort ────────────────────────────────────────────

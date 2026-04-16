@@ -118,6 +118,7 @@ export type {
   BudgetRef,
   BudgetCarryStrategy,
   TokenContext,
+  CrossAppContinuationContext,
   NextAction as ContinuationNextAction,
 } from './continuation-envelope.js';
 export {
@@ -143,3 +144,23 @@ export type {
   DlqRecord,
 } from './dlq-observer.js';
 export type { ScheduleClient } from './schedule-client.js';
+
+// ── Cross-app invoker (PRD-067) ──
+export type {
+  CrossAppInvoker,
+  CrossAppInvokeRequest,
+  CrossAppInvokeResult,
+  CrossAppInvokerCapabilities,
+  DelegationCarry,
+} from './cross-app-invoker.js';
+export {
+  CrossAppNotConfiguredError,
+  CrossAppTargetNotDeclaredError,
+  CrossAppScopeMissingError,
+  CrossAppDelegationDepthExceededError,
+  CrossAppTargetError,
+  CrossAppTargetUnknownError,
+  NullCrossAppInvoker,
+  CROSS_APP_DEFAULT_MAX_DELEGATION_DEPTH,
+  assertCrossAppTargetsAllowed,
+} from './cross-app-invoker.js';
