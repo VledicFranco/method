@@ -42,17 +42,25 @@ This project follows FCA (see `docs/fractal-component-architecture/`). The core 
 ### Layer Stack (dependency flows downward only)
 
 ```
-L4  @method/bridge     Application — HTTP server, wires everything, owns the process
-    method-ctl         CLI — unified cluster management (status, nodes, projects)
-L3  @method/cluster    Cluster protocol — membership, routing, federation (PRD 039, zero transport deps)
-    @method/mcp        Protocol adapter — thin MCP tool wrappers over methodts
-    @method/pacta      Modular agent SDK — pacts, providers, middleware, composition engine
-    @method/pacta      cognitive/ — cognitive composition (algebra/, modules/, engine/) — PRD 030
-    @method/pacta-*    Provider packages (claude-cli, anthropic, ollama), testkit, playground
-L2  @method/methodts   Domain extensions — type system, stdlib catalog, strategy logic
-    @method/testkit    Testing framework (assertions, builders, runners)
-    @method/smoke-test End-to-end coverage — layer-aware test suite + browser UI (PRDs 055, 056)
+L4  @method/bridge        Application — HTTP server, wires everything, owns the process
+    method-ctl            CLI — unified cluster management (status, nodes, projects)
+    samples/cortex-*/     Reference Cortex tenant apps (incident-triage, cognitive-{monitor,planner,memory})
+L3  @method/cluster       Cluster protocol — membership, routing, federation (PRD 039, zero transport deps)
+    @method/mcp           Protocol adapter — thin MCP tool wrappers over methodts
+    @method/pacta         Modular agent SDK — pacts, providers, middleware, composition engine
+    @method/pacta         cognitive/ — cognitive composition (algebra/, modules/, engine/) — PRD 030
+    @method/pacta-*       Provider packages (claude-cli, anthropic, ollama), testkit, playground
+    @method/runtime       Cortex-agnostic runtime — strategy executor, ports (including CrossAppInvoker) — PRD 057
+    @method/agent-runtime Tenant-app public API — cortical workspace, cortex adapters, manifest helpers — PRDs 058/060/068
+L2  @method/methodts      Domain extensions — type system, stdlib catalog, strategy logic (incl. cross-app-invoke DAG node — PRD 067)
+    @method/testkit       Testing framework (assertions, builders, runners)
+    @method/pacta-testkit Conformance testkit for Cortex agents — `@method/pacta-testkit/conformance` subpath — PRD 065
+    @method/smoke-test    End-to-end coverage — layer-aware test suite + browser UI (PRDs 055, 056)
 ```
+
+### Cortex consumption roadmap (PRDs 057-068)
+
+The `@method/runtime` + `@method/agent-runtime` stack is designed for method to run inside Cortex tenant apps. Eight PRDs (061-068) shipped in April 2026 build the L3/L4 Cortex integration: session store, event connector, methodology source, conformance testkit, job executor, MCP transport, cross-app invoker (simulator), cognitive tenant apps (skeleton). Four are full implementations; four ship partial scope with the Cortex-side blocker (`PRD-080`, Cortex `O1`/`O5`/`O6`/`O7`) or research blocker (RFC-006 R-26c) named explicitly. See [`docs/roadmap-cortex-consumption.md`](docs/roadmap-cortex-consumption.md) §11 for the full PRD status table and [`docs/overnight-mission-report-2026-04-15.md`](docs/overnight-mission-report-2026-04-15.md) for the delivery retro.
 
 > **Note:** Methodology operations go through the `MethodologySource` port (defined in
 > `packages/bridge/src/ports/methodology-source.ts`), backed by `StdlibSource` which wraps

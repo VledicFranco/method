@@ -16,6 +16,8 @@ Evolving architecture documentation for `pv-method`.
 | [bridge.md](bridge.md) | PTY bridge HTTP server — session pool, output parser, API routes |
 | [cluster.md](cluster.md) | Bridge cluster — membership, routing, event federation, method-ctl CLI |
 | [pacta.md](pacta.md) | Pacta Agent SDK — pact contracts, ports, composition engine, reasoning, context, providers |
+| [cortical-workspace.md](cortical-workspace.md) | PRD-068 S10/S11 — cognitive tenant-app coordination substrate (topic family + handshake protocol) |
+| [cross-app-invoker.md](cross-app-invoker.md) | PRD-067 — cross-app strategy execution port, simulator (Track A), and Cortex stub (Track B blocked on PRD-080) |
 
 ## Conventions
 
