@@ -2,7 +2,7 @@
 type: prd
 title: "PRD-065 — Cortex Agent Conformance Testkit"
 date: "2026-04-14"
-status: draft
+status: implemented (PR #184, merged 2026-04-15)
 version: "0.1.0"
 size: S
 domains:

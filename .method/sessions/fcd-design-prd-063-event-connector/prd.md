@@ -3,7 +3,7 @@ type: prd
 id: PRD-063
 title: "CortexEventConnector — RuntimeEvent → ctx.events with back-pressure, clearance filtering, and manifest-declared topics"
 date: "2026-04-14"
-status: draft
+status: implemented (PR #181, merged 2026-04-15)
 version: 0.1
 size: S
 domains: ["@method/agent-runtime", "@method/runtime (event bus, consumer of port)"]

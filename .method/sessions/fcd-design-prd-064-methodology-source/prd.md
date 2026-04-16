@@ -2,7 +2,7 @@
 type: prd
 title: "PRD-064: CortexMethodologySource + Admin UI Integration"
 date: "2026-04-14"
-status: draft
+status: implemented (PR #183, merged 2026-04-15)
 version: "0.1"
 size: M
 domains:

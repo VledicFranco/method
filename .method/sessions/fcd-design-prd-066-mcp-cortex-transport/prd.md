@@ -2,7 +2,7 @@
 type: prd
 title: "PRD-066 — MCP Transport for Cortex Tool Registry"
 date: "2026-04-14"
-status: DRAFT-PARTIAL
+status: implemented-partial (PR #185 — Track A only; Track B blocked on Cortex O5/O6/O7)
 version: "0.1"
 size: M
 domains: [mcp, methodology, agent-runtime]

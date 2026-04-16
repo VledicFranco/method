@@ -303,14 +303,14 @@ its frozen surfaces by `decision.md` path and inherits their gates.
 | **058** | `@method/agent-runtime` public API | M | draft | `.method/sessions/fcd-design-prd-058-method-agent-runtime/prd.md` |
 | **059** | `CortexLLMProvider` + Audit + TokenExchange adapters | M | draft | `.method/sessions/fcd-design-prd-059-cortex-adapters/prd.md` |
 | **060** | `MethodAgentPort` bilateral ratification | S | draft | `.method/sessions/fcd-design-prd-060-method-agent-port/prd.md` |
-| **061** | `CortexSessionStore` + checkpoint resume | M | draft | `.method/sessions/fcd-design-prd-061-session-store/prd.md` |
-| **062** | `JobBackedExecutor` + `ScheduledPact` | M | draft (Wave 1 partial) | `.method/sessions/fcd-design-prd-062-job-backed-executor/prd.md` |
-| **063** | `CortexEventConnector` | S | draft | `.method/sessions/fcd-design-prd-063-event-connector/prd.md` |
-| **064** | `CortexMethodologySource` + admin API | M | draft | `.method/sessions/fcd-design-prd-064-methodology-source/prd.md` |
-| **065** | Conformance testkit | S | draft | `.method/sessions/fcd-design-prd-065-conformance-testkit/prd.md` |
-| **066** | MCP Cortex transport | M | draft-PARTIAL | `.method/sessions/fcd-design-prd-066-mcp-cortex-transport/prd.md` |
-| **067** | Multi-app strategy execution | L | draft-BLOCKED-ON-CORTEX-PRD-080 | `.method/sessions/fcd-design-prd-067-multi-app-strategy/prd.md` |
-| **068** | Cognitive modules as tenant apps | L | draft | `.method/sessions/fcd-design-prd-068-cognitive-modules/prd.md` |
+| **061** | `CortexSessionStore` + checkpoint resume | M | ✔️ implemented (#182) | `.method/sessions/fcd-design-prd-061-session-store/prd.md` |
+| **062** | `JobBackedExecutor` + `ScheduledPact` | M | ✔️ implemented-partial (#186) — Wave 1 only; Wave 2 `batched-held` blocked on Cortex O1 | `.method/sessions/fcd-design-prd-062-job-backed-executor/prd.md` |
+| **063** | `CortexEventConnector` | S | ✔️ implemented (#181) | `.method/sessions/fcd-design-prd-063-event-connector/prd.md` |
+| **064** | `CortexMethodologySource` + admin API | M | ✔️ implemented (#183) | `.method/sessions/fcd-design-prd-064-methodology-source/prd.md` |
+| **065** | Conformance testkit | S | ✔️ implemented (#184) | `.method/sessions/fcd-design-prd-065-conformance-testkit/prd.md` |
+| **066** | MCP Cortex transport | M | ✔️ implemented-partial (#185) — Track A only; Track B blocked on Cortex O5/O6/O7 | `.method/sessions/fcd-design-prd-066-mcp-cortex-transport/prd.md` |
+| **067** | Multi-app strategy execution | L | ✔️ implemented-partial (#188) — Track A simulator only; real `CortexCrossAppInvoker` blocked on Cortex PRD-080 | `.method/sessions/fcd-design-prd-067-multi-app-strategy/prd.md` |
+| **068** | Cognitive modules as tenant apps | L | ✔️ implemented-partial (#187) — Wave 1 skeleton only; cognitive validation gated on RFC-006 R-26c | `.method/sessions/fcd-design-prd-068-cognitive-modules/prd.md` |
 
 ### Highlights and commission counts
 

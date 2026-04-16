@@ -2,7 +2,7 @@
 type: prd
 title: "PRD-061: CortexSessionStore + Checkpoint Resume Contract"
 date: "2026-04-14"
-status: draft
+status: implemented (PR #182, merged 2026-04-15)
 version: "0.1"
 size: M
 index: 61

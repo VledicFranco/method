@@ -3,7 +3,7 @@ type: prd
 id: PRD-068
 title: "Cognitive Modules as Cortex Tenant Apps"
 date: "2026-04-14"
-status: draft
+status: implemented-partial (PR #187 — Wave 1 skeleton only; cognitive validation gated on RFC-006 R-26c rerun)
 version: 0.1
 size: L
 domains:

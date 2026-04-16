@@ -2,7 +2,7 @@
 type: prd
 title: "PRD-067: Multi-App Strategy Execution (Cross-App Pacta)"
 date: "2026-04-14"
-status: DRAFT-BLOCKED-ON-CORTEX-PRD-080
+status: implemented-partial (PR #188 — Track A simulator only; real CortexCrossAppInvoker blocked on Cortex PRD-080)
 index: 67
 version: "0.1"
 author: "Method team"

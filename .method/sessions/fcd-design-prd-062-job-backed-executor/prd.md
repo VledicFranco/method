@@ -3,7 +3,7 @@ type: prd
 title: "PRD-062 — JobBackedExecutor + CortexScheduledPact"
 slug: fcd-design-prd-062-job-backed-executor
 date: "2026-04-14"
-status: draft
+status: implemented-partial (PR #186 — Wave 1 `fresh-per-continuation` only; Wave 2 `batched-held` blocked on Cortex O1)
 version: 0.1
 size: M
 group: B
