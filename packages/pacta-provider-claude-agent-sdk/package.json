@@ -33,6 +33,9 @@
   "dependencies": {
     "@methodts/pacta": "*"
   },
+  "devDependencies": {
+    "@methodts/pacta-testkit": "*"
+  },
   "peerDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.114"
   },

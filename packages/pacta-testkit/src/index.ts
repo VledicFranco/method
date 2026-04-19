@@ -60,3 +60,13 @@ export {
   assertSemanticStoreContains,
   assertActivationAboveThreshold,
 } from './cognitive-assertions.js';
+
+// Provider conformance — reusable row runner for AgentProvider impls
+export {
+  runProviderConformanceRow,
+  ProviderConformanceError,
+} from './provider-conformance/index.js';
+export type {
+  ProviderConformanceRow,
+  ProviderConformanceReport,
+} from './provider-conformance/index.js';

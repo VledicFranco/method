@@ -27,6 +27,10 @@
     "./conformance/fixtures": {
       "types": "./dist/conformance/fixtures/index.d.ts",
       "default": "./dist/conformance/fixtures/index.js"
+    },
+    "./provider-conformance": {
+      "types": "./dist/provider-conformance/index.d.ts",
+      "default": "./dist/provider-conformance/index.js"
     }
   },
   "files": [
