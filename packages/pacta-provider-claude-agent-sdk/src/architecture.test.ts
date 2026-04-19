@@ -75,11 +75,26 @@ describe('G-LAYER: no upward layer imports', () => {
   }
 });
 
-describe('G-COST: cost-suppression defaults (placeholder until C-1)', () => {
-  it('Wave 0: stub provider throws on use; full G-COST assertion lands in C-1', () => {
-    // Wave 1 (C-1) will replace this with assertions that the default
-    // SDK Options object passes tools=[], settingSources=[], agents={}
-    // per spike-2-overhead.md. For now, just verify the stub is in place.
-    assert.ok(true, 'placeholder');
+describe('G-COST: cost-suppression defaults', () => {
+  it('default provider applies tools=[], settingSources=[], agents={} per spike-2-overhead.md', async () => {
+    // Build the provider with a minimal pact and confirm the SDK
+    // options object that would be sent has all three suppression
+    // knobs set to their cost-defending values. Removing any one of
+    // these defaults is a regression — see spike-2-overhead.md for
+    // the per-knob byte-cost analysis.
+    const { claudeAgentSdkProvider, pactToSdkOptions } = await import('./index.js');
+    const provider = claudeAgentSdkProvider({ apiKey: 'x' });
+    assert.equal(provider.name, 'claude-agent-sdk');
+
+    const { options } = pactToSdkOptions({
+      pact: { mode: { type: 'oneshot' } },
+      request: { prompt: 'test' },
+      config: {},
+      transportEnv: { ANTHROPIC_API_KEY: 'x' },
+    });
+
+    assert.deepEqual(options.tools, [], 'G-COST: tools must default to []');
+    assert.deepEqual(options.settingSources, [], 'G-COST: settingSources must default to []');
+    assert.deepEqual(options.agents, {}, 'G-COST: agents must default to {}');
   });
 });
