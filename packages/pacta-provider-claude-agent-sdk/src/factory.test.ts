@@ -53,16 +53,19 @@ describe('claudeAgentSdkProvider — surface', () => {
     assert.equal(caps.toolModel, 'function');
   });
 
-  it('stream() throws (C-3 stub)', async () => {
+  it('stream() returns an AsyncIterable wired through streamSdkInvocation (C-3)', () => {
+    // Functional coverage of the streaming path lives in stream.test.ts
+    // which feeds streamSdkInvocation a synthetic message stream. This
+    // test just verifies the provider exposes the contract — stream()
+    // must return something iterable so callers can `for await` it.
     const provider = claudeAgentSdkProvider({ apiKey: 'test' });
     const pact: Pact = { mode: { type: 'oneshot' } };
     const request: AgentRequest = { prompt: 'hi' };
-    await assert.rejects(
-      async () => {
-        for await (const _e of provider.stream(pact, request)) void _e;
-      },
-      /C-3/,
-      'stream() must throw with a pointer to C-3 until that commission lands',
+    const iter = provider.stream(pact, request);
+    assert.equal(
+      typeof (iter as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator],
+      'function',
+      'stream() must return an AsyncIterable',
     );
   });
 });
