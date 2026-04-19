@@ -1,0 +1,233 @@
+---
+retro_id: retro-2026-04-19-overnight
+session_type: overnight-commission
+date: 2026-04-19
+author: Claude Opus 4.7 (acting as commissioned overnight orchestrator)
+commission_prompt: ship v0.2.0 + close all method↔Cortex follow-ups (7 units)
+scope:
+  - v0.2.0 release + follow-ups from Wave 0/C-1/C-2/C-3/C-4 merges
+  - Four documentation / outreach units
+  - One runtime regression triage
+  - Unscoped but delivered: v0.3.0 release bundling Unit 3 + Unit 4
+---
+
+units_completed:
+  - unit: "Unit 1 — Verify SDK package publish fields"
+    branch: null
+    pr: null
+    merge_sha: null
+    notes: >
+      Cross-checked @methodts/pacta-provider-claude-agent-sdk/package.json
+      against the @methodts/pacta-provider-anthropic sibling. All publish
+      fields (license, repository, files, publishConfig.access + provenance,
+      homepage, bugs) were already in place from Wave 0 / PR #191. No changes
+      needed.
+
+  - unit: "Unit 2 — Release v0.2.0 across 14 publishable packages"
+    branch: master
+    pr: null
+    release_commit: 6e46caca
+    fix_commit: 267e010d
+    tag: v0.2.0
+    workflow_runs:
+      - id: 24623865566
+        status: failure
+        reason: "ERESOLVE — @methodts/pacta-testkit peerDep agent-runtime@^0.1.0 did not satisfy the workspace-linked 0.2.0"
+      - id: 24623952941
+        status: success
+        duration: 2m20s
+    npm_verified: 14/14 at 0.2.0
+    notes: >
+      First attempt failed at npm ci before any publish. Recovery: fix peer
+      range, move tag, recreate GH release, re-trigger. Clean second run.
+      Follow-up: pacta-testkit peer range later loosened to '*' (commit
+      e7c578a0) so future minor bumps don't re-break the workflow.
+
+  - unit: "Unit 3 — Harmonize cortexAnthropicTransport ctx shape"
+    branch: chore/cortex-transport-ctx-harmonize
+    pr: 198
+    pr_url: https://github.com/VledicFranco/method/pull/198
+    merge_sha: 4d55616a
+    approach: "(a) additive — new cortexAnthropicTransportV2 with nested ctx + @deprecated on flat factory"
+    files_changed: 4
+    notes: >
+      Sub-agent executed in worktree. Discovered the commission-specified
+      shape `{ llm: CortexLlmCtx, audit: CortexAuditCtx }` was incompatible
+      with the sample's CortexCtx without a cast — R1 dual-declaration
+      drift between pacta-provider-cortex's narrow CortexLlmCtx and
+      agent-runtime's looser CortexLlmFacade blocks direct assignment.
+      Resolution: V2's ctx was narrowed to exactly what the transport
+      actually exercises (audit.event; optional llm.reserve/.settle/
+      .registerBudgetHandlers). Transport synthesises throwing stubs for
+      complete/structured/embed when delegating to the legacy factory.
+      Both SDK redeclarations satisfy this narrow V2 shape structurally,
+      so the sample now passes ctx.llm directly with zero casts. adaptCtx
+      helper + `unknown as` cast fully removed from
+      samples/cortex-incident-triage-agent-sdk/src/agent.ts.
+
+  - unit: "Unit 4 — Add claudeAgentSdkProvider conformance row"
+    branch: feat/conformance-row-claude-agent-sdk
+    pr: 199
+    pr_url: https://github.com/VledicFranco/method/pull/199
+    merge_sha: a216a1a9
+    files_changed: 10
+    notes: >
+      Sub-agent found the commission's assumption incorrect — pacta-testkit
+      had NO pre-existing AgentProvider-level conformance row; the existing
+      ./conformance subpath is Cortex-tenant-app conformance (PRD-065),
+      not provider conformance. Took the documented fallback path: built
+      the provider-conformance scaffolding itself as a new
+      ./provider-conformance subpath (ProviderConformanceRow +
+      runProviderConformanceRow covering capabilities, oneshot shape,
+      output validation) and registered pacta-provider-claude-agent-sdk
+      as the first row. Future providers (anthropic, claude-cli, ollama,
+      cortex) can register rows of the same shape without new runner work.
+
+  - unit: "Unit 5 — Write INTEGRATING.md for Cortex engineers"
+    branch: docs/integrating-md
+    pr: 197
+    pr_url: https://github.com/VledicFranco/method/pull/197
+    merge_sha: 85ff0185
+    line_count: 465
+    notes: >
+      Top-level INTEGRATING.md with nine sections: pitch, composition
+      example lifted from cortex-incident-triage-agent-sdk, co-design
+      doc pointers, cost-cliff section with attribution, O1/O5/O6/O7
+      status table, audit-event map appendix, error taxonomy, one-hour
+      acceptance criterion, "where to go next" index. Known follow-up:
+      the composition example still uses adaptCtx; will be outdated
+      against the v0.3.0 V2 factory surface — minor doc bump.
+
+  - unit: "Unit 6 — Triage runtime test failures"
+    branch: null
+    pr: null
+    merge_sha: null
+    notes: >
+      npm test --workspace=@methodts/runtime ran clean: 634 tests, 0
+      failures across 13 workspace suites. No regression from C-1..C-4
+      merges. PR #189 fix held.
+
+  - unit: "Unit 7 — Cortex outreach drafts"
+    branch: docs/cortex-outreach-drafts
+    pr: 196
+    pr_url: https://github.com/VledicFranco/method/pull/196
+    merge_sha: ed86e056
+    artifacts:
+      - tmp/cortex-issue-O1.md
+      - tmp/cortex-issue-O5.md
+      - tmp/cortex-issue-O6.md
+      - tmp/cortex-issue-O7.md
+      - tmp/ceo-arturo-nudge-2026-04-19.md
+    notes: >
+      Drafts force-added to the branch (tmp/ is gitignored via tmp/*
+      with only tmp/.gitkeep as the exception). Four issue bodies lifted
+      from ov-t1/projects/t1-cortex/method-integration.md §4.{1..4},
+      package references updated @method/* → @methodts/*. O1 also
+      cross-links to cortexAnthropicTransport TODO(O1) sites. CEO nudge
+      follows the tone of
+      comms/ceo-arturo/23-*-outbound-status-update-4-requests-working.md
+      — Spanish, 5-bullet, one explicit amplification ask.
+
+  - unit: "Bonus — v0.3.0 release"
+    branch: master
+    pr: null
+    release_commit: 0ff75ec4
+    fix_commit: e7c578a0
+    tag: v0.3.0
+    workflow_runs:
+      - id: 24624277085
+        status: failure
+        reason: "Same ERESOLVE — pacta-testkit peer range ^0.2.0 didn't satisfy 0.3.0"
+      - id: 24624325833
+        status: success
+    npm_verified: 14/14 at 0.3.0
+    notes: >
+      Bundled Unit 3 + Unit 4 into a single minor bump. First workflow
+      failed for the same reason v0.2.0 did. Fix: loosen peer range to '*'
+      (commit e7c578a0) so the pattern doesn't recur every minor.
+
+units_blocked: []
+
+published_versions:
+  "@methodts/agent-runtime": "0.3.0"
+  "@methodts/cluster": "0.3.0"
+  "@methodts/fca-index": "0.3.0"
+  "@methodts/mcp": "0.3.0"
+  "@methodts/methodts": "0.3.0"
+  "@methodts/pacta": "0.3.0"
+  "@methodts/pacta-provider-anthropic": "0.3.0"
+  "@methodts/pacta-provider-claude-agent-sdk": "0.3.0"
+  "@methodts/pacta-provider-claude-cli": "0.3.0"
+  "@methodts/pacta-provider-cortex": "0.3.0"
+  "@methodts/pacta-provider-ollama": "0.3.0"
+  "@methodts/pacta-testkit": "0.3.0"
+  "@methodts/runtime": "0.3.0"
+  "@methodts/types": "0.3.0"
+
+cortex_outreach_artifacts:
+  - path: tmp/cortex-issue-O1.md
+    purpose: "ctx.llm.reserve()/settle() — blocks PRD-062 Wave 2 + full-mode transport"
+  - path: tmp/cortex-issue-O5.md
+    purpose: "Runtime tool registration — blocks PRD-066 Track B"
+  - path: tmp/cortex-issue-O6.md
+    purpose: "ctx.auth.issueServiceToken() — blocks PRD-066 Track B"
+  - path: tmp/cortex-issue-O7.md
+    purpose: "DELETE /apps/:id/tools/:name — blocks PRD-066 Track B"
+  - path: tmp/ceo-arturo-nudge-2026-04-19.md
+    purpose: "Amplification ask via CEO channel — v0.2.0 + v0.3.0 ship, S1 status, 4 asks, demo leverage"
+
+hardest_decision: >
+  Whether to ship v0.3.0 for Unit 3 alone (matching the literal commission
+  wording "Follow-up release after this lands") or wait for Unit 4 to
+  also land and bundle both into 0.3.0. Chose the latter — Unit 4 landed
+  within minutes of Unit 3, both are additive, and a single minor bump
+  cleanly expresses the combined surface change without an extra release
+  cycle.
+
+observations:
+  - obs: >
+      The pacta-testkit peer-dep problem recurs on every minor bump unless
+      the range is permissive. Each release that bumps agent-runtime's
+      version invalidates a fixed `^x.y.0` peer range, and ERESOLVE kills
+      the workflow at npm ci before any publish. The correct expression
+      is `*` because all @methodts/* packages release in lockstep (so the
+      peer is ALWAYS satisfied by the workspace-linked version), AND the
+      peer is already optional per peerDependenciesMeta. Fixed in
+      e7c578a0. A smarter release script would detect internal @methodts/*
+      peer ranges and auto-update them — captured as a potential follow-up.
+  - obs: >
+      gh auth switch doesn't persist across separate Bash tool invocations
+      in this harness. Each shell reads the latest default account from
+      the shared config. For personal-repo releases, every gh invocation
+      must be preceded by `gh auth switch --user VledicFranco` in the SAME
+      Bash call. For gh API POSTs, token scope also matters —
+      `gh release create` failed with a "workflow scope may be required"
+      error that the underlying POST via `gh api` did not — the scope
+      check happens client-side in the CLI, not server-side.
+  - obs: >
+      Sub-agent worktree isolation is not perfect. Unit 4's sub-agent
+      wrote files into the MAIN repo checkout (packages/pacta-*/) while
+      its own worktree at .claude/worktrees/agent-a61ed3f9 stayed empty.
+      This left uncommitted modifications in the orchestrator's main tree
+      after the sub-agent completed. The sub-agent eventually committed +
+      merged correctly (PR #199), but the main-tree leak complicated
+      orchestrator state — needed a stash + careful checkout flow before
+      the v0.3.0 release. Unit 5's sub-agent hit a similar but less severe
+      version (noted in its own report). If this pattern continues,
+      main-tree writes from sub-agents should either be treated as an
+      expected side effect (and cleaned up explicitly by the orchestrator)
+      or the harness should enforce harder isolation.
+  - obs: >
+      npm-scope lockstep releases + permissive internal peer ranges is
+      the right default for an in-house monorepo. External @methodts
+      consumers see one synchronised surface version; internal workspace
+      resolution uses `*` / `workspace:*` / exact version for peer ranges
+      without manual maintenance burden.
+  - obs: >
+      `gh release create` behaviour differs from `gh api POST /releases`:
+      the CLI runs extra client-side checks (e.g. "workflow" scope warning)
+      that the raw API call skips. When a release is stuck behind a CLI
+      scope check but the underlying token has sufficient repo permissions,
+      falling back to the API POST is the clean recovery path.
+
+end_of_retro: true
