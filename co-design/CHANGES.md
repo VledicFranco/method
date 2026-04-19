@@ -197,7 +197,7 @@ not truly ratified until its producer package passes its own gates.
 
 | Surface | Method advocate | Cortex advocate | Since |
 |---|---|---|---|
-| S1 — MethodAgentPort | Vledic \| Franco (`@VledicFranco`) | _TBD — Cortex Surface Advocate_ | 2026-04-14 |
+| S1 — MethodAgentPort | Vledic \| Franco (`@VledicFranco`) | Francisco Aramburo (`@VledicFranco`) | 2026-04-18 |
 
 ### The Surface Advocate role
 
@@ -290,6 +290,7 @@ amendment log below.
 | Date | Surface | Class | Summary | Version | PR |
 |---|---|---|---|---|---|
 | 2026-04-14 | S1 | initial freeze + bilateral ratification | `decision.md` freeze via `/fcd-surface`; ratification artifacts produced by PRD-060 (this file, `method-agent-port.md`, `readthrough-2026-04-14.md`, CODEOWNERS, `proposals/` and `history/` scaffolds) | n/a (pre-1.0) | PRD-060 |
+| 2026-04-18 | S1 | ratification | Cortex countersignature landed; status flipped to `ratified`. No interface change (SHA `7402c3ae419821719b8f55aa0c2201cdb93d1938` still authoritative). G-RATIFIED gate now exits permissive form. | n/a | this commit |
 
 Future entries append in chronological order. Each entry must link to a PR
 (or a commit SHA, when the change lands outside a PR flow) so the audit
