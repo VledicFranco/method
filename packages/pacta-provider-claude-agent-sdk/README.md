@@ -5,8 +5,8 @@ Pacta agent provider that delegates the inner agent loop to
 while preserving pacta's `Pact` contract and middleware stack.
 
 > **Status (April 2026):** C-1 (direct mode) shipped. C-3 (streaming)
-> in progress. Cortex transport in
-> `@methodts/pacta-provider-cortex/anthropic-transport` ships in C-2.
+> shipped. Cortex transport in
+> `@methodts/pacta-provider-cortex/anthropic-transport` shipped (C-2).
 
 ## Choosing between providers
 
@@ -68,6 +68,33 @@ const provider = claudeAgentSdkProvider({
 See the `cortex-incident-triage-agent-sdk` sample (C-4) for an
 end-to-end Cortex composition.
 
+## Streaming
+
+The provider implements pacta's `Streamable` capability so consumers
+can receive `AgentEvent`s in real time as the SDK runs the inner agent
+loop.
+
+```ts
+import { claudeAgentSdkProvider } from '@methodts/pacta-provider-claude-agent-sdk';
+
+const provider = claudeAgentSdkProvider({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+for await (const event of provider.stream(pact, request)) {
+  console.log(event.type, event);
+}
+```
+
+Events are yielded in topological order (`started` → `text` /
+`tool_use` / `tool_result` → `completed`). Sub-agent activity surfaces
+as opaque `tool_use` events so existing consumers do not need to know
+about the SDK's nested-agent shapes (full sub-agent observability is a
+future iteration).
+
+To cancel an in-flight stream, pass an `AbortSignal` on the request
+or attach an `AbortController` to `pact.scope`. Both paths trigger the
+SDK's `Query.close()` which terminates the spawned CLI subprocess
+cleanly.
+
 ## The cost cliff
 
 The Claude Agent SDK ships generous defaults that work great for
@@ -108,14 +135,12 @@ The provider translates the SDK's message stream into pacta
 | `result` (error) | `error` |
 | anything else | dropped |
 
-Streaming (`Streamable.stream()`) is stubbed in C-1 and lands in C-3.
-
 ## Capabilities
 
 ```ts
 {
   modes: ['oneshot'],
-  streaming: true,        // surface declared; runtime lands in C-3
+  streaming: true,
   resumable: false,
   budgetEnforcement: 'client',
   outputValidation: 'client',

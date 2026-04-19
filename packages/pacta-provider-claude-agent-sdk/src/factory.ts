@@ -36,6 +36,7 @@ import type {
 import { directTransport } from './direct-transport.js';
 import { mapSdkMessage, mapUsage, mapCost, emptyUsage } from './event-mapper.js';
 import { pactToSdkOptions } from './pact-to-sdk-options.js';
+import { streamSdkInvocation } from './stream.js';
 import type { AnthropicSdkTransport } from './transport.js';
 
 // ── Re-exported types ────────────────────────────────────────────
@@ -121,16 +122,39 @@ export function claudeAgentSdkProvider(
       return invokeOneshot(pact, request, options, transport);
     },
 
-    stream(_pact: Pact, _request: AgentRequest): AsyncIterable<AgentEvent> {
-      // Stubbed in C-1; C-3 replaces this with a real implementation.
-      // The error here trips at iteration time (not at `stream()` call
-      // time), but the SDK consumer pattern is to immediately enter a
-      // `for await` so it'll surface promptly.
-      return (async function* () {
-        throw new Error(
-          '[claude-agent-sdk] Streaming lands in C-3 — see ' +
-          '.method/sessions/fcd-plan-20260419-2300-pacta-claude-agent-sdk/realize-plan.md',
-        );
+    stream(pact: Pact, request: AgentRequest): AsyncIterable<AgentEvent> {
+      // Set up transport + build SDK options inside an async generator so
+      // the lazy stream-iterator pattern works (caller may abandon the
+      // iterator without ever pulling — teardown still runs).
+      return (async function* (): AsyncIterable<AgentEvent> {
+        const setup = await transport.setup();
+        try {
+          const { options: sdkOpts } = pactToSdkOptions({
+            pact,
+            request,
+            config: options,
+            transportEnv: setup.env,
+          });
+          // streamSdkInvocation is generic over the SDK message type;
+          // instantiate it as SDKMessage so the mapper + queryFn types
+          // line up. The SDK options object is structurally compatible
+          // with StreamSdkOptions.
+          for await (const event of streamSdkInvocation<SDKMessage>(
+            pact,
+            request,
+            sdkOpts as Parameters<typeof streamSdkInvocation<SDKMessage>>[2],
+            mapSdkMessage,
+            query as Parameters<typeof streamSdkInvocation<SDKMessage>>[4],
+          )) {
+            yield event;
+          }
+        } finally {
+          try {
+            await setup.teardown();
+          } catch {
+            /* swallow — teardown failures are not actionable for the caller */
+          }
+        }
       })();
     },
   };
