@@ -1,6 +1,6 @@
 {
   "name": "@methodts/pacta-provider-claude-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Claude CLI AgentProvider for Pacta — claude --print/--resume",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",

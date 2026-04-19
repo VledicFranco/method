@@ -1,6 +1,6 @@
 {
   "name": "@methodts/pacta-provider-claude-agent-sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Pacta agent provider that delegates the inner agent loop to @anthropic-ai/claude-agent-sdk. Supports both direct (raw API key) and Cortex-pluggable (via @methodts/pacta-provider-cortex/anthropic-transport) modes.",
   "license": "Apache-2.0",

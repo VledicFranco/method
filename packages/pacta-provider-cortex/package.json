@@ -1,6 +1,6 @@
 {
   "name": "@methodts/pacta-provider-cortex",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Cortex service adapters for Pacta — LLM provider, audit middleware, RFC-8693 token-exchange middleware",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",

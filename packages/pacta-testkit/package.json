@@ -1,6 +1,6 @@
 {
   "name": "@methodts/pacta-testkit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Pacta verification affordances — RecordingProvider, builders, assertions, and the Cortex agent conformance testkit (`./conformance` subpath, S8/PRD-065).",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",
