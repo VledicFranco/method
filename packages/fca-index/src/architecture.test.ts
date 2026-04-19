@@ -19,7 +19,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import fg from 'fast-glob';
 
-const PKG_ROOT = resolve(import.meta.dirname, '..');
+// fast-glob requires forward slashes; on Windows `resolve` returns
+// backslashes, which silently match zero files (false-positive PASS).
+const PKG_ROOT = resolve(import.meta.dirname, '..').replace(/\\/g, '/');
 const SRC = `${PKG_ROOT}/src`;
 
 /**
@@ -114,13 +116,14 @@ describe('G-BOUNDARY-MCP: mcp/ composition root does not import domain internals
 
 describe('G-LAYER: fca-index does not import @methodts/mcp or @methodts/bridge', () => {
   it('no source file imports @methodts/mcp or @methodts/bridge', () => {
+    // Match real import/require statements only — JSDoc references in
+    // comments (e.g. "Consumer: @methodts/mcp") are documentation, not
+    // dependencies, and must not trigger this gate.
+    const importPattern = /(?:from|require\()\s*['"]@methodts\/(?:mcp|bridge)['"]/;
     const allFiles = fg
       .sync(`${SRC}/**/*.ts`, { ignore: ['**/*.test.ts'] })
       .map(f => readFileSync(f, 'utf-8'));
-    const violations = allFiles.filter(content =>
-      /@methodts\/mcp/.test(content) ||
-      /@methodts\/bridge/.test(content),
-    );
+    const violations = allFiles.filter(content => importPattern.test(content));
     expect(violations, 'fca-index imports @methodts/mcp or @methodts/bridge').toHaveLength(0);
   });
 });
