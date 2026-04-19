@@ -1,6 +1,6 @@
 {
   "name": "@methodts/agent-runtime",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cortex-targeted public API for method-governed agents — createMethodAgent factory, middleware composition, opaque resumption (PRD-058).",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",

@@ -1,6 +1,6 @@
 {
   "name": "@methodts/cluster",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cluster protocol, membership state machine, and routing — transport-agnostic L3 package",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",

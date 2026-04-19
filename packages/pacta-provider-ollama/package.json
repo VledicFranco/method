@@ -1,6 +1,6 @@
 {
   "name": "@methodts/pacta-provider-ollama",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Ollama AgentProvider for Pacta — OpenAI-compatible API over local/remote Ollama instances",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",

@@ -1,6 +1,6 @@
 {
   "name": "@methodts/types",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Canonical shared types for the Method runtime — L0 package, zero runtime deps",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",
