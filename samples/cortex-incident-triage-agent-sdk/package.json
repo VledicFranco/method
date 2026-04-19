@@ -1,0 +1,22 @@
+{
+  "name": "sample-cortex-incident-triage-agent-sdk",
+  "version": "0.0.1",
+  "private": true,
+  "description": "C-4 sample — incident-triage Cortex tenant using the Claude Agent SDK provider + Cortex Anthropic transport",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@methodts/agent-runtime": "*",
+    "@methodts/pacta": "*",
+    "@methodts/pacta-provider-claude-agent-sdk": "*",
+    "@methodts/pacta-provider-cortex": "*"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.114"
+  },
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo"
+}
