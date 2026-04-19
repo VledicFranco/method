@@ -4,7 +4,7 @@ frozen: 2026-04-14
 authoritative: .method/sessions/fcd-surface-method-agent-port/decision.md
 authoritative_sha: 7402c3ae419821719b8f55aa0c2201cdb93d1938
 prd: PRD-060
-status: awaiting-cortex-signature
+status: ratified
 ---
 
 # MethodAgentPort — Bilateral Signoff
@@ -56,8 +56,8 @@ I will implement / consume against, and any future divergence routes through
 
 ## 3. Cortex team
 
-- **Surface Advocate:** _TBD — Cortex Surface Advocate signature_
-- **Signed:** _TBD — Cortex Surface Advocate signature_
+- **Surface Advocate:** Francisco Aramburo (`@VledicFranco`)
+- **Signed:** 2026-04-18
 - **Role authority:** `t1-cortex-1` platform team (tenant-app category
   `agent`, Tier 2 per RFC-005 §10.2)
 - **Commitment (pending countersignature):**

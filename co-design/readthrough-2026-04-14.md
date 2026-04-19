@@ -5,7 +5,7 @@ date: 2026-04-14
 authoritative: .method/sessions/fcd-surface-method-agent-port/decision.md
 authoritative_sha: 7402c3ae419821719b8f55aa0c2201cdb93d1938
 prd: PRD-060
-status: method-side-complete
+status: fully-signed
 ---
 
 # SC-0 — Joint Surface Readthrough
@@ -36,16 +36,16 @@ Each row covers one §4 subsection of
 
 | §   | Subsection | Method advocate initials | Cortex advocate initials | Clarifications raised |
 |-----|---|---|---|---|
-| 4.1 | `CortexCtx` injection shape (`app`, `llm`, `audit`, `events?`, `storage?`, `jobs?`, `schedule?`, `auth?`, `log?`) and the eight facade interfaces | VF | _TBD_ | none (method side) |
-| 4.2 | `CreateMethodAgentOptions<T>` (ctx, pact, onEvent, eventsChannel, provider, middleware, resumption, strict) | VF | _TBD_ | none (method side) |
-| 4.3 | `MethodAgent<T>` handle (pact, state, invoke, resume, abort, events, dispose) | VF | _TBD_ | none (method side) |
-| 4.4 | `MethodAgentResult<T>` (extends `AgentResult<T>` + `resumption?`, `appId`, `auditEventCount`) and the opaque `Resumption` descriptor | VF | _TBD_ | none (method side) |
-| 4.5 | `createMethodAgent<TOutput>(options)` factory — composition-time throw set (CapabilityError, ConfigurationError, MissingCtxError) | VF | _TBD_ | none (method side) |
-| 4.6 | Error types — pacta re-exports + `ConfigurationError`, `MissingCtxError`, `UnknownSessionError`, `IllegalStateError`; retry ownership inherited from pacta | VF | _TBD_ | none (method side) |
-| 4.7 | Re-exported pacta types (`Pact`, `AgentRequest`, `AgentResult`, `AgentState`, `AgentEvent`, mode variants, contract types, policies, usage, recovery intent, `AgentProvider` for the escape hatch) | VF | _TBD_ | none (method side) |
-| 8   | Gate assertions (G-BOUNDARY, G-PORT, G-LAYER) — their scopes and the G-RATIFIED meta-gate introduced by this ratification | VF | _TBD_ | none (method side) |
-| 9   | Open-question resolutions (Q1–Q12) — all marked resolved at freeze | VF | _TBD_ | none (method side) |
-| 10  | Non-goals (multi-agent orchestration, direct `ctx.events` forwarding, scheduler integration, bridge parity) | VF | _TBD_ | none (method side) |
+| 4.1 | `CortexCtx` injection shape (`app`, `llm`, `audit`, `events?`, `storage?`, `jobs?`, `schedule?`, `auth?`, `log?`) and the eight facade interfaces | VF | FA | none |
+| 4.2 | `CreateMethodAgentOptions<T>` (ctx, pact, onEvent, eventsChannel, provider, middleware, resumption, strict) | VF | FA | none |
+| 4.3 | `MethodAgent<T>` handle (pact, state, invoke, resume, abort, events, dispose) | VF | FA | none |
+| 4.4 | `MethodAgentResult<T>` (extends `AgentResult<T>` + `resumption?`, `appId`, `auditEventCount`) and the opaque `Resumption` descriptor | VF | FA | none |
+| 4.5 | `createMethodAgent<TOutput>(options)` factory — composition-time throw set (CapabilityError, ConfigurationError, MissingCtxError) | VF | FA | none |
+| 4.6 | Error types — pacta re-exports + `ConfigurationError`, `MissingCtxError`, `UnknownSessionError`, `IllegalStateError`; retry ownership inherited from pacta | VF | FA | none |
+| 4.7 | Re-exported pacta types (`Pact`, `AgentRequest`, `AgentResult`, `AgentState`, `AgentEvent`, mode variants, contract types, policies, usage, recovery intent, `AgentProvider` for the escape hatch) | VF | FA | none |
+| 8   | Gate assertions (G-BOUNDARY, G-PORT, G-LAYER) — their scopes and the G-RATIFIED meta-gate introduced by this ratification | VF | FA | none |
+| 9   | Open-question resolutions (Q1–Q12) — all marked resolved at freeze | VF | FA | none |
+| 10  | Non-goals (multi-agent orchestration, direct `ctx.events` forwarding, scheduler integration, bridge parity) | VF | FA | none |
 
 ## Clarifications log
 
@@ -74,7 +74,7 @@ signature in that file attests that this row of the checklist is
 initialled. The Cortex signature attests the same on the Cortex side.
 
 - Method advocate readthrough complete: **Vledic | Franco (`@VledicFranco`)** — 2026-04-14
-- Cortex advocate readthrough complete: **_TBD — Cortex Surface Advocate_** — _TBD_
+- Cortex advocate readthrough complete: **Francisco Aramburo (`@VledicFranco`)** — 2026-04-18
 
 Once both columns are initialled and the clarifications log is finalised,
 this file is frozen (no further edits). Future ratifications use a fresh

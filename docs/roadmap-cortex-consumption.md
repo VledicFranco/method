@@ -242,7 +242,7 @@ frozen, one needs-follow-up pending Cortex clarification.
 
 | ID | Surface | Producer ↔ Consumer | Status | Decision file |
 |----|---------|---------------------|--------|---------------|
-| **S1** | `MethodAgentPort` | `@methodts/agent-runtime` ↔ Cortex tenant app | ✔️ frozen | `.method/sessions/fcd-surface-method-agent-port/decision.md` |
+| **S1** | `MethodAgentPort` | `@methodts/agent-runtime` ↔ Cortex tenant app | ✔️ frozen + ratified (2026-04-18) | `.method/sessions/fcd-surface-method-agent-port/decision.md` |
 | **S2** | `RuntimePackageBoundary` | `@methodts/bridge` ↔ `@methodts/runtime` (new) | ✔️ frozen | `.method/sessions/fcd-surface-runtime-package-boundary/decision.md` |
 | **S3** | `CortexServiceAdapters` (LLM + Audit + TokenExchange) | `@methodts/agent-runtime` ↔ `ctx.{llm,audit,auth}` | ✔️ frozen | `.method/sessions/fcd-surface-cortex-service-adapters/decision.md` |
 | **S4** | `SessionStore` + `CheckpointSink` (resume) | `@methodts/runtime` ↔ `ctx.storage` / FS | ✔️ frozen | `.method/sessions/fcd-surface-session-store/decision.md` |
