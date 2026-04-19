@@ -43,10 +43,15 @@ export type {
 } from './audit-middleware.js';
 
 // Cortex Anthropic SDK transport (S-CORTEX-ANTHROPIC-TRANSPORT — for use
-// with @methodts/pacta-provider-claude-agent-sdk; Wave 0 stub, Wave 2 impl)
-export { cortexAnthropicTransport } from './anthropic-transport.js';
+// with @methodts/pacta-provider-claude-agent-sdk; Wave 0 stub, Wave 2 impl,
+// Wave 3 ctx harmonisation adds V2 with the nested `{ llm, audit }` shape)
+export {
+  cortexAnthropicTransport,
+  cortexAnthropicTransportV2,
+} from './anthropic-transport.js';
 export type {
   CortexAnthropicTransportConfig,
+  CortexAnthropicTransportCtx,
   AnthropicMessagesRequestShape,
   BudgetEvent,
 } from './anthropic-transport.js';

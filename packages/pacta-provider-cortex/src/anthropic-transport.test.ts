@@ -18,9 +18,11 @@ import assert from 'node:assert/strict';
 
 import {
   cortexAnthropicTransport,
+  cortexAnthropicTransportV2,
   defaultEstimateCost,
   type AnthropicMessagesRequestShape,
   type CortexAnthropicTransportConfig,
+  type CortexAnthropicTransportCtx,
 } from './anthropic-transport.js';
 import type {
   AuditEvent,
@@ -543,6 +545,146 @@ describe('cortexAnthropicTransport — input validation', () => {
       assert.equal(resp.status, 400);
       // No reserve, no upstream call.
       assert.equal(bundle.reserveCalls.length, 0);
+    } finally {
+      await teardown();
+    }
+  });
+});
+
+// ── cortexAnthropicTransportV2 — nested ctx shape (Wave 3 harmonise) ──
+
+describe('cortexAnthropicTransportV2 — nested { llm, audit } ctx', () => {
+  it('degraded mode happy path: forwards request, emits audit with degradedMode=true, no reserve/settle', async () => {
+    const auditEvents: AuditEvent[] = [];
+    // Narrow V2 ctx: no `complete/structured/embed` needed — the
+    // transport forwards to upstream Anthropic directly.
+    const nestedCtx: CortexAnthropicTransportCtx = {
+      llm: {},
+      audit: {
+        async event(ev: AuditEvent): Promise<void> {
+          auditEvents.push(ev);
+        },
+      },
+    };
+
+    const { fetch, calls } = makeMockFetch();
+    const transport = cortexAnthropicTransportV2(nestedCtx, {
+      handlers: noopHandlers(),
+      apiKey: { source: 'literal', value: 'sk-v2' },
+      fetchFn: fetch,
+    });
+    const { env, teardown } = await transport.setup();
+    try {
+      const resp = await postMessages(env.ANTHROPIC_BASE_URL);
+      assert.equal(resp.status, 200);
+      await new Promise((r) => setImmediate(r));
+
+      // Upstream was hit once.
+      assert.equal(calls.length, 1);
+      // Exactly one audit event, reporting degraded mode.
+      assert.equal(auditEvents.length, 1);
+      const payload = auditEvents[0].payload as Record<string, unknown>;
+      assert.equal(payload.transport, 'cortex-anthropic-sdk');
+      assert.equal(payload.status, 200);
+      assert.equal(payload.degradedMode, true);
+      const usage = payload.usage as Record<string, number>;
+      assert.equal(usage.inputTokens, 10);
+      assert.equal(usage.outputTokens, 25);
+    } finally {
+      await teardown();
+    }
+  });
+
+  it('preserves duck-typed reserve/settle on ctx.llm (full mode)', async () => {
+    const reserveCalls: ReserveCall[] = [];
+    const settleCalls: SettleCall[] = [];
+    const auditEvents: AuditEvent[] = [];
+
+    const nestedCtx: CortexAnthropicTransportCtx = {
+      llm: {
+        async reserve(args: { maxCostUsd: number }): Promise<unknown> {
+          reserveCalls.push({ maxCostUsd: args.maxCostUsd });
+          return { handleId: `r-${reserveCalls.length}` };
+        },
+        async settle(handle: unknown, actualCostUsd: number): Promise<void> {
+          settleCalls.push({ handle, actualCostUsd });
+        },
+      },
+      audit: {
+        async event(ev: AuditEvent): Promise<void> {
+          auditEvents.push(ev);
+        },
+      },
+    };
+
+    const { fetch } = makeMockFetch();
+    const transport = cortexAnthropicTransportV2(nestedCtx, {
+      handlers: noopHandlers(),
+      apiKey: { source: 'literal', value: 'sk-v2-full' },
+      fetchFn: fetch,
+    });
+    const { env, teardown } = await transport.setup();
+    try {
+      const resp = await postMessages(env.ANTHROPIC_BASE_URL);
+      assert.equal(resp.status, 200);
+      await new Promise((r) => setImmediate(r));
+
+      assert.equal(reserveCalls.length, 1, 'reserve called once via V2');
+      assert.equal(settleCalls.length, 1, 'settle called once via V2');
+      assert.ok(reserveCalls[0].maxCostUsd > 0);
+      assert.ok(settleCalls[0].actualCostUsd > 0);
+      assert.equal(auditEvents.length, 1);
+      const payload = auditEvents[0].payload as Record<string, unknown>;
+      assert.equal(payload.degradedMode, false, 'full mode reported via V2');
+    } finally {
+      await teardown();
+    }
+  });
+
+  it('budget exceeded returns 429 via V2 with audit emitted', async () => {
+    const auditEvents: AuditEvent[] = [];
+    const nestedCtx: CortexAnthropicTransportCtx = {
+      llm: {
+        async reserve(_args: { maxCostUsd: number }): Promise<unknown> {
+          const err = new Error('Budget exceeded for app');
+          err.name = 'BudgetExceededError';
+          throw err;
+        },
+        async settle(_handle: unknown, _actualCostUsd: number): Promise<void> {
+          // unreachable when reserve throws
+        },
+      },
+      audit: {
+        async event(ev: AuditEvent): Promise<void> {
+          auditEvents.push(ev);
+        },
+      },
+    };
+
+    let onBudgetExceededCalls = 0;
+    const handlers: CortexAnthropicTransportConfig['handlers'] = {
+      onBudgetWarning: () => undefined,
+      onBudgetCritical: () => undefined,
+      onBudgetExceeded: () => {
+        onBudgetExceededCalls += 1;
+      },
+    };
+    const { fetch, calls } = makeMockFetch();
+    const transport = cortexAnthropicTransportV2(nestedCtx, {
+      handlers,
+      apiKey: { source: 'literal', value: 'sk' },
+      fetchFn: fetch,
+    });
+    const { env, teardown } = await transport.setup();
+    try {
+      const resp = await postMessages(env.ANTHROPIC_BASE_URL);
+      assert.equal(resp.status, 429);
+      await new Promise((r) => setImmediate(r));
+      assert.equal(calls.length, 0, 'no upstream forward on budget exceeded');
+      assert.equal(onBudgetExceededCalls, 1);
+      assert.equal(auditEvents.length, 1);
+      const payload = auditEvents[0].payload as Record<string, unknown>;
+      assert.equal(payload.status, 429);
     } finally {
       await teardown();
     }
