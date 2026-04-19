@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * MCP formatters — render fca-index port results to text for MCP tool responses.
  *
@@ -5,9 +6,9 @@
  * no transport concerns. They define what the agent actually reads after calling
  * context_query, context_detail, or coverage_check.
  *
- * Originally lived in @method/mcp/src/context-tools.ts. Moved here so the
- * standalone fca-index MCP server doesn't depend on @method/mcp.
- * @method/mcp keeps its copy for backward compat.
+ * Originally lived in @methodts/mcp/src/context-tools.ts. Moved here so the
+ * standalone fca-index MCP server doesn't depend on @methodts/mcp.
+ * @methodts/mcp keeps its copy for backward compat.
  *
  * Per-rank render caps (PRD 053 SC-1 — council 2026-04-12):
  *   Top-1 result gets up to ~350 chars per part (capped at 1400 total) with

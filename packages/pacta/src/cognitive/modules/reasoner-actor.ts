@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reasoner-Actor Module — merged reasoning and action execution in a single LLM call.
  *

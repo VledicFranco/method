@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Assertion helpers used by the built-in S1/S3 conformance plugins.
  * Each helper takes a `CheckVerdict`-building context (id, description,

@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `FsSessionStore` — PRD-061 §5 In-Scope filesystem adapter for the
- * `@method/runtime` SessionStore port.
+ * `@methodts/runtime` SessionStore port.
  *
  * Layout (per S4 §9.2):
  *
@@ -29,10 +30,10 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { SessionStore } from '@method/runtime/ports';
-import { SessionStoreError } from '@method/runtime/ports';
+import type { SessionStore } from '@methodts/runtime/ports';
+import { SessionStoreError } from '@methodts/runtime/ports';
 // The PRD-061 SessionStatus (initializing|running|idle|paused|...) lives on
-// session-store-types.ts. The `@method/runtime/sessions` barrel re-exports a
+// session-store-types.ts. The `@methodts/runtime/sessions` barrel re-exports a
 // *different* `SessionStatus` from print-session; we import the types we need
 // via the `ports` barrel, aliasing `SessionSnapshot` to avoid a name clash
 // with `session-pool.SessionSnapshot`.
@@ -44,7 +45,7 @@ import type {
   PersistedSessionSnapshot as SessionSnapshot,
   ResumeContext,
   ResumeOptions,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 
 /** Mirrors the PRD-061 SessionStatus union verbatim. */
 type SessionStatus =

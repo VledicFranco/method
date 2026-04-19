@@ -1,6 +1,6 @@
 # Cluster Ports
 
-Port interfaces for the `@method/cluster` package. These define the boundaries
+Port interfaces for the `@methodts/cluster` package. These define the boundaries
 between the transport-agnostic cluster protocol (L3) and the concrete I/O
 implementations injected at the application layer (L4).
 

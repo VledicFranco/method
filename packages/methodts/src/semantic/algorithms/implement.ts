@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * implement — FCA-recursive implementation algorithm with gate-check-fix loop.
  *

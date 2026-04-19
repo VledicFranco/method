@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 018: Event Triggers — Trigger Parser (Phase 2a-1)
  *
  * Extends strategy YAML parsing to extract Phase 2 trigger definitions.
- * Lives in @method/bridge per DR-03 (core has zero transport deps).
+ * Lives in @methodts/bridge per DR-03 (core has zero transport deps).
  * Backward compatible — manual and mcp_tool triggers still work unchanged.
  */
 

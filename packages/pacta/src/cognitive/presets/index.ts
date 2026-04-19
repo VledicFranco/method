@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cognitive Presets — pre-composed cognitive agent configurations.
  *

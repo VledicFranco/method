@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PersonaProfile Registry — built-in reasoning personas for the cognitive cycle.
  *

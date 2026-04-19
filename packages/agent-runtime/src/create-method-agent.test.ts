@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for `createMethodAgent` — covers the core PRD-058 acceptance
  * criteria for the factory (not the sample app end-to-end).
@@ -12,7 +13,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 import { createMethodAgent } from './create-method-agent.js';
 import { ConfigurationError, MissingCtxError, IllegalStateError } from './errors.js';
 import { makeMockCtx } from './test-support/mock-ctx.js';

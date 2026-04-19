@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Comparative Runner — runs the same scenario against two agent configs
  * and diffs their behavior, outputs, and resource consumption.

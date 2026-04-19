@@ -1,7 +1,7 @@
 ---
 type: prd
 id: PRD-057
-title: "@method/runtime package extraction"
+title: "@methodts/runtime package extraction"
 date: "2026-04-14"
 status: draft
 version: 0.1.0
@@ -20,19 +20,19 @@ surfaces_produced: []   # No NEW surfaces. PRD implements S2 verbatim.
 related:
   - docs/roadmap-cortex-consumption.md §3 (asset inventory), §4.1 item 7, §6 (PRD #057), §10 S2, §10 "Updated PRD scope notes"
   - docs/fractal-component-architecture/ (FCA principles)
-  - PRD-058 (@method/agent-runtime — depends on this PRD's output)
+  - PRD-058 (@methodts/agent-runtime — depends on this PRD's output)
   - PRD-059 (Cortex provider/middleware — depends on this PRD's output)
 blocks: PRD-058, PRD-059, PRD-061, PRD-062, PRD-063, PRD-064
 ---
 
-# PRD-057 — `@method/runtime` Package Extraction
+# PRD-057 — `@methodts/runtime` Package Extraction
 
 ## 1. Summary
 
 Extract the **engine-grade, transport-free abstractions** currently living
-inside `@method/bridge` (L4 Fastify process) into a new **L3 library package
-`@method/runtime`**. `@method/bridge` becomes a thin composition root that
-depends on `@method/runtime`; the forthcoming `@method/agent-runtime`
+inside `@methodts/bridge` (L4 Fastify process) into a new **L3 library package
+`@methodts/runtime`**. `@methodts/bridge` becomes a thin composition root that
+depends on `@methodts/runtime`; the forthcoming `@methodts/agent-runtime`
 (PRD-058, Cortex-facing) also depends on it. The public API, module map,
 rename (`BridgeEvent` → `RuntimeEvent`), per-AppId cost-governor hook, and
 `SessionProviderFactory` port are already **frozen** by
@@ -54,15 +54,15 @@ stateful behavior agents need (session pool, strategy executor, event
 persistence, cost governance) but only exposes it via HTTP and only spawns
 local PTY sessions."* `packages/bridge/src/index.ts` literally exports
 `export {};` — the bridge is a runnable, not a library. A Cortex tenant app
-cannot `npm install @method/bridge` and call `StrategyExecutor`.
+cannot `npm install @methodts/bridge` and call `StrategyExecutor`.
 
 From S2 §1 (context): The same engine pieces must be reusable by two
 consumers with radically different deployment shapes:
 
-1. **`@method/bridge`** — Fastify process, local PTY spawning, Tailscale
+1. **`@methodts/bridge`** — Fastify process, local PTY spawning, Tailscale
    cluster federation, filesystem-backed project discovery. Keeps
    everything it owns today; stops owning the engine internals.
-2. **`@method/agent-runtime`** (new, PRD-058) — pure library, Cortex-hosted,
+2. **`@methodts/agent-runtime`** (new, PRD-058) — pure library, Cortex-hosted,
    no process concerns, no PTY, no Fastify, routes LLM through `ctx.llm`.
 
 Today these two consumers cannot coexist because the engine is entangled
@@ -79,11 +79,11 @@ transport-layer leak an L3 library cannot carry.
 
 ## 3. Constraints
 
-1. **FCA layering — non-negotiable.** `@method/runtime` is **L3**. It must
+1. **FCA layering — non-negotiable.** `@methodts/runtime` is **L3**. It must
    not import from `fastify`, `@fastify/*`, `ws`, `node-pty`, `express`, or
    any cluster/Tailscale/HTTP transport. Violations are bugs per FCA P3.
-2. **No back-references.** `@method/runtime` must not import from
-   `@method/bridge` or any path resolving into `packages/bridge/**`.
+2. **No back-references.** `@methodts/runtime` must not import from
+   `@methodts/bridge` or any path resolving into `packages/bridge/**`.
 3. **S2 freeze respected.** The public API, file map, rename, and port
    surfaces in `.method/sessions/fcd-surface-runtime-package-boundary/decision.md`
    §§2–6 are **frozen**. This PRD may not renegotiate them. The six S2 open
@@ -127,16 +127,16 @@ Binary, testable. Each row has an automatable check.
 
 | # | Criterion | Test |
 |---|-----------|------|
-| SC-1 | New package `@method/runtime` exists at `packages/runtime/` with the exact subpath export map from S2 §2 (strategy/sessions/event-bus/cost-governor/ports/config) plus a barrel `index.ts`. | `npm --workspace=@method/runtime run build` succeeds; `ls packages/runtime/src/{strategy,sessions,event-bus,cost-governor,ports,config}/index.ts` returns all six. |
-| SC-2 | `@method/runtime` has zero transport dependencies. | Gate **G-RUNTIME-ZERO-TRANSPORT** (S2 §11): scan forbids `fastify`, `@fastify/`, `ws`, `node-pty`, `express` inside `packages/runtime/src`. |
-| SC-3 | `@method/runtime` never imports from `@method/bridge`. | Gate **G-RUNTIME-NO-BRIDGE-BACKREF** (S2 §11). |
-| SC-4 | Bridge's cross-domain imports of engine internals all go through `@method/runtime` subpaths, not relative paths into moved dirs. | Gate **G-BRIDGE-USES-RUNTIME-PORTS** (S2 §11); grep for forbidden patterns in `packages/bridge/src/{domains,shared}`. |
+| SC-1 | New package `@methodts/runtime` exists at `packages/runtime/` with the exact subpath export map from S2 §2 (strategy/sessions/event-bus/cost-governor/ports/config) plus a barrel `index.ts`. | `npm --workspace=@methodts/runtime run build` succeeds; `ls packages/runtime/src/{strategy,sessions,event-bus,cost-governor,ports,config}/index.ts` returns all six. |
+| SC-2 | `@methodts/runtime` has zero transport dependencies. | Gate **G-RUNTIME-ZERO-TRANSPORT** (S2 §11): scan forbids `fastify`, `@fastify/`, `ws`, `node-pty`, `express` inside `packages/runtime/src`. |
+| SC-3 | `@methodts/runtime` never imports from `@methodts/bridge`. | Gate **G-RUNTIME-NO-BRIDGE-BACKREF** (S2 §11). |
+| SC-4 | Bridge's cross-domain imports of engine internals all go through `@methodts/runtime` subpaths, not relative paths into moved dirs. | Gate **G-BRIDGE-USES-RUNTIME-PORTS** (S2 §11); grep for forbidden patterns in `packages/bridge/src/{domains,shared}`. |
 | SC-5 | `BridgeEvent` → `RuntimeEvent` rename complete. Exactly one type alias `export type BridgeEvent = RuntimeEvent` remains, inside `packages/bridge/src/ports/event-bus.ts`. `RuntimeEventInput` and `RuntimeRateGovernor` renames applied. | Grep `BridgeEvent` in repo returns ≤ 1 declaration site + doc references; alias file present. |
 | SC-6 | Event `type` strings unchanged across extraction. | Snapshot test: set of emitted `event.type` values before extraction == after, verified by `packages/runtime/src/architecture.test.ts` reading a frozen manifest. |
 | SC-7 | `SessionProviderFactory` port exists at `packages/runtime/src/ports/session-pool.ts` with shape frozen in S2 §6. Bridge provides a concrete factory (new file `packages/bridge/src/domains/sessions/factory.ts`) that produces PTY/print/cognitive sessions exactly as today. | Type check passes; bridge `createPool()` call in `server-entry.ts` passes the new factory; existing `pool.test.ts` suite green. |
-| SC-8 | `createCostGovernor({ appId?, eventBus, fileSystem, config })` exported from `@method/runtime/cost-governor`; no longer returns `registerRoutes`. Bridge has new `packages/bridge/src/domains/cost-governor/routes.ts` that consumes primitives and wires Fastify. When `appId` omitted, runtime behavior is bit-identical to today. | New unit test `cost-governor-app-id.test.ts` confirms slot keying and event payload difference; existing `observations-store.test.ts`, `rate-governor-impl.test.ts`, etc., green without modification. |
-| SC-9 | `packages/bridge/src/index.ts` still exports `{}`; `packages/bridge/src/server-entry.ts` wires everything exactly as before (ports injected, domains registered). Fastify, PTY, cluster, genesis, triggers, projects, build, method-ctl, WebSocketSink, NodeFileSystemProvider, JsYamlLoader remain in bridge (S2 §5). | Bridge boots and passes smoke tests: `npm run bridge:test` → `npm --workspace=@method/smoke-test run smoke`. |
-| SC-10 | `npm run build` + `npm test` at repo root pass on a fresh clone. Smoke-test suite (`@method/smoke-test`) passes in mock mode. | CI green. |
+| SC-8 | `createCostGovernor({ appId?, eventBus, fileSystem, config })` exported from `@methodts/runtime/cost-governor`; no longer returns `registerRoutes`. Bridge has new `packages/bridge/src/domains/cost-governor/routes.ts` that consumes primitives and wires Fastify. When `appId` omitted, runtime behavior is bit-identical to today. | New unit test `cost-governor-app-id.test.ts` confirms slot keying and event payload difference; existing `observations-store.test.ts`, `rate-governor-impl.test.ts`, etc., green without modification. |
+| SC-9 | `packages/bridge/src/index.ts` still exports `{}`; `packages/bridge/src/server-entry.ts` wires everything exactly as before (ports injected, domains registered). Fastify, PTY, cluster, genesis, triggers, projects, build, method-ctl, WebSocketSink, NodeFileSystemProvider, JsYamlLoader remain in bridge (S2 §5). | Bridge boots and passes smoke tests: `npm run bridge:test` → `npm --workspace=@methodts/smoke-test run smoke`. |
+| SC-10 | `npm run build` + `npm test` at repo root pass on a fresh clone. Smoke-test suite (`@methodts/smoke-test`) passes in mock mode. | CI green. |
 | SC-11 | No methodology registry files, `.method/project-card.yaml`, schema files, or `theory/` files modified. | `git diff --stat master..HEAD -- registry/ theory/ .method/project-card.yaml` empty. |
 | SC-12 | `CognitiveSink` runtime export renamed to `CognitiveEventBusSink` (per S2 §14 Q6 open question resolution — resolved below in §10). Bridge aliases the old name during migration. | Grep + type check. |
 
@@ -204,17 +204,17 @@ Also in-scope:
     route registration that consumes the runtime primitives. (File name
     already exists today; will be rewritten to import from runtime.)
   - `packages/bridge/src/shared/event-bus/websocket-sink.ts` stays — uses
-    `EventSink` interface imported from `@method/runtime/ports`.
+    `EventSink` interface imported from `@methodts/runtime/ports`.
 - New `packages/runtime/src/architecture.test.ts` with the four gate tests
   from S2 §11.
 - Updates to `tsconfig*.json`, root `package.json` workspaces entry, and
-  the bridge's `package.json` to add `@method/runtime` dependency.
+  the bridge's `package.json` to add `@methodts/runtime` dependency.
 
 ### 5.2 Explicitly out-of-scope
 
 - **No Cortex adapters.** `CortexLLMProvider`, `CortexAuditMiddleware`,
   `CortexTokenExchangeMiddleware`, any `ctx.*`-aware code — all PRD-059.
-- **No `@method/agent-runtime` package.** That's PRD-058; depends on this
+- **No `@methodts/agent-runtime` package.** That's PRD-058; depends on this
   PRD's output but is separate.
 - **No methodology source Cortex backend.** PRD-064.
 - **No session store / checkpoint Cortex backend.** PRD-061.
@@ -225,7 +225,7 @@ Also in-scope:
   function stays where it is.
 - **No `StdlibSource` relocation.** S2 §5.3 decides it stays in bridge;
   PRD-064 will replace with `CortexMethodologySource` in agent-runtime.
-- **No cluster changes.** `@method/cluster` and `domains/cluster/*` stay
+- **No cluster changes.** `@methodts/cluster` and `domains/cluster/*` stay
   bridge-scoped (S2 §5.4).
 - **No genesis / triggers / projects / build / tokens / experiments /
   methodology / registry changes.** All stay in bridge per S2 §5.5.
@@ -242,7 +242,7 @@ Also in-scope:
 
 ```
            ┌─────────────────────────────────────────────┐
-L4         │  @method/bridge                             │
+L4         │  @methodts/bridge                             │
            │  Fastify, PTY, cluster, genesis, triggers,  │
            │  projects, build, method-ctl, tokens,       │
            │  experiments, methodology store, registry,  │
@@ -253,7 +253,7 @@ L4         │  @method/bridge                             │
                                 │ depends on
                                 ▼
 ┌──────────────────────────────────────────────────────────────┐
-L3         @method/runtime                 (NEW — this PRD)
+L3         @methodts/runtime                 (NEW — this PRD)
            strategy/   sessions/   event-bus/
            cost-governor/   ports/   config/
            + top-level barrel index.ts
@@ -261,27 +261,27 @@ L3         @method/runtime                 (NEW — this PRD)
            │                                    │
            ▼                                    ▼
   ┌────────────────┐                    ┌────────────────┐
-L2│ @method/methodts│                  L3│ @method/pacta   │
+L2│ @methodts/methodts│                  L3│ @methodts/pacta   │
   │ (unchanged)    │                    │ (unchanged)     │
   └────────────────┘                    └────────────────┘
 
            ┌─────────────────────────────────────────────┐
-L3         │ @method/agent-runtime  (planned — PRD-058)  │
-           │ depends on @method/runtime + @method/pacta  │
+L3         │ @methodts/agent-runtime  (planned — PRD-058)  │
+           │ depends on @methodts/runtime + @methodts/pacta  │
            │ + Cortex platform types (structural)        │
            └─────────────────────────────────────────────┘
 ```
 
-No cycles. `@method/runtime` has **zero** transport deps. S2 §10 §11 gates
+No cycles. `@methodts/runtime` has **zero** transport deps. S2 §10 §11 gates
 enforce this structurally.
 
 ### 6.2 Runtime package internal structure (from S2 §2)
 
 ```
 packages/runtime/
-├── package.json                     name: @method/runtime
-│                                    deps: @method/methodts, @method/pacta,
-│                                          @method/types, zod, js-yaml
+├── package.json                     name: @methodts/runtime
+│                                    deps: @methodts/methodts, @methodts/pacta,
+│                                          @methodts/types, zod, js-yaml
 │                                          (NOTE: js-yaml is fine — it's a
 │                                          transport-free parser. Only the
 │                                          YamlLoader *adapter* stays in
@@ -314,20 +314,20 @@ packages/runtime/
 
 ### 6.3 Port locations (S2 §§3.1, 5.3, 6)
 
-All **interfaces** (types) move to `@method/runtime/ports`. Concrete
-**Node/OS-bound implementations** stay in `@method/bridge`:
+All **interfaces** (types) move to `@methodts/runtime/ports`. Concrete
+**Node/OS-bound implementations** stay in `@methodts/bridge`:
 
 | Port | Interface location | Impl location |
 |------|-------------------|---------------|
-| `EventBus`, `EventSink`, `EventConnector` | `@method/runtime/ports` | `InMemoryEventBus` in runtime; `WebSocketSink` in bridge |
-| `SessionPool`, `SessionProviderFactory` | `@method/runtime/ports` | `createPool()` in runtime; PTY/print/cognitive factory in bridge |
-| `CostOracle`, `RuntimeRateGovernor`, `HistoricalObservations` | `@method/runtime/ports` | Impls in runtime (pure logic, no OS deps beyond `js-yaml` for config parsing and `fs` via injected `FileSystemProvider`) |
-| `FileSystemProvider` | `@method/runtime/ports` | `NodeFileSystemProvider` in bridge |
-| `YamlLoader` | `@method/runtime/ports` | `JsYamlLoader` in bridge |
-| `NativeSessionDiscovery` | `@method/runtime/ports` | Node impl in bridge |
-| `MethodologySource` | `@method/runtime/ports` | `StdlibSource` in bridge (S2 §5.3) |
-| `CheckpointPort` | `@method/runtime/ports` | FS-backed impl in bridge (S2 §14 Q1) |
-| `ConversationPort`, `Projection`, `ProjectionStore`, `EventReader`, `EventRotator` | `@method/runtime/ports` | FS-backed impls in bridge (build orchestrator) |
+| `EventBus`, `EventSink`, `EventConnector` | `@methodts/runtime/ports` | `InMemoryEventBus` in runtime; `WebSocketSink` in bridge |
+| `SessionPool`, `SessionProviderFactory` | `@methodts/runtime/ports` | `createPool()` in runtime; PTY/print/cognitive factory in bridge |
+| `CostOracle`, `RuntimeRateGovernor`, `HistoricalObservations` | `@methodts/runtime/ports` | Impls in runtime (pure logic, no OS deps beyond `js-yaml` for config parsing and `fs` via injected `FileSystemProvider`) |
+| `FileSystemProvider` | `@methodts/runtime/ports` | `NodeFileSystemProvider` in bridge |
+| `YamlLoader` | `@methodts/runtime/ports` | `JsYamlLoader` in bridge |
+| `NativeSessionDiscovery` | `@methodts/runtime/ports` | Node impl in bridge |
+| `MethodologySource` | `@methodts/runtime/ports` | `StdlibSource` in bridge (S2 §5.3) |
+| `CheckpointPort` | `@methodts/runtime/ports` | FS-backed impl in bridge (S2 §14 Q1) |
+| `ConversationPort`, `Projection`, `ProjectionStore`, `EventReader`, `EventRotator` | `@methodts/runtime/ports` | FS-backed impls in bridge (build orchestrator) |
 
 The **rule:** an interface is in runtime iff at least one of {bridge,
 agent-runtime} needs it AND it has no OS/transport dependency. An
@@ -401,20 +401,20 @@ for a single agent + single PR.
 
 - Create `packages/runtime/{package.json, tsconfig.json, src/index.ts,
   src/architecture.test.ts}`.
-- Add `@method/runtime` to root `package.json` workspaces.
+- Add `@methodts/runtime` to root `package.json` workspaces.
 - Move the 14 port interface files from `packages/bridge/src/ports/` into
   `packages/runtime/src/ports/` per S2 §5.3 (type-only; keep Node impls
-  in bridge and have them import interfaces from `@method/runtime/ports`).
+  in bridge and have them import interfaces from `@methodts/runtime/ports`).
 - Apply the `BridgeEvent` → `RuntimeEvent`, `BridgeEventInput` →
   `RuntimeEventInput`, `BridgeRateGovernor` → `RuntimeRateGovernor`
   renames. Add type alias `export type BridgeEvent = RuntimeEvent` in
   `packages/bridge/src/ports/event-bus.ts` (now a shim).
 - Extend `session-pool.ts` port with `SessionProviderFactory` and
   `SessionProviderOptions` per S2 §6.
-- Add `@method/runtime` dep to `packages/bridge/package.json`.
+- Add `@methodts/runtime` dep to `packages/bridge/package.json`.
 - Bridge's existing port imports (relative paths into `./ports/*.js`)
   continue to work because the Node impl files in bridge are kept — they
-  now `import type { ... } from '@method/runtime/ports'` at the top.
+  now `import type { ... } from '@methodts/runtime/ports'` at the top.
 - Add gates G-RUNTIME-ZERO-TRANSPORT, G-RUNTIME-NO-BRIDGE-BACKREF,
   G-RUNTIME-EVENT-TYPE-NEUTRAL in `packages/runtime/src/architecture.test.ts`.
   G-BRIDGE-USES-RUNTIME-PORTS stays disabled (xit) until C7.
@@ -427,7 +427,7 @@ has gates passing; no consumer import paths have changed yet.
 **C2. `runtime-strategy-subpath`** (S, ~1 day)
 > Move the 11 strategy files + rename `BridgeSubStrategySource` →
 > `FsSubStrategySource` and `BridgeHumanApprovalResolver` →
-> `EventBusHumanApprovalResolver`; expose `@method/runtime/strategy` subpath
+> `EventBusHumanApprovalResolver`; expose `@methodts/runtime/strategy` subpath
 > exports per S2 §3.2.
 
 - Create `packages/runtime/src/strategy/{index.ts, ...11 files...}`.
@@ -436,7 +436,7 @@ has gates passing; no consumer import paths have changed yet.
   (stays), `*.test.ts` (move with their subjects).
 - Bridge's `server-entry.ts` changes `import { StrategyExecutor } from
   './domains/strategies/strategy-executor.js'` → `import { StrategyExecutor }
-  from '@method/runtime/strategy'`.
+  from '@methodts/runtime/strategy'`.
 - Bridge's `domains/build/` (which consumes `StrategyExecutor`) likewise
   updated.
 - Bridge adds a **temporary shim** `packages/bridge/src/domains/strategies/compat.ts`
@@ -451,15 +451,15 @@ runtime; S2 §3.2 export list asserted by a new test in
 
 **C3. `runtime-event-bus-subpath`** (S, ~1 day)
 > Move the 8 event-bus files (everything EXCEPT `websocket-sink.ts`); expose
-> `@method/runtime/event-bus` per S2 §3.4.
+> `@methodts/runtime/event-bus` per S2 §3.4.
 
 - Create `packages/runtime/src/event-bus/{index.ts, ...8 files...}`.
 - Delete moved files from `packages/bridge/src/shared/event-bus/`.
 - Keep `websocket-sink.ts` in bridge; update its imports to pull `EventSink`
-  and sibling types from `@method/runtime/ports` + `@method/runtime/event-bus`
+  and sibling types from `@methodts/runtime/ports` + `@methodts/runtime/event-bus`
   re-exports.
 - Bridge's `server-entry.ts` + domain files updated to import from
-  `@method/runtime/event-bus`.
+  `@methodts/runtime/event-bus`.
 - `SessionCheckpointSink` — audit `PersistedSessionInput` type (S2 §14 Q2)
   and generalize any bridge-session-persistence-specific fields. Any field
   that remains bridge-specific stays typed as `Record<string, unknown>` in
@@ -540,7 +540,7 @@ end-to-end; smoke-test live mode optional but recommended.
 ### Wave 1 — Config subpath (commission 6)
 
 **C6. `runtime-config-subpath`** (S, ~0.5 day)
-> Move the 3 Zod config schemas + expose `@method/runtime/config` per S2 §3.6.
+> Move the 3 Zod config schemas + expose `@methodts/runtime/config` per S2 §3.6.
 
 - Move `packages/bridge/src/domains/sessions/config.ts` →
   `packages/runtime/src/config/sessions-config.ts`.
@@ -573,7 +573,7 @@ both bridge and (eventually) agent-runtime.
 - Delete the `BridgeEvent` type alias iff possible (deferred — recommend
   keeping until PRD-058 ships so bridge-internal code doesn't churn twice;
   the alias has zero runtime cost).
-- Run full smoke-test suite (`npm --workspace=@method/smoke-test run smoke`)
+- Run full smoke-test suite (`npm --workspace=@methodts/smoke-test run smoke`)
   to confirm SC-9/SC-10.
 
 **Acceptance:** all 12 success criteria green; PR merges as the closing
@@ -604,11 +604,11 @@ parallel C3/C4/C6 while C2/C5 run serially.
 ### 9.1 Runtime tests must run without bridge
 
 `packages/runtime/` must have its own test runner entry such that
-`npm --workspace=@method/runtime test` passes **without** `packages/bridge/`
+`npm --workspace=@methodts/runtime test` passes **without** `packages/bridge/`
 built. This is FCA P4 ("Verify independently"). Concretely:
 
 - All moved tests keep running with no edits where possible. Tests that
-  imported bridge-specific things (e.g., `@method/bridge/...` or relative
+  imported bridge-specific things (e.g., `@methodts/bridge/...` or relative
   paths to bridge Node impls) must be rewritten to use in-package
   fixtures or injected fakes.
 - `pool.test.ts` injects a test `SessionProviderFactory` that returns
@@ -625,8 +625,8 @@ built. This is FCA P4 ("Verify independently"). Concretely:
 | Gate | Runs in | What it enforces |
 |------|---------|------------------|
 | G-RUNTIME-ZERO-TRANSPORT | `packages/runtime/src/architecture.test.ts` | No `fastify`, `@fastify/`, `ws`, `node-pty`, `express` under `packages/runtime/src`. |
-| G-RUNTIME-NO-BRIDGE-BACKREF | `packages/runtime/src/architecture.test.ts` | No import of `@method/bridge` or `../../bridge/` from runtime. |
-| G-BRIDGE-USES-RUNTIME-PORTS | `packages/bridge/src/architecture.test.ts` (existing file) | Bridge cross-domain imports of `strategy-executor`, `in-memory-event-bus`, `observations-store`, `cost-oracle-impl`, `rate-governor-impl` go through `@method/runtime/*`, not relative paths. |
+| G-RUNTIME-NO-BRIDGE-BACKREF | `packages/runtime/src/architecture.test.ts` | No import of `@methodts/bridge` or `../../bridge/` from runtime. |
+| G-BRIDGE-USES-RUNTIME-PORTS | `packages/bridge/src/architecture.test.ts` (existing file) | Bridge cross-domain imports of `strategy-executor`, `in-memory-event-bus`, `observations-store`, `cost-oracle-impl`, `rate-governor-impl` go through `@methodts/runtime/*`, not relative paths. |
 | G-RUNTIME-EVENT-TYPE-NEUTRAL | `packages/runtime/src/architecture.test.ts` | `EventDomain` union keeps the `(string & {})` escape hatch. |
 | G-EVENT-TYPE-SNAPSHOT (new, supports SC-6) | `packages/runtime/src/event-bus/event-types.snapshot.test.ts` | Set of emitted event `type` strings matches a committed manifest. Any addition is a deliberate update. |
 | G-COSTGOV-APP-ID (new, supports SC-8) | `packages/runtime/src/cost-governor/cost-governor-app-id.test.ts` | With-appId vs no-appId modes produce the structural differences documented in S2 §8. |
@@ -635,8 +635,8 @@ built. This is FCA P4 ("Verify independently"). Concretely:
 
 - Bridge boots under `npm run bridge:test` (port 3457, isolated state)
   successfully after each commission.
-- `@method/smoke-test`'s registry-gate suite passes (`npm --workspace=@method/smoke-test test`).
-- Playwright mock smoke (`npm --workspace=@method/smoke-test run smoke`) passes
+- `@methodts/smoke-test`'s registry-gate suite passes (`npm --workspace=@methodts/smoke-test test`).
+- Playwright mock smoke (`npm --workspace=@methodts/smoke-test run smoke`) passes
   after C7.
 - Live smoke optional but recommended for C5 (session spawning).
 
@@ -664,7 +664,7 @@ Each commission (C2–C6) performs, for its subpath:
    - `from ['"]\.\.\/\.\.\/shared\/event-bus\/in-memory-event-bus`
    - `from ['"]\.\.\/\.\.\/domains\/cost-governor\/(observations-store|cost-oracle-impl|rate-governor-impl)`
    - `from ['"]\.\.\/\.\.\/domains\/sessions\/(pool|print-session|cognitive-provider|cognitive-modules|cognitive-sink|channels|diagnostics|scope-hook|spawn-queue|auto-retro|bridge-tools)`
-2. **Rewrite.** Replace with `@method/runtime/{strategy,event-bus,cost-governor,sessions}`.
+2. **Rewrite.** Replace with `@methodts/runtime/{strategy,event-bus,cost-governor,sessions}`.
 3. **Preserve type-only imports.** Where bridge code uses `import type {...}`,
    keep it `import type` (runtime type imports cost nothing at runtime).
 4. **Atomic PR.** The commission's PR includes both the move and the
@@ -691,13 +691,13 @@ Per S2 §4, `BridgeEvent` → `RuntimeEvent` applies everywhere **except**
 the one compatibility alias in `packages/bridge/src/ports/event-bus.ts`.
 The rename is done in C1 (new file in runtime) and the bridge's event-bus
 port file becomes a thin shim: `export type { RuntimeEvent as BridgeEvent,
-RuntimeEventInput as BridgeEventInput } from '@method/runtime/ports';`.
+RuntimeEventInput as BridgeEventInput } from '@methodts/runtime/ports';`.
 Decision on deleting the alias is deferred to post-PRD-058 to avoid
 churning downstream code twice.
 
 ### 10.5 Runtime type exports for downstream PRDs (S1, S3)
 
-PRD-058 and PRD-059 will import from `@method/runtime` via the exact
+PRD-058 and PRD-059 will import from `@methodts/runtime` via the exact
 subpaths S2 §§3.1–3.6 freeze. No action needed in this PRD beyond
 conforming to the list. A smoke import-test in
 `packages/runtime/src/architecture.test.ts` verifies every symbol S2
@@ -712,10 +712,10 @@ resolved here:
 
 | # | S2 Question | Resolution in this PRD |
 |---|-------------|------------------------|
-| Q1 | `CheckpointPort` placement — move the interface, FS impl stays? | **Confirm:** Interface in `@method/runtime/ports/checkpoint.ts`. FS-backed impl stays in `packages/bridge/src/domains/build/`. Cortex-backed impl will arrive in PRD-061. (C1 scope.) |
+| Q1 | `CheckpointPort` placement — move the interface, FS impl stays? | **Confirm:** Interface in `@methodts/runtime/ports/checkpoint.ts`. FS-backed impl stays in `packages/bridge/src/domains/build/`. Cortex-backed impl will arrive in PRD-061. (C1 scope.) |
 | Q2 | `SessionCheckpointSink` + `PersistedSessionInput` bridge-shape leak | **Fix in C3:** Audit `PersistedSessionInput` during the event-bus move. Any bridge-specific field is generalized to `Record<string, unknown>` with the type narrowed by the bridge adapter at sink construction. Document the audit outcome in the C3 PR description. |
 | Q3 | `StdlibSource` placement | **Confirm:** Stays in bridge per S2 §5.3. PRD-064 replaces with `CortexMethodologySource` in agent-runtime. No action this PRD. |
-| Q4 | `@method/cluster` status | **Confirm:** No runtime dep on `@method/cluster`. Cluster stays bridge-only. (Already true today; simply don't add it.) |
+| Q4 | `@methodts/cluster` status | **Confirm:** No runtime dep on `@methodts/cluster`. Cluster stays bridge-only. (Already true today; simply don't add it.) |
 | Q5 | `registerRoutes` removal breaking change | **Execute in C4:** New `createCostGovernor` returns no `registerRoutes`. Bridge gets a new `domains/cost-governor/routes.ts` wrapper. Documented in migration section. |
 | Q6 | `CognitiveSink` export name collision | **Rename to `CognitiveEventBusSink`** (leaning from S2 §14 accepted). Bridge aliases old name during migration; alias removed in C7. Executed in C5. |
 
@@ -739,7 +739,7 @@ not silently change the frozen surface**.
 | R8 | **Runtime js-yaml dep is a hidden transport?** | Very Low | Low | js-yaml is a pure parser, no network/OS beyond file reading the caller supplies. Classified as transport-free. |
 | R9 | **Bridge `FileSystemProvider` injection has to cross package boundary** now that the port is in runtime. | Low | Low | Runtime's port is an interface only. Bridge's `NodeFileSystemProvider` implements the interface and is injected at bridge's composition root into runtime factories (same pattern as today, just across a package). |
 | R10 | **Downstream PRD-058 discovers a needed runtime export that wasn't extracted.** | Medium | Low | If such a need arises, PRD-058 files an addendum to S2 via `/fcd-surface` amendment, and this PRD (or a follow-up PRD-057.1) moves the additional symbol. This PRD ships the S2-locked set; speculative extras are out of scope. |
-| R11 | **Developer confusion between `@method/methodts`'s `StrategyRuntime` class and `@method/runtime` package.** | Medium | Low | S2 §1 already documented this. Keep the class name `StrategyExecutor` (not `Runtime`); README in `packages/runtime/` disambiguates. Add a one-line note in root CLAUDE.md's Layer Stack section (already lists `@method/runtime` as L3). |
+| R11 | **Developer confusion between `@methodts/methodts`'s `StrategyRuntime` class and `@methodts/runtime` package.** | Medium | Low | S2 §1 already documented this. Keep the class name `StrategyExecutor` (not `Runtime`); README in `packages/runtime/` disambiguates. Add a one-line note in root CLAUDE.md's Layer Stack section (already lists `@methodts/runtime` as L3). |
 
 ---
 
@@ -767,8 +767,8 @@ must verify each. Sample-check automation in `.method/sessions/fcd-design-prd-05
 
 This PRD's closing PR should note:
 
-- PRD-058 (`@method/agent-runtime`) is unblocked: can `npm install
-  @method/runtime` and consume `{ StrategyExecutor, InMemoryEventBus,
+- PRD-058 (`@methodts/agent-runtime`) is unblocked: can `npm install
+  @methodts/runtime` and consume `{ StrategyExecutor, InMemoryEventBus,
   createPool, createCognitiveSession, createCostGovernor }` per the S1 /
   S3 expectations.
 - PRD-059 (Cortex provider + middleware) is unblocked: can inject a

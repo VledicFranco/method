@@ -22,8 +22,8 @@ This guide covers Tier 2 of the Pacta SDK: composing agents from typed, independ
 `createAgent()` is the composition function. It takes a `CreateAgentOptions` object and returns an `Agent`:
 
 ```typescript
-import { createAgent } from '@method/pacta';
-import type { CreateAgentOptions, Agent } from '@method/pacta';
+import { createAgent } from '@methodts/pacta';
+import type { CreateAgentOptions, Agent } from '@methodts/pacta';
 
 const options: CreateAgentOptions = {
   pact: { mode: { type: 'oneshot' } },  // required: the contract
@@ -41,7 +41,7 @@ const agent: Agent = createAgent(options);
 At composition time, `createAgent()` validates that the provider's capabilities match the pact's requirements. If the pact requests `mode: { type: 'resumable' }` but the provider only supports `oneshot`, it throws a `CapabilityError`:
 
 ```typescript
-import { CapabilityError } from '@method/pacta';
+import { CapabilityError } from '@methodts/pacta';
 
 try {
   const agent = createAgent({
@@ -98,7 +98,7 @@ The enforcer pre-checks turns and duration before each invocation, and post-chec
 Declare output shape constraints with a `SchemaDefinition`:
 
 ```typescript
-import type { SchemaDefinition, SchemaResult } from '@method/pacta';
+import type { SchemaDefinition, SchemaResult } from '@methodts/pacta';
 
 // A schema that validates JSON output as a review object
 const reviewSchema: SchemaDefinition<{ verdict: string; issues: string[] }> = {
@@ -137,7 +137,7 @@ The validator wraps the provider directly. When validation fails, it retries by 
 The `scope` field on a pact declares capability constraints — what the agent is allowed to do at runtime:
 
 ```typescript
-import { createAgent } from '@method/pacta';
+import { createAgent } from '@methodts/pacta';
 
 const agent = createAgent({
   pact: {
@@ -183,14 +183,14 @@ scope: {
 
 ## Reasoning Strategies
 
-Reasoning strategies are middleware factories that read a `ReasoningPolicy` and augment the agent's requests. Import them from `@method/pacta`:
+Reasoning strategies are middleware factories that read a `ReasoningPolicy` and augment the agent's requests. Import them from `@methodts/pacta`:
 
 ### reactReasoner
 
 The ReAct strategy (Reasoning + Acting) adds structured reasoning to the agent's loop:
 
 ```typescript
-import { createAgent, reactReasoner } from '@method/pacta';
+import { createAgent, reactReasoner } from '@methodts/pacta';
 
 const agent = createAgent({
   pact: {
@@ -210,7 +210,7 @@ When `thinkTool` is enabled, a `think` tool definition is added to request metad
 The `THINK_TOOL` constant is exported if you need to reference the tool definition:
 
 ```typescript
-import { THINK_TOOL } from '@method/pacta';
+import { THINK_TOOL } from '@methodts/pacta';
 // { name: 'think', description: '...', inputSchema: { ... } }
 ```
 
@@ -219,7 +219,7 @@ import { THINK_TOOL } from '@method/pacta';
 The Reflexion strategy implements multi-trial verbal self-critique:
 
 ```typescript
-import { createAgent, reflexionReasoner } from '@method/pacta';
+import { createAgent, reflexionReasoner } from '@methodts/pacta';
 
 const agent = createAgent({
   pact: {
@@ -240,7 +240,7 @@ When a result indicates failure (`stopReason: 'error'`), the reasoner constructs
 Injects example prompt-response pairs into the agent's context:
 
 ```typescript
-import { createAgent, fewShotInjector } from '@method/pacta';
+import { createAgent, fewShotInjector } from '@methodts/pacta';
 
 const agent = createAgent({
   pact: {
@@ -261,8 +261,8 @@ const agent = createAgent({
 Maps the `effort` field to provider-specific reasoning controls:
 
 ```typescript
-import { createAgent, getEffortParams } from '@method/pacta';
-import type { EffortParams } from '@method/pacta';
+import { createAgent, getEffortParams } from '@methodts/pacta';
+import type { EffortParams } from '@methodts/pacta';
 
 // Query the mapping directly
 const params: EffortParams = getEffortParams('high');
@@ -277,14 +277,14 @@ const params: EffortParams = getEffortParams('high');
 
 ## Context Managers
 
-Context managers are middleware that handle the agent's context window across long-running tasks. Three strategies ship with `@method/pacta`:
+Context managers are middleware that handle the agent's context window across long-running tasks. Three strategies ship with `@methodts/pacta`:
 
 ### compactionManager
 
 Monitors token usage and triggers context summarization when pressure exceeds a threshold:
 
 ```typescript
-import { createAgent, compactionManager } from '@method/pacta';
+import { createAgent, compactionManager } from '@methodts/pacta';
 
 const agent = createAgent({
   pact: {
@@ -306,8 +306,8 @@ When cumulative token usage exceeds the threshold, the manager sends a compactio
 Uses a `MemoryPort` to store and retrieve notes between turns:
 
 ```typescript
-import { createAgent, noteTakingManager } from '@method/pacta';
-import type { MemoryPort } from '@method/pacta';
+import { createAgent, noteTakingManager } from '@methodts/pacta';
+import type { MemoryPort } from '@methodts/pacta';
 
 const memory: MemoryPort = {
   async store(key, value) { /* ... */ },
@@ -333,7 +333,7 @@ Before each turn, the manager retrieves recent notes and prepends them to the pr
 Delegates to fresh context windows when context pressure is detected:
 
 ```typescript
-import { createAgent, subagentDelegator } from '@method/pacta';
+import { createAgent, subagentDelegator } from '@methodts/pacta';
 
 const agent = createAgent({
   pact: {
@@ -355,8 +355,8 @@ When context pressure exceeds the threshold, the delegator builds a summary-pref
 Reference agents are pre-assembled compositions that bridge Tier 1 to Tier 2. They expose a `.with()` method for selective overrides:
 
 ```typescript
-import { codeAgent } from '@method/pacta';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { codeAgent } from '@methodts/pacta';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 
 const base = codeAgent({ provider: claudeCliProvider() });
 
@@ -383,9 +383,9 @@ const observed = base.with({
 Here is a fully assembled agent combining all the parts:
 
 ```typescript
-import { createAgent, reactReasoner, compactionManager } from '@method/pacta';
-import { anthropicProvider } from '@method/pacta-provider-anthropic';
-import type { SchemaDefinition, SchemaResult } from '@method/pacta';
+import { createAgent, reactReasoner, compactionManager } from '@methodts/pacta';
+import { anthropicProvider } from '@methodts/pacta-provider-anthropic';
+import type { SchemaDefinition, SchemaResult } from '@methodts/pacta';
 
 interface ReviewResult {
   verdict: 'approve' | 'request-changes';

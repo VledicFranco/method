@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * cluster/adapters/ — L4 adapter implementations for cluster L3 port interfaces.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Hybrid Search — combines keyword matching with vector similarity using RRF fusion.
  * Inspired by T1 Cortex's hybrid retrieval (PR #154).

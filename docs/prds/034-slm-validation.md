@@ -16,7 +16,7 @@ rfc: "002-small-language-models"
 **Status:** Implemented (all 5 phases complete — 98.6% semantic accuracy, 82.7% cost reduction validated)
 **Author:** PO + Lysica
 **Date:** 2026-03-28
-**Package:** `experiments/exp-slm` + `@method/pacta`
+**Package:** `experiments/exp-slm` + `@methodts/pacta`
 **Dependencies:** PRD 030 (complete), RFC 002
 **Organization:** Vidtecci
 
@@ -85,7 +85,7 @@ expensive commitments.
 ### Experiment Infrastructure
 
 All experiment code lives in `experiments/exp-slm/`, isolated from production packages.
-TypeScript experiment code uses project references to `@method/pacta` (not workspace
+TypeScript experiment code uses project references to `@methodts/pacta` (not workspace
 membership) for type access without coupling.
 
 ```
@@ -308,7 +308,7 @@ interface SLMInference {
 
 ### TypeScript Integration
 
-Experiment TypeScript code accesses `@method/pacta` types via **project references**
+Experiment TypeScript code accesses `@methodts/pacta` types via **project references**
 (`tsconfig.json` with `"references": [{ "path": "../../packages/pacta" }]`). This provides
 type checking without adding the experiment to the npm workspace.
 

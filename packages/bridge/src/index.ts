@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/bridge — L4 Application Entry Point
+ * @methodts/bridge — L4 Application Entry Point
  *
  * The bridge is the composition root for the entire method runtime. It:
  *   - Wires all port implementations to their interfaces

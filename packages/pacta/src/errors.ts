@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Provider Error Taxonomy (PRD 051 — S9)
  *
@@ -22,7 +23,7 @@
  * provider errors. Both transient and permanent are final at the DAG level.
  */
 
-import type { ProviderClass, AccountId } from '@method/types';
+import type { ProviderClass, AccountId } from '@methodts/types';
 
 // ── Branding for cross-module instanceof safety ─────────────────
 

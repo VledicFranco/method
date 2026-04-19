@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 026 Phase 2: MCP Adapter Layer Tests
  */

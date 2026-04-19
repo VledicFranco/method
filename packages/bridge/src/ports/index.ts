@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export { FileSystemProvider, DirEntry, FileStat, NodeFileSystemProvider } from './file-system.js';
 export { YamlLoader, JsYamlLoader } from './yaml-loader.js';
 export type { MethodologySource, MethodologyChange } from './methodology-source.js';
@@ -6,8 +7,8 @@ export { InMemorySource } from './in-memory-source.js';
 export type { EventBus, EventSink, EventFilter, EventSubscription, BridgeEvent, BridgeEventInput, EventDomain, EventSeverity } from './event-bus.js';
 export type { NativeSessionDiscovery, NativeSessionInfo } from './native-session-discovery.js';
 export { createNodeNativeSessionDiscovery } from './native-session-discovery.js';
-// PRD-057 / S2 §3.3 / C7: session-pool types now live in @method/runtime/sessions.
-export type { SessionPool, SessionStatusInfo, SessionBudget, SessionChainInfo, WorktreeInfo, SessionMode, IsolationMode, WorktreeAction, StreamEvent } from '@method/runtime/sessions';
+// PRD-057 / S2 §3.3 / C7: session-pool types now live in @methodts/runtime/sessions.
+export type { SessionPool, SessionStatusInfo, SessionBudget, SessionChainInfo, WorktreeInfo, SessionMode, IsolationMode, WorktreeAction, StreamEvent } from '@methodts/runtime/sessions';
 
 // PRD 051: Cost Governor ports
 export type { CostOracle, NodeEstimate, StrategyEstimate } from './cost-oracle.js';

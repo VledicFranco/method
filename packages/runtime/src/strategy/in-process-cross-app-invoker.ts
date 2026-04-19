@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * InProcessCrossAppInvoker — in-memory simulator for the CrossAppInvoker port.
  *
@@ -17,7 +18,7 @@
  *   - Captures target handler throws as `CrossAppTargetError` (so the caller's
  *     strategy gate machinery resolves them as node failures — see G-FAILURE-ISOLATION)
  *
- * Owner:    @method/runtime (simulator lives next to the port for discoverability)
+ * Owner:    @methodts/runtime (simulator lives next to the port for discoverability)
  * Producer: tests + single-process demos wire this at the composition root
  * Consumer: DagStrategyExecutor (via the CrossAppInvoker port)
  *

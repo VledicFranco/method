@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * StrategyExecutorAdapter — wraps a DAG executor + strategy source into the
  * StrategyExecutorPort shape consumed by the BuildOrchestrator.
@@ -22,7 +23,7 @@ import type {
   SubStrategySource,
   ArtifactBundle,
   NodeResult,
-} from '@method/methodts/strategy/dag-types.js';
+} from '@methodts/methodts/strategy/dag-types.js';
 import type {
   StrategyExecutorPort,
   StrategyExecutionResult,

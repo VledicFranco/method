@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 import PQueue from 'p-queue';
-import type { Pact, AgentRequest, AgentResult, AgentProvider, AgentEvent, Agent, BudgetContract, ScopeContract, ReasoningPolicy } from '@method/pacta';
-import { createAgent } from '@method/pacta';
-import { claudeCliProvider, executeCliStream, type CliArgs } from '@method/pacta-provider-claude-cli';
+import type { Pact, AgentRequest, AgentResult, AgentProvider, AgentEvent, Agent, BudgetContract, ScopeContract, ReasoningPolicy } from '@methodts/pacta';
+import { createAgent } from '@methodts/pacta';
+import { claudeCliProvider, executeCliStream, type CliArgs } from '@methodts/pacta-provider-claude-cli';
 
 // ── Session contract types (moved here from pty-session.ts — PRD 028 C-4) ──
 

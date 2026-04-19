@@ -3,7 +3,7 @@
 **Status:** Draft — exploratory theory document
 **Author:** PO + Lysica
 **Date:** 2026-03-28
-**Applies to:** `@method/pacta` (future phases), potentially `pv-agi`
+**Applies to:** `@methodts/pacta` (future phases), potentially `pv-agi`
 **Organization:** Vidtecci
 **Extends:** RFC Calculus of Cognitive Composition (Q8)
 

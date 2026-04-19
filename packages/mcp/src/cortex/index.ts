@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/mcp — Cortex transport barrel (PRD-066 Track A).
+ * @methodts/mcp — Cortex transport barrel (PRD-066 Track A).
  *
  * Exports the frozen surface for S9 MCPCortexTransport. Track B handlers
  * plug in behind these exports without changing the public API.

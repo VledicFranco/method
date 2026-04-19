@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Capacity-Weighted Router ────────────────────────────────────
 //
 // Selects the best cluster node for a work request using a weighted

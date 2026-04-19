@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Subagent Delegator — delegates to fresh context windows under pressure.
  *

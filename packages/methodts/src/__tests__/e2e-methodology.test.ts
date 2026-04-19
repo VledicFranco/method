@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * E2E Methodology Test — Full coalgebraic loop over a "task management" domain.
  *

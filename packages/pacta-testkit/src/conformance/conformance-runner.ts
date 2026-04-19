@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `runCortexAgentConformance` — the single CI entry point for a Cortex
  * `category: agent` tenant app. Runs each fixture against a fresh

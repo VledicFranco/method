@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * P2_SD — Software Delivery Methodology.
  *

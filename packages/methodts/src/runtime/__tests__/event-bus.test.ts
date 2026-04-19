@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for EventBus service: emit, subscribe, waitFor, history, hooks.
  *

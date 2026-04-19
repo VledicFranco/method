@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method fixture: context compaction
  *
@@ -5,7 +6,7 @@
  * to trigger context_compacted event on long conversations.
  */
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 export const METHOD_ID = 'context-compaction';
 

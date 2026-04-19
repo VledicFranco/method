@@ -1,4 +1,4 @@
-# Realization Plan — PRD 053: @method/fca-index
+# Realization Plan — PRD 053: @methodts/fca-index
 
 **Date:** 2026-04-08
 **PRD:** docs/prds/053-fca-index-library.md
@@ -8,7 +8,7 @@
 
 ## PRD Summary
 
-**Objective:** Build `@method/fca-index` — a universal L3 library that indexes FCA-compliant
+**Objective:** Build `@methodts/fca-index` — a universal L3 library that indexes FCA-compliant
 projects using hybrid SQLite + Lance embedding store over co-located documentation. Enables
 agents to retrieve relevant code context with a single typed query at < 20% of current
 grep-based token cost.
@@ -55,8 +55,8 @@ score correlation r ≥ 0.85), SC-4 (mode safety), SC-5 (scan ≤ 60s), SC-6 (al
 
 | Double | File | Used By |
 |--------|------|---------|
-| RecordingContextQueryPort | `packages/fca-index/src/testkit/recording-context-query-port.ts` | @method/mcp tests |
-| RecordingCoverageReportPort | `packages/fca-index/src/testkit/recording-coverage-report-port.ts` | @method/mcp tests |
+| RecordingContextQueryPort | `packages/fca-index/src/testkit/recording-context-query-port.ts` | @methodts/mcp tests |
+| RecordingCoverageReportPort | `packages/fca-index/src/testkit/recording-coverage-report-port.ts` | @methodts/mcp tests |
 
 ### Package Scaffold
 

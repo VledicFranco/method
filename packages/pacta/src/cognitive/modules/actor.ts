@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Actor Module — selects and executes actions via the ToolProvider.
  *

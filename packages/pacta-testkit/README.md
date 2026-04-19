@@ -1,5 +1,5 @@
 ---
-title: "@method/pacta-testkit"
+title: "@methodts/pacta-testkit"
 scope: package
 layer: L3
 contents:
@@ -9,7 +9,7 @@ contents:
   - src/assertions.ts
 ---
 
-# @method/pacta-testkit
+# @methodts/pacta-testkit
 
 Verification affordances for Pacta agents -- recording providers, fluent builders, and assertion helpers.
 
@@ -27,7 +27,7 @@ All assertions throw descriptive errors compatible with any test runner (node:te
 ## Install
 
 ```bash
-npm install @method/pacta-testkit
+npm install @methodts/pacta-testkit
 ```
 
 ## Usage
@@ -37,9 +37,9 @@ npm install @method/pacta-testkit
 Replays scripted responses and records every interaction for later inspection.
 
 ```typescript
-import { RecordingProvider } from '@method/pacta-testkit';
-import { createAgent } from '@method/pacta';
-import type { AgentResult, TokenUsage, CostReport } from '@method/pacta';
+import { RecordingProvider } from '@methodts/pacta-testkit';
+import { createAgent } from '@methodts/pacta';
+import type { AgentResult, TokenUsage, CostReport } from '@methodts/pacta';
 
 const provider = new RecordingProvider();
 
@@ -95,7 +95,7 @@ After invocation, the recording captures:
 Implements `ToolProvider` with scripted results per tool name.
 
 ```typescript
-import { MockToolProvider } from '@method/pacta-testkit';
+import { MockToolProvider } from '@methodts/pacta-testkit';
 
 const tools = new MockToolProvider();
 
@@ -125,7 +125,7 @@ console.log(tools.callLog[0].name); // 'Read'
 Construct `Pact` and `AgentRequest` objects with sensible defaults. Tests only specify the fields they care about.
 
 ```typescript
-import { pactBuilder, agentRequestBuilder } from '@method/pacta-testkit';
+import { pactBuilder, agentRequestBuilder } from '@methodts/pacta-testkit';
 
 const pact = pactBuilder()
   .withMode({ type: 'oneshot' })
@@ -153,7 +153,7 @@ import {
   assertToolsCalledUnordered,
   assertBudgetUnder,
   assertOutputMatches,
-} from '@method/pacta-testkit';
+} from '@methodts/pacta-testkit';
 
 // Assert exact tool call sequence (ordered)
 assertToolsCalled(recording, ['Grep', 'Read', 'Edit']);
@@ -228,7 +228,7 @@ src/
     conformance-runner.ts    runCortexAgentConformance entry point
     mock-cortex-ctx.ts       MockCortexCtx + CallRecorder
     compliance-report.ts     ComplianceReport schema + JCS-lite canonicalization + Ed25519 signer
-    cortex-types.ts          Structural mirrors of CortexCtx / MethodAgentResult (sync'd to @method/agent-runtime)
+    cortex-types.ts          Structural mirrors of CortexCtx / MethodAgentResult (sync'd to @methodts/agent-runtime)
     plugin.ts                ConformancePlugin interface + DEFAULT_REQUIRED_PLUGIN_IDS
     plugins/                 Built-in s1-method-agent-port + s3-service-adapters plugins
     fixtures/                Three canonical v1 fixtures
@@ -243,7 +243,7 @@ Cortex, which verifies the detached Ed25519 signature and flips
 `certified: true`.
 
 ```typescript
-import { runCortexAgentConformance } from '@method/pacta-testkit/conformance';
+import { runCortexAgentConformance } from '@methodts/pacta-testkit/conformance';
 import app from '../src/agent.js';            // default export: (ctx) => unknown
 
 const report = await runCortexAgentConformance({
@@ -266,14 +266,14 @@ extend the set via `opts.plugins: [...DEFAULT_PLUGINS, myPlugin]`.
 `createEd25519Signer` as the signer:
 
 ```typescript
-import { createEd25519Signer } from '@method/pacta-testkit/conformance';
+import { createEd25519Signer } from '@methodts/pacta-testkit/conformance';
 
 const pem = process.env.METHOD_CONFORMANCE_SIGNING_KEY_PEM!;
 const signer = createEd25519Signer(pem);
 // …pass signer to runCortexAgentConformance opts
 ```
 
-Peer dependency on `@method/agent-runtime` is declared **optional**; the
+Peer dependency on `@methodts/agent-runtime` is declared **optional**; the
 conformance subpath uses structural type mirrors (`cortex-types.ts`) so
 non-conformance consumers of the testkit do not need to install it.
 

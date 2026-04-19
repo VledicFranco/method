@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * BuildOrchestrator — 8-phase build lifecycle loop.
  *

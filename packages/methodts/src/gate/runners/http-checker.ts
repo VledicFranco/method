@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * httpChecker — gate runner that performs an HTTP GET check.
  *

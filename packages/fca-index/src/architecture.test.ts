@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * FCA Architecture Gate Tests — @method/fca-index
+ * FCA Architecture Gate Tests — @methodts/fca-index
  *
  * Structural fitness functions enforcing FCA invariants within this package.
  * Runs on every `npm test`. Added in Wave 0 as stubs; filled in C-6 (Wave 3).
@@ -8,7 +9,7 @@
  *   G-PORT-SCANNER:  scanner/ does not import node:fs or node:path directly
  *   G-PORT-QUERY:    query/ does not import HTTP clients directly
  *   G-BOUNDARY-CLI:  cli/ does not import domain internals (only ports/)
- *   G-LAYER:         this package does not import @method/mcp or @method/bridge
+ *   G-LAYER:         this package does not import @methodts/mcp or @methodts/bridge
  *
  * References: docs/fractal-component-architecture/05-principles.md (P3, P7)
  */
@@ -18,7 +19,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import fg from 'fast-glob';
 
-const PKG_ROOT = resolve(import.meta.dirname, '..');
+// fast-glob requires forward slashes; on Windows `resolve` returns
+// backslashes, which silently match zero files (false-positive PASS).
+const PKG_ROOT = resolve(import.meta.dirname, '..').replace(/\\/g, '/');
 const SRC = `${PKG_ROOT}/src`;
 
 /**
@@ -73,25 +76,25 @@ describe('G-BOUNDARY-CLI: cli imports only from ports/, not domain internals', (
   });
 });
 
-describe('G-BOUNDARY-DETAIL: component-detail-engine does not import cli/ or @method/mcp', () => {
-  it('query/ does not import cli/ or @method/mcp', () => {
+describe('G-BOUNDARY-DETAIL: component-detail-engine does not import cli/ or @methodts/mcp', () => {
+  it('query/ does not import cli/ or @methodts/mcp', () => {
     const files = readSourceFiles(`${SRC}/query`);
     const violations = files.filter(
       (content) =>
-        /from ['"]\.\.\/cli\//.test(content) || /@method\/mcp/.test(content),
+        /from ['"]\.\.\/cli\//.test(content) || /@methodts\/mcp/.test(content),
     );
-    expect(violations, 'query/ imports cli/ or @method/mcp').toHaveLength(0);
+    expect(violations, 'query/ imports cli/ or @methodts/mcp').toHaveLength(0);
   });
 });
 
-describe('G-BOUNDARY-COMPLIANCE: compliance-engine does not import cli/ or @method/mcp', () => {
-  it('compliance/ does not import cli/ or @method/mcp', () => {
+describe('G-BOUNDARY-COMPLIANCE: compliance-engine does not import cli/ or @methodts/mcp', () => {
+  it('compliance/ does not import cli/ or @methodts/mcp', () => {
     const files = readSourceFiles(`${SRC}/compliance`);
     const violations = files.filter(
       (content) =>
-        /from ['"]\.\.\/cli\//.test(content) || /@method\/mcp/.test(content),
+        /from ['"]\.\.\/cli\//.test(content) || /@methodts\/mcp/.test(content),
     );
-    expect(violations, 'compliance/ imports cli/ or @method/mcp').toHaveLength(0);
+    expect(violations, 'compliance/ imports cli/ or @methodts/mcp').toHaveLength(0);
   });
 });
 
@@ -111,16 +114,17 @@ describe('G-BOUNDARY-MCP: mcp/ composition root does not import domain internals
   });
 });
 
-describe('G-LAYER: fca-index does not import @method/mcp or @method/bridge', () => {
-  it('no source file imports @method/mcp or @method/bridge', () => {
+describe('G-LAYER: fca-index does not import @methodts/mcp or @methodts/bridge', () => {
+  it('no source file imports @methodts/mcp or @methodts/bridge', () => {
+    // Match real import/require statements only — JSDoc references in
+    // comments (e.g. "Consumer: @methodts/mcp") are documentation, not
+    // dependencies, and must not trigger this gate.
+    const importPattern = /(?:from|require\()\s*['"]@methodts\/(?:mcp|bridge)['"]/;
     const allFiles = fg
       .sync(`${SRC}/**/*.ts`, { ignore: ['**/*.test.ts'] })
       .map(f => readFileSync(f, 'utf-8'));
-    const violations = allFiles.filter(content =>
-      /@method\/mcp/.test(content) ||
-      /@method\/bridge/.test(content),
-    );
-    expect(violations, 'fca-index imports @method/mcp or @method/bridge').toHaveLength(0);
+    const violations = allFiles.filter(content => importPattern.test(content));
+    expect(violations, 'fca-index imports @methodts/mcp or @methodts/bridge').toHaveLength(0);
   });
 });
 

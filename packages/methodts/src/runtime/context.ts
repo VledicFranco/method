@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * assembleContext — 4-channel step context assembly.
  *

@@ -1,9 +1,10 @@
-// PRD-057 / S2 §3.2 / C2: strategy engine moved to @method/runtime/strategy.
+// SPDX-License-Identifier: Apache-2.0
+// PRD-057 / S2 §3.2 / C2: strategy engine moved to @methodts/runtime/strategy.
 // This barrel now re-exports the runtime surface for any in-tree consumer that
 // still imports from the bridge strategies domain. Bridge-only items (HTTP
 // routes, env-driven config loader) stay local.
 
-// ── Re-exports from @method/runtime/strategy ────────────────────
+// ── Re-exports from @methodts/runtime/strategy ────────────────────
 export {
   // Artifact store
   InMemoryArtifactStore,
@@ -26,7 +27,7 @@ export {
   computeCriticalPath,
   retroToYaml,
   saveRetro,
-} from '@method/runtime/strategy';
+} from '@methodts/runtime/strategy';
 
 export type {
   ArtifactVersion,
@@ -53,7 +54,7 @@ export type {
   StrategyExecutionResult,
   StrategyExecutorConfig,
   StrategyRetro,
-} from '@method/runtime/strategy';
+} from '@methodts/runtime/strategy';
 
 // loadExecutorConfig lives in bridge (DR-03: env access in bridge only)
 export { loadExecutorConfig } from './strategy-routes.js';

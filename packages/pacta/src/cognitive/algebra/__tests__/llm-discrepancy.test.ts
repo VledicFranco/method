@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for LLM-based discrepancy function (PRD 045 frontier evaluator).
  *

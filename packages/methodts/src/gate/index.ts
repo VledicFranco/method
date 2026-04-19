@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * gate/ — Composable quality gates for methodology execution.
  *

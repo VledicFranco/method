@@ -1,14 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Structural subset of the Cortex tenant-app `ctx` that `@method/agent-runtime`
+ * Structural subset of the Cortex tenant-app `ctx` that `@methodts/agent-runtime`
  * needs at runtime. This is the **single source of truth** for the CortexCtx
- * shape inside `@method/agent-runtime`.
+ * shape inside `@methodts/agent-runtime`.
  *
- * ── R1 mitigation — DO NOT drift from `@method/pacta-provider-cortex` ──
+ * ── R1 mitigation — DO NOT drift from `@methodts/pacta-provider-cortex` ──
  * PRD-058 §3.3 + Risk R1: the field shapes below MUST structurally align with
- * the narrow ctx types owned by `@method/pacta-provider-cortex`
+ * the narrow ctx types owned by `@methodts/pacta-provider-cortex`
  * (`src/ctx-types.ts`). When a facade here grows a field, the provider's
  * corresponding type MUST grow the same field in the same PR. If the facade
- * shrinks, coordinate a major-version bump on `@method/agent-runtime` per S1
+ * shrinks, coordinate a major-version bump on `@methodts/agent-runtime` per S1
  * §7 Compatibility. This co-location is the primary mitigation against
  * structural-type drift ruining tenant app runtime behavior despite
  * successful compilation.
@@ -33,7 +34,7 @@
 
 /**
  * Structural LLM facade. Intentionally minimal — PRD-059
- * `@method/pacta-provider-cortex` consumes the richer shape
+ * `@methodts/pacta-provider-cortex` consumes the richer shape
  * (`CortexLlmCtx`) directly. This surface only names what S1 uses.
  */
 export interface CortexLlmFacade {
@@ -192,7 +193,7 @@ export interface CortexScheduleFacade {
 export interface CortexAuthFacade {
   /**
    * RFC 8693 token exchange. Depth cap (≤2) is enforced by
-   * `CortexTokenExchangeMiddleware` in `@method/pacta-provider-cortex`.
+   * `CortexTokenExchangeMiddleware` in `@methodts/pacta-provider-cortex`.
    */
   exchange?(req: {
     readonly subjectTokenType: string;

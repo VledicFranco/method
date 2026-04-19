@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Narrative metadata types for stdlib methods and methodologies.
  *

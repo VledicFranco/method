@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ObservationsStore — JSONL-backed HistoricalObservations implementation.
  *
@@ -10,7 +11,7 @@
 
 import { createHmac } from 'node:crypto';
 import { join } from 'node:path';
-import type { InvocationSignature } from '@method/types';
+import type { InvocationSignature } from '@methodts/types';
 import type { FileSystemProvider } from '../ports/file-system.js';
 import type {
   HistoricalObservations,

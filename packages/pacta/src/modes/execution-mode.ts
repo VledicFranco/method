@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Execution Modes — behavioral contracts for how an agent runs.
  *

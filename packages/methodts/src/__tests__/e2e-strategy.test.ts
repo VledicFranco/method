@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * E2E Strategy Test — Strategy layer wrapping the task management methodology.
  *

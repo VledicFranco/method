@@ -1,4 +1,5 @@
-// PRD-057 / S2 §3.6: @method/runtime/config — unified config Zod schemas.
+// SPDX-License-Identifier: Apache-2.0
+// PRD-057 / S2 §3.6: @methodts/runtime/config — unified config Zod schemas.
 
 export { SessionsConfigSchema, loadSessionsConfig } from './sessions-config.js';
 export type { SessionsConfig } from './sessions-config.js';

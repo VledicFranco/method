@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Strategy DAG Types — unified type definitions for strategy pipelines.
  *
@@ -175,7 +176,7 @@ export interface ContextLoadNodeConfig {
  * operation on another Cortex tenant app.
  *
  * The runtime dispatches this node through the `CrossAppInvoker` port
- * (`@method/runtime/ports/cross-app-invoker.ts`). The port is implemented by
+ * (`@methodts/runtime/ports/cross-app-invoker.ts`). The port is implemented by
  * either:
  *   - `InProcessCrossAppInvoker` (simulator, shipping in PRD-067 Track A)
  *   - `CortexCrossAppInvoker` (live adapter, BLOCKED on Cortex PRD-080)

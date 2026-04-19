@@ -3,8 +3,8 @@ type: co-design-record
 surface: "CortexEventConnector"
 slug: fcd-surface-event-connector
 date: "2026-04-14"
-owner: "@method/agent-runtime (L3, planned — PRD-058 / PRD-063)"
-producer: "@method/runtime event bus (emits RuntimeEvent)"
+owner: "@methodts/agent-runtime (L3, planned — PRD-058 / PRD-063)"
+producer: "@methodts/runtime event bus (emits RuntimeEvent)"
 consumer: "Cortex ctx.events service (PRD-072) — fanned out to subscribing apps"
 direction: "runtime → cortex-events (unidirectional; connector does not pull from ctx.events)"
 status: frozen
@@ -21,9 +21,9 @@ related:
 
 # Co-Design Record — CortexEventConnector
 
-> Translate `@method/runtime` `RuntimeEvent` objects into Cortex `EventEnvelope`
+> Translate `@methodts/runtime` `RuntimeEvent` objects into Cortex `EventEnvelope`
 > records on `ctx.events`, with manifest-declared topics, clearance-aware
-> payloads, and explicit audit-vs-events split. Lives in `@method/agent-runtime`
+> payloads, and explicit audit-vs-events split. Lives in `@methodts/agent-runtime`
 > so the runtime core stays transport-free.
 
 ---
@@ -33,11 +33,11 @@ related:
 ### 1.1 Where this surface lives
 
 ```
-  @method/runtime (L3, transport-free)
+  @methodts/runtime (L3, transport-free)
       ├── event-bus/  emits RuntimeEvent to EventSink / EventConnector
       │
       ▼ (via EventConnector interface, already exported from runtime/ports)
-  @method/agent-runtime (L3, Cortex-facing)
+  @methodts/agent-runtime (L3, Cortex-facing)
       └── cortex/event-connector.ts   ←  CortexEventConnector (THIS SURFACE)
           │
           ▼ calls ctx.events.emit(topic, payload)
@@ -48,9 +48,9 @@ related:
 ```
 
 `CortexEventConnector` implements `EventConnector` (already frozen in
-runtime-package-boundary). It is **not** part of `@method/runtime` itself —
+runtime-package-boundary). It is **not** part of `@methodts/runtime` itself —
 runtime has zero Cortex dependencies. The connector is an adapter shipped from
-`@method/agent-runtime` and registered at the composition root of whatever
+`@methodts/agent-runtime` and registered at the composition root of whatever
 Cortex tenant app embeds the runtime.
 
 ### 1.2 Why "events" and "audit" are BOTH needed
@@ -107,14 +107,14 @@ packages/agent-runtime/
 ### 2.2 TypeScript surface (frozen)
 
 ```typescript
-// @method/agent-runtime/src/cortex/event-connector.ts
+// @methodts/agent-runtime/src/cortex/event-connector.ts
 
 import type {
   EventConnector,
   ConnectorHealth,
   RuntimeEvent,
   EventFilter,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 import type { CortexEventsCtx } from './ctx-types.js';
 
 // ── Config ──────────────────────────────────────────────────────
@@ -177,16 +177,16 @@ export interface CortexEventConnectorConfig {
 // ── Connector ───────────────────────────────────────────────────
 
 /**
- * CortexEventConnector — translates @method/runtime RuntimeEvent emissions
+ * CortexEventConnector — translates @methodts/runtime RuntimeEvent emissions
  * into Cortex ctx.events envelopes.
  *
- * Owner:    @method/agent-runtime
- * Producer: @method/runtime event bus (emits RuntimeEvent)
+ * Owner:    @methodts/agent-runtime
+ * Producer: @methodts/runtime event bus (emits RuntimeEvent)
  * Consumer: Cortex ctx.events service (via CortexEventsCtx)
  * Status:   frozen — changes require a new /fcd-surface session
  *
  * Contract:
- *   - Implements EventConnector from @method/runtime/ports
+ *   - Implements EventConnector from @methodts/runtime/ports
  *   - Fire-and-forget: publish errors NEVER fail the producing domain
  *   - Bounded buffer + back-pressure → `connector.degraded` local event
  *   - Clearance classification is declared in the topic registry, not
@@ -236,7 +236,7 @@ export interface CortexEventsCtx {
 ### 2.3 Topic registry (static, compile-time)
 
 ```typescript
-// @method/agent-runtime/src/cortex/event-topic-registry.ts
+// @methodts/agent-runtime/src/cortex/event-topic-registry.ts
 
 import type { EventFieldClassification } from './ctx-types.js';
 
@@ -473,7 +473,7 @@ production.
 ## 5. Producer & Consumer Mapping
 
 ### 5.1 Producer
-- **Domain:** `@method/runtime` (already exists, PRD-057)
+- **Domain:** `@methodts/runtime` (already exists, PRD-057)
 - **Emission site:** `RuntimeEvent` objects published to any `EventBus` bound
   in the tenant app's composition root.
 - **No code changes in runtime** for this surface. The connector is
@@ -481,18 +481,18 @@ production.
   agent-runtime's factory.
 
 ### 5.2 Consumer
-- **Package:** `@method/agent-runtime` (planned — PRD-058)
+- **Package:** `@methodts/agent-runtime` (planned — PRD-058)
 - **File:** `packages/agent-runtime/src/cortex/event-connector.ts` (new)
 - **Wiring:** Created by `createMethodAgent` when `ctx.events` is present
   in the passed-in Cortex ctx. Registered on the injected `EventBus` via
   `registerSink`. Disconnected on agent teardown.
-- **Not wired into `@method/bridge`.** The standalone bridge keeps using
+- **Not wired into `@methodts/bridge`.** The standalone bridge keeps using
   WebSocketSink + WebhookConnector — it does not have a `ctx.events` to
   publish to. PRD-063 must NOT add a bridge dependency on `ctx.events`.
 
 ### 5.3 Manifest contract (co-design output)
 
-Every Cortex tenant app consuming `@method/agent-runtime` must include, in
+Every Cortex tenant app consuming `@methodts/agent-runtime` must include, in
 its `cortex-app.yaml`, an `emit[]` entry for every topic it wants to enable:
 
 ```yaml
@@ -510,7 +510,7 @@ requires:
       # ... etc, per METHOD_TOPIC_REGISTRY
 ```
 
-`@method/agent-runtime` ships the schemas and a helper
+`@methodts/agent-runtime` ships the schemas and a helper
 `generateManifestEmitSection()` that tenant apps invoke at build time to keep
 their manifest aligned with the registry. **This closes the loop between
 the static topic registry and the manifest** — the topic registry IS the
@@ -522,7 +522,7 @@ manifest source of truth.
 
 ### G-CONNECTOR-RUNTIME-IMPORTS-ONLY (new)
 ```typescript
-it('CortexEventConnector imports only from @method/runtime/ports', () => {
+it('CortexEventConnector imports only from @methodts/runtime/ports', () => {
   const src = readFileSync(
     'packages/agent-runtime/src/cortex/event-connector.ts',
     'utf-8'
@@ -530,7 +530,7 @@ it('CortexEventConnector imports only from @method/runtime/ports', () => {
   // Must import RuntimeEvent etc. from runtime/ports, never from bridge or runtime internals
   expect(src).not.toMatch(/from\s+['"]@method\/bridge/);
   expect(src).not.toMatch(/from\s+['"]@method\/runtime\/event-bus/);
-  // OK: @method/runtime/ports only
+  // OK: @methodts/runtime/ports only
 });
 ```
 

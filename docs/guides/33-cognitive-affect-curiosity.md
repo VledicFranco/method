@@ -63,7 +63,7 @@ interface AffectInput {
 ### Usage
 
 ```typescript
-import { createAffectModule } from '@method/pacta/cognitive/modules/affect-module.js';
+import { createAffectModule } from '@methodts/pacta/cognitive/modules/affect-module.js';
 
 const affectModule = createAffectModule({
   confidentSuccessThreshold: 3,      // min successes for confident (default: 3)
@@ -96,7 +96,7 @@ Grounded in: Oudeyer, Kaplan & Hafner (2007) — intrinsic motivation via learni
 ### Configuration
 
 ```typescript
-import { createCuriosityModule } from '@method/pacta/cognitive/modules/curiosity-module.js';
+import { createCuriosityModule } from '@methodts/pacta/cognitive/modules/curiosity-module.js';
 
 const curiosityModule = createCuriosityModule({
   windowSize: 10,            // prediction errors per domain (default: 10)
@@ -138,7 +138,7 @@ import {
   computeCuriositySignal,
   findMostCuriousDomain,
   generateExplorationGoal,
-} from '@method/pacta/cognitive/modules/curiosity-module.js';
+} from '@methodts/pacta/cognitive/modules/curiosity-module.js';
 ```
 
 ## Composition Presets
@@ -156,7 +156,7 @@ All presets preserve the enriched baseline core: MonitorV2, PriorityAttend, Reas
 ### Usage
 
 ```typescript
-import { affectivePreset, exploratoryPreset, fullPreset } from '@method/pacta/cognitive/presets/affect-explore.js';
+import { affectivePreset, exploratoryPreset, fullPreset } from '@methodts/pacta/cognitive/presets/affect-explore.js';
 
 // Affective only — adds emotional metacognition
 const config = affectivePreset(

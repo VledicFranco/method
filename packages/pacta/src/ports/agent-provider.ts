@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Agent Provider — the port interface for agent runtimes.
  *
@@ -6,7 +7,7 @@
  * supports the requested execution mode and streaming.
  *
  * Concrete implementations live in separate packages:
- * @method/pacta-provider-claude-cli, @method/pacta-provider-anthropic, etc.
+ * @methodts/pacta-provider-claude-cli, @methodts/pacta-provider-anthropic, etc.
  */
 
 import type { Pact, AgentRequest, AgentResult } from '../pact.js';

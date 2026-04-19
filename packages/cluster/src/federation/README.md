@@ -1,6 +1,6 @@
 # Federation
 
-Event federation layer for `@method/cluster`.
+Event federation layer for `@methodts/cluster`.
 
 ## EventRelay
 

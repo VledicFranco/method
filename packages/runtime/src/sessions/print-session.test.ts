@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
@@ -406,7 +407,7 @@ describe('PrintSession', () => {
       let invokeCount = 0;
 
       // A mock provider that counts invocations
-      const mockProvider: import('@method/pacta').AgentProvider = {
+      const mockProvider: import('@methodts/pacta').AgentProvider = {
         name: 'test-counter',
         capabilities() {
           return { modes: ['oneshot', 'resumable'] as any, streaming: false, resumable: true, budgetEnforcement: 'client' as const, outputValidation: 'none' as const, toolModel: false } as any;
@@ -454,7 +455,7 @@ describe('PrintSession', () => {
 
     it('budget accumulation: cumulative_cost_usd accumulates across prompts via agent.state', async () => {
       let callNum = 0;
-      const mockProvider: import('@method/pacta').AgentProvider = {
+      const mockProvider: import('@methodts/pacta').AgentProvider = {
         name: 'test-budget',
         capabilities() {
           return { modes: ['oneshot', 'resumable'] as any, streaming: false, resumable: true, budgetEnforcement: 'client' as const, outputValidation: 'none' as const, toolModel: false } as any;

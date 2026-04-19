@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Bounded FIFO buffer with threshold-transition callbacks — used by
  * `CortexEventConnector` to smooth transient `ctx.events` backlog

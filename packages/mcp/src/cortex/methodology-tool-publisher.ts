@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/mcp — `MethodologyToolPublisher` (PRD-066 Track A, S9 §5.3).
+ * @methodts/mcp — `MethodologyToolPublisher` (PRD-066 Track A, S9 §5.3).
  *
  * Composition-root-only. Composes a `MethodologySource` view with a
  * `CortexToolRegistrationClient` to keep the Cortex registry in sync
  * with the loaded methodology set.
  *
  * **G-PORT invariant:** this module is referenced ONLY from the
- * `@method/mcp` composition root (`index.ts`'s `main()`). It MUST NOT be
+ * `@methodts/mcp` composition root (`index.ts`'s `main()`). It MUST NOT be
  * referenced from any `CallToolRequestSchema` handler path. The
  * architecture test in `architecture.test.ts` (G-NO-RUNTIME-DISCOVERY)
  * enforces this by grep.

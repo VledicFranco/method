@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * FileSystemProvider — Port interface for filesystem operations.
  *

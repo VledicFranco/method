@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Memory cognitive-module pact — PRD-068 Wave 1.
  *
@@ -11,7 +12,7 @@
  * event for a given trace (§PRD-068 R5 mitigation).
  */
 
-import type { Pact, SchemaDefinition, SchemaResult } from '@method/agent-runtime';
+import type { Pact, SchemaDefinition, SchemaResult } from '@methodts/agent-runtime';
 
 export interface MemoryEntry {
   readonly key: string;

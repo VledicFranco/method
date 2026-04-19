@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Planner — meta-level cognitive module for goal decomposition, difficulty assessment,
  * phase planning, and control directive production.

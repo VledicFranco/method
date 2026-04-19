@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * testkit/assertions/ — Assertion functions for methodology tests.
  *

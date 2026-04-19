@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * BuildOrchestratorPact — Pacta pact definition for the orchestrator agent.
  *

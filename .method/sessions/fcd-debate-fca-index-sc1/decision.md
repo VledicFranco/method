@@ -13,10 +13,10 @@ status: decided
 ## Context
 
 The original SC-1 improvement proposal (`tmp/sc1-improvement-proposal-20260412.md`)
-recommended bumping excerpt limits in `formatContextQueryResult` (in `@method/mcp`)
+recommended bumping excerpt limits in `formatContextQueryResult` (in `@methodts/mcp`)
 from 120→400 chars on the top-1 result only. The council reviewed it and converged
 on a structurally cleaner variant that puts the same change in the producer
-(`@method/fca-index` query engine) instead of the consumer (the MCP formatter).
+(`@methodts/fca-index` query engine) instead of the consumer (the MCP formatter).
 
 ## What Was Decided
 

@@ -99,11 +99,11 @@ interface Lifecycle {
 
 ## Shipped Provider: Claude CLI
 
-The `@method/pacta-provider-claude-cli` package wraps the Claude Code CLI:
+The `@methodts/pacta-provider-claude-cli` package wraps the Claude Code CLI:
 
 ```typescript
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
-import type { ClaudeCliProviderOptions } from '@method/pacta-provider-claude-cli';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
+import type { ClaudeCliProviderOptions } from '@methodts/pacta-provider-claude-cli';
 
 const provider = claudeCliProvider({
   binary: 'claude',       // CLI binary name (default: 'claude')
@@ -123,7 +123,7 @@ const provider = claudeCliProvider({
 The provider type is `AgentProvider & Resumable`:
 
 ```typescript
-import type { ClaudeCliProvider } from '@method/pacta-provider-claude-cli';
+import type { ClaudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 // ClaudeCliProvider = AgentProvider & Resumable
 ```
 
@@ -132,8 +132,8 @@ import type { ClaudeCliProvider } from '@method/pacta-provider-claude-cli';
 The package also exports the lower-level `executeCli()` function and `buildCliArgs()` for advanced usage or custom providers that wrap the CLI differently:
 
 ```typescript
-import { executeCli, buildCliArgs } from '@method/pacta-provider-claude-cli';
-import type { CliArgs, CliResult } from '@method/pacta-provider-claude-cli';
+import { executeCli, buildCliArgs } from '@methodts/pacta-provider-claude-cli';
+import type { CliArgs, CliResult } from '@methodts/pacta-provider-claude-cli';
 ```
 
 ### simpleCodeAgent
@@ -141,7 +141,7 @@ import type { CliArgs, CliResult } from '@method/pacta-provider-claude-cli';
 A convenience factory that creates an agent pre-wired with the Claude CLI provider:
 
 ```typescript
-import { simpleCodeAgent } from '@method/pacta-provider-claude-cli';
+import { simpleCodeAgent } from '@methodts/pacta-provider-claude-cli';
 
 const agent = simpleCodeAgent({ model: 'claude-sonnet-4-6' });
 const result = await agent.invoke({
@@ -154,11 +154,11 @@ This is the simplest possible path — one function call, one invoke. It uses on
 
 ## Shipped Provider: Anthropic API
 
-The `@method/pacta-provider-anthropic` package calls the Anthropic Messages API directly using `fetch()`. No SDK dependency.
+The `@methodts/pacta-provider-anthropic` package calls the Anthropic Messages API directly using `fetch()`. No SDK dependency.
 
 ```typescript
-import { anthropicProvider } from '@method/pacta-provider-anthropic';
-import type { AnthropicProviderOptions } from '@method/pacta-provider-anthropic';
+import { anthropicProvider } from '@methodts/pacta-provider-anthropic';
+import type { AnthropicProviderOptions } from '@methodts/pacta-provider-anthropic';
 
 const provider = anthropicProvider({
   apiKey: process.env.ANTHROPIC_API_KEY,  // or pass explicitly
@@ -181,7 +181,7 @@ const provider = anthropicProvider({
 The provider type is `AgentProvider & Streamable`:
 
 ```typescript
-import type { AnthropicProvider } from '@method/pacta-provider-anthropic';
+import type { AnthropicProvider } from '@methodts/pacta-provider-anthropic';
 // AnthropicProvider = AgentProvider & Streamable
 ```
 
@@ -210,8 +210,8 @@ for await (const event of provider.stream(pact, request)) {
 The package also exports utilities for advanced usage:
 
 ```typescript
-import { mapUsage, calculateCost } from '@method/pacta-provider-anthropic';  // pricing
-import { parseSseChunk, streamSseEvents } from '@method/pacta-provider-anthropic';  // SSE parser
+import { mapUsage, calculateCost } from '@methodts/pacta-provider-anthropic';  // pricing
+import { parseSseChunk, streamSseEvents } from '@methodts/pacta-provider-anthropic';  // SSE parser
 ```
 
 ## Implementing Your Own Provider
@@ -227,7 +227,7 @@ import type {
   AgentResult,
   TokenUsage,
   CostReport,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 export function ollamaProvider(baseUrl = 'http://localhost:11434'): AgentProvider {
   return {
@@ -302,7 +302,7 @@ export function ollamaProvider(baseUrl = 'http://localhost:11434'): AgentProvide
 To support streaming, implement the `Streamable` interface alongside `AgentProvider`:
 
 ```typescript
-import type { AgentProvider, Streamable, AgentEvent } from '@method/pacta';
+import type { AgentProvider, Streamable, AgentEvent } from '@methodts/pacta';
 
 export function myProvider(): AgentProvider & Streamable {
   return {
@@ -325,7 +325,7 @@ Both shipped providers accept injection points for testing:
 - **Claude CLI:** `executorOptions.spawnFn` replaces the actual CLI spawn
 - **Anthropic:** `fetchFn` replaces `globalThis.fetch`
 
-For integration tests, use `RecordingProvider` from `@method/pacta-testkit` instead of a real provider. See [Guide 29](./29-pacta-testing-with-playground.md).
+For integration tests, use `RecordingProvider` from `@methodts/pacta-testkit` instead of a real provider. See [Guide 29](./29-pacta-testing-with-playground.md).
 
 ## Next Steps
 

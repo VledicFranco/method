@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 019.2: Registry API Endpoints
  *
- * Serves methodology registry data from the @method/methodts stdlib.
+ * Serves methodology registry data from the @methodts/methodts stdlib.
  * Tree and method detail endpoints use the typed stdlib catalog and metadata.
  * Manifest and promotion endpoints still read YAML (project config, not methodology data).
  *
@@ -20,12 +21,12 @@ import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 
 // ── Stdlib imports ──
 
-import { getStdlibCatalog, getMethod } from '@method/methodts/stdlib';
-import { topologicalOrder } from '@method/methodts';
+import { getStdlibCatalog, getMethod } from '@methodts/methodts/stdlib';
+import { topologicalOrder } from '@methodts/methodts';
 import {
   getMethodMetadata,
   getMethodologyMetadata,
-} from '@method/methodts/stdlib/metadata';
+} from '@methodts/methodts/stdlib/metadata';
 
 // ── Types ──
 

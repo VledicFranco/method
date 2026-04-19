@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # required for npm provenance
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22 required for native glob support in `node --test` (see ci.yml).
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      # Verify every publishable package version matches the release tag.
+      - name: Verify versions match tag
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          EXPECTED_VERSION="${TAG#v}"
+          MISMATCH=0
+          for pkg in packages/*/package.json; do
+            IS_PRIVATE=$(node -p "require('./$pkg').private || false")
+            if [ "$IS_PRIVATE" = "true" ]; then
+              continue
+            fi
+            PKG_NAME=$(node -p "require('./$pkg').name")
+            PKG_VERSION=$(node -p "require('./$pkg').version")
+            if [ "$PKG_VERSION" != "$EXPECTED_VERSION" ]; then
+              echo "::error file=$pkg::Version mismatch in $PKG_NAME: expected $EXPECTED_VERSION, got $PKG_VERSION"
+              MISMATCH=1
+            fi
+          done
+          if [ "$MISMATCH" = "1" ]; then exit 1; fi
+          echo "All publishable package versions match $TAG"
+
+      # Publish all non-private workspaces with provenance.
+      - run: npm publish --workspaces --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

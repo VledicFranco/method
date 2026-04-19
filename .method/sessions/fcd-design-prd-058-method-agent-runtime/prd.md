@@ -1,11 +1,11 @@
 ---
 type: prd
 id: PRD-058
-title: "@method/agent-runtime — Cortex-Targeted Public API"
+title: "@methodts/agent-runtime — Cortex-Targeted Public API"
 version: 0.1.0
 status: draft
 date: "2026-04-14"
-owner: "@method/agent-runtime"
+owner: "@methodts/agent-runtime"
 size: M
 phase: Phase 1 (Library carve-out, roadmap §7)
 domains:
@@ -15,7 +15,7 @@ domains:
   - pacta-provider-cortex (consumed — PRD-059, separate package)
 surfaces_consumed:
   - S1 MethodAgentPort (frozen — this PRD IS its implementation)
-  - S2 RuntimePackageBoundary (frozen — @method/runtime consumer)
+  - S2 RuntimePackageBoundary (frozen — @methodts/runtime consumer)
   - S3 CortexServiceAdapters (frozen — composed as default middleware)
   - S6 CortexEventConnector (frozen — wired when ctx.events present)
   - S7 CortexMethodologySource (frozen — optional, wired when ctx.storage + methodology feature enabled)
@@ -33,20 +33,20 @@ blocks:
   - samples/cortex-incident-triage-agent/ (roadmap item A6)
   - April 21 demo gate (3.1 Autonomous Incident Tracking)
 depends_on:
-  - PRD-057 (@method/runtime carve-out) — must ship first; agent-runtime has no internal copy
+  - PRD-057 (@methodts/runtime carve-out) — must ship first; agent-runtime has no internal copy
   - PRD-059 (CortexLLMProvider + middleware) — runs in parallel; factory composes them by name
 ---
 
-# PRD-058 — `@method/agent-runtime`: Cortex-Targeted Public API
+# PRD-058 — `@methodts/agent-runtime`: Cortex-Targeted Public API
 
 ## 1. Summary
 
-Ship `@method/agent-runtime`, a new L3 library published to the internal registry,
-that a Cortex tenant app installs with `npm install @method/agent-runtime` and
+Ship `@methodts/agent-runtime`, a new L3 library published to the internal registry,
+that a Cortex tenant app installs with `npm install @methodts/agent-runtime` and
 uses to embed a method-governed agent with **one import and one call**:
 
 ```typescript
-import { createMethodAgent } from '@method/agent-runtime';
+import { createMethodAgent } from '@methodts/agent-runtime';
 const agent = createMethodAgent({ ctx, pact: incidentTriagePact });
 const result = await agent.invoke({ prompt: ctx.input.text });
 ```
@@ -54,14 +54,14 @@ const result = await agent.invoke({ prompt: ctx.input.text });
 The package is the **composition layer** between pacta's declarative pact model
 and Cortex's injected `ctx.*` services. It contains no new framework code —
 every concrete capability (LLM dispatch, audit, token exchange, session store,
-events translation) lives in adjacent packages (`@method/pacta`,
-`@method/runtime`, `@method/pacta-provider-cortex`). This PRD wires them into
+events translation) lives in adjacent packages (`@methodts/pacta`,
+`@methodts/runtime`, `@methodts/pacta-provider-cortex`). This PRD wires them into
 a Cortex-safe default configuration and publishes that composition as the
 `createMethodAgent` factory frozen by FCD Surface S1.
 
 **What this PRD ships:**
 
-1. A new package `packages/agent-runtime/` published as `@method/agent-runtime`.
+1. A new package `packages/agent-runtime/` published as `@methodts/agent-runtime`.
 2. The `createMethodAgent<TOutput>(options)` factory matching the S1 frozen surface verbatim.
 3. Default middleware composition stack (token-exchange → audit → budget-precheck) composed in the order mandated by S3.
 4. `events()` / `onEvent` mutually-exclusive enforcement and the `MethodAgent` handle contract (invoke / resume / abort / dispose / events).
@@ -72,7 +72,7 @@ a Cortex-safe default configuration and publishes that composition as the
 
 **Non-invariants this PRD does NOT change:** the S1 surface (frozen),
 pacta's public API (peer dep), the bridge's own composition root (separate
-consumer of `@method/runtime`), Cortex's `ctx.*` shape (upstream concern).
+consumer of `@methodts/runtime`), Cortex's `ctx.*` shape (upstream concern).
 
 ---
 
@@ -118,12 +118,12 @@ Related problems this PRD does NOT solve (explicit scope):
 
 2. **Pacta is a peer dependency, not a regular dep.** A single pacta version flows through the tenant app; out-of-range pacta triggers a composition-time `ConfigurationError` (S1 §7). Package.json:
    ```json
-   "peerDependencies": { "@method/pacta": "^{current-major}" }
+   "peerDependencies": { "@methodts/pacta": "^{current-major}" }
    ```
 
-3. **Type-only imports from Cortex SDKs.** `@method/agent-runtime` must not import any Cortex package at runtime (S1 §4.1, gate `G-BOUNDARY`). The `CortexCtx` shape is re-declared structurally in `src/cortex/ctx-types.ts` as a type-only file. Cortex SDK types may be imported with `import type` (erased at compile).
+3. **Type-only imports from Cortex SDKs.** `@methodts/agent-runtime` must not import any Cortex package at runtime (S1 §4.1, gate `G-BOUNDARY`). The `CortexCtx` shape is re-declared structurally in `src/cortex/ctx-types.ts` as a type-only file. Cortex SDK types may be imported with `import type` (erased at compile).
 
-4. **`@method/pacta-provider-cortex` is a SEPARATE package (S1 §6.1, explicit).** `@method/agent-runtime` depends on it as a regular dependency. The provider family naming convention is preserved. Moving `CortexLLMProvider` into `@method/agent-runtime` is **rejected** at the surface level.
+4. **`@methodts/pacta-provider-cortex` is a SEPARATE package (S1 §6.1, explicit).** `@methodts/agent-runtime` depends on it as a regular dependency. The provider family naming convention is preserved. Moving `CortexLLMProvider` into `@methodts/agent-runtime` is **rejected** at the surface level.
 
 5. **Opaque `Resumption` token (S1 §4.4, Q5).** The `Resumption.opaque` field is a base64 payload tenant apps treat as black box. The runtime may change the internal representation between minor versions. Only `sessionId` and `expiresAt` are visible fields.
 
@@ -158,7 +158,7 @@ inevitable.** Risk + mitigation:
 - **Mitigation B (in-PR):** An opt-in `assertCtxCompatibility(ctx)` helper
   that structurally checks the runtime `ctx` against the declared
   facades; tenant apps may call it at boot, and the sample app does.
-- **Mitigation C (ongoing, not in this PRD):** Cortex adds `@method/agent-runtime`
+- **Mitigation C (ongoing, not in this PRD):** Cortex adds `@methodts/agent-runtime`
   as a smoke-test consumer of their SDK's type shape so drift trips Cortex
   CI. Tracked as roadmap follow-up O-DRIFT (scoped to Cortex side).
 
@@ -202,7 +202,7 @@ Each item is independently measurable. Acceptance requires all green.
 ### 5.1 In Scope
 
 **Package scaffolding:**
-- `packages/agent-runtime/package.json` — name `@method/agent-runtime`, peer dep on pacta, regular dep on `@method/runtime` + `@method/pacta-provider-cortex`, NO `@t1/cortex-sdk` anywhere.
+- `packages/agent-runtime/package.json` — name `@methodts/agent-runtime`, peer dep on pacta, regular dep on `@methodts/runtime` + `@methodts/pacta-provider-cortex`, NO `@t1/cortex-sdk` anywhere.
 - `packages/agent-runtime/tsconfig.json` — standard FCA package settings, subpath exports where needed.
 - `packages/agent-runtime/src/index.ts` — barrel exporting the S1 symbol set only.
 - `packages/agent-runtime/README.md` — minimal (Install / Usage / Sample / Links to S1).
@@ -238,11 +238,11 @@ runs predictive-only (S3 §4). Provider last, per pacta convention.
 - `src/events-multiplexer.ts` — the `onEvent` ⇄ `events()` fanout. Guards mutual exclusion at `events()` call time via a cheap state flag.
 
 **Event connector auto-wire:**
-- `src/wire-event-connector.ts` — if `ctx.events` present, constructs a `CortexEventConnector` (PRD-063; type-only import here; runtime wire lives in `@method/agent-runtime/src/cortex/event-connector.ts` but **this PRD only imports and registers it if available**; actual connector class lands in PRD-063). Guarded by `options.middleware.events !== false`.
+- `src/wire-event-connector.ts` — if `ctx.events` present, constructs a `CortexEventConnector` (PRD-063; type-only import here; runtime wire lives in `@methodts/agent-runtime/src/cortex/event-connector.ts` but **this PRD only imports and registers it if available**; actual connector class lands in PRD-063). Guarded by `options.middleware.events !== false`.
 
 **Resumption machinery:**
 - `src/resumption.ts` — opaque `Resumption` codec (base64(JSON) with `{ v: 1, storeKey, fencingToken }`), `createResumptionDescriptor()`, `parseResumption()`. Internal shape versioned; consumers see `{ sessionId, opaque, expiresAt }` only.
-- `src/session-store-adapter.ts` — thin adapter between the `SessionStore` port (from `@method/runtime/ports`) and the handle's resume plumbing. Uses the FS adapter by default (bridge-compatible) and the `ctx.storage` adapter when `ctx.storage` is present.
+- `src/session-store-adapter.ts` — thin adapter between the `SessionStore` port (from `@methodts/runtime/ports`) and the handle's resume plumbing. Uses the FS adapter by default (bridge-compatible) and the `ctx.storage` adapter when `ctx.storage` is present.
 
 **Errors:**
 - `src/errors.ts` — `ConfigurationError`, `MissingCtxError`, `UnknownSessionError`, `IllegalStateError`. Re-export pacta's error taxonomy.
@@ -263,15 +263,15 @@ runs predictive-only (S3 §4). Provider last, per pacta convention.
 
 Explicit exclusions — any of these below is a separate PRD:
 
-- **The adapter implementations themselves** (`CortexLLMProvider`, `CortexAuditMiddleware`, `CortexTokenExchangeMiddleware`). → **PRD-059.** This PRD imports them by name from `@method/pacta-provider-cortex`.
-- **The runtime package carve-out** (`@method/runtime` from `@method/bridge`). → **PRD-057.** This PRD declares it as a dep; the symbols must exist before merge.
+- **The adapter implementations themselves** (`CortexLLMProvider`, `CortexAuditMiddleware`, `CortexTokenExchangeMiddleware`). → **PRD-059.** This PRD imports them by name from `@methodts/pacta-provider-cortex`.
+- **The runtime package carve-out** (`@methodts/runtime` from `@methodts/bridge`). → **PRD-057.** This PRD declares it as a dep; the symbols must exist before merge.
 - **Cortex-backed session store** (`ctx.storage`-backed `SessionStore` implementation). → **PRD-061.** This PRD wires the port; the Cortex adapter lands in PRD-061. Until then, the sample app uses the FS adapter.
 - **`JobBackedExecutor` and `createScheduledMethodAgent`.** → **PRD-062.** Phase B; not on the S1 port.
 - **`CortexEventConnector` implementation.** → **PRD-063.** This PRD autowires the class if present at import resolution; does not contain its code.
 - **`CortexMethodologySource` implementation.** → **PRD-064.**
 - **Conformance testkit.** → **PRD-065.** This PRD's sample app is a smoke test, not a conformance test.
 - **MCP transport for Cortex tool registry.** → **PRD-066.**
-- **Bridge migration to `@method/agent-runtime`.** The bridge stays on `@method/pacta` directly. This PRD does not touch bridge code.
+- **Bridge migration to `@methodts/agent-runtime`.** The bridge stays on `@methodts/pacta` directly. This PRD does not touch bridge code.
 - **Pacta `budgetEnforcer.mode` option extension.** → Landed by **PRD-059** (the first place the new mode is *used*). This PRD depends on PRD-059 shipping that field; if PRD-059 is delayed, a stub mock provider is used to validate the wiring path.
 - **Multi-agent orchestration (sub-agent coordination across tenant apps).** S1 §10 non-goal.
 - **`CortexCtx` extensions.** Adding an optional facade is a minor bump on agent-runtime but remains a new `/fcd-surface` session.
@@ -291,19 +291,19 @@ merge (hard dep).
 ### 6.1 Layer placement
 
 ```
-L4  @method/bridge                (unchanged by this PRD)
-    Cortex tenant app             (imports @method/agent-runtime)
+L4  @methodts/bridge                (unchanged by this PRD)
+    Cortex tenant app             (imports @methodts/agent-runtime)
 
-L3  @method/agent-runtime         ← THIS PRD (new package)
+L3  @methodts/agent-runtime         ← THIS PRD (new package)
        └─ depends on:
-            @method/pacta (peer)
-            @method/runtime (regular, for EventBus + SessionStore ports)
-            @method/pacta-provider-cortex (regular, for the cortex adapters)
-    @method/pacta                 (peer dep, unchanged here)
-    @method/runtime               (PRD-057, consumed)
-    @method/pacta-provider-cortex (PRD-059, consumed)
+            @methodts/pacta (peer)
+            @methodts/runtime (regular, for EventBus + SessionStore ports)
+            @methodts/pacta-provider-cortex (regular, for the cortex adapters)
+    @methodts/pacta                 (peer dep, unchanged here)
+    @methodts/runtime               (PRD-057, consumed)
+    @methodts/pacta-provider-cortex (PRD-059, consumed)
 
-L2  @method/methodts              (unchanged)
+L2  @methodts/methodts              (unchanged)
 ```
 
 No L4 code in this package. No upward imports from L3 to L4 (gate `G-LAYER`).
@@ -398,7 +398,7 @@ Tenant apps call it at boot if they want the safety net. The sample app
 calls it; production tenant apps are encouraged but not forced.
 
 **D6 — Session store default = FS adapter.** The bridge and the sample app
-both use the filesystem adapter (shared with `@method/runtime`). Cortex
+both use the filesystem adapter (shared with `@methodts/runtime`). Cortex
 tenant apps in production wire the `ctx.storage`-backed adapter via
 `options.resumption.storeAdapter` — **that adapter ships in PRD-061**, not
 here. The factory reads `options.resumption.storeAdapter` if set, else uses
@@ -431,8 +431,8 @@ No new runtime error introduced. All errors have `.code` fields matching S1.
 | Gate | Source | Assertion |
 |------|--------|-----------|
 | G-BOUNDARY-NO-CORTEX-VALUE-IMPORT | S1 §8 | Scan `packages/agent-runtime/src/**/*.ts` — no non-`type` import from `@cortex/*` or `@t1/cortex-sdk` |
-| G-PORT-SYMBOLS | S1 §8 | `import * as mod from '@method/agent-runtime'` — expected symbol set exact match |
-| G-LAYER | S1 §8 | No import from `@method/bridge` anywhere under `src/` |
+| G-PORT-SYMBOLS | S1 §8 | `import * as mod from '@methodts/agent-runtime'` — expected symbol set exact match |
+| G-LAYER | S1 §8 | No import from `@methodts/bridge` anywhere under `src/` |
 | G-BUDGET-SINGLE-AUTHORITY | S3 §4 | When provider.capabilities().budgetEnforcement === 'native', factory wires budgetEnforcer mode='predictive' (introspect via test-only diagnostics handle) |
 | G-TOKEN-DEPTH-CAP | S3 §5 | exchangeForSubAgent throws at depth 2 (unit test) |
 | G-PACTA-UNCHANGED | this PRD | `packages/pacta/src/index.ts` diff empty in this PR |
@@ -477,7 +477,7 @@ The sample is the **executable proof** that the S1 contract works. It:
 1. Defines a realistic incident-triage pact (oneshot, $0.10 budget, 10 turns
    max, `incident-schema` output, `medium` reasoning, scope: read-only tools
    + `Slack.post` via `ctx.notify`).
-2. Imports only `@method/agent-runtime` (no `@method/pacta` directly — proves
+2. Imports only `@methodts/agent-runtime` (no `@methodts/pacta` directly — proves
    the re-exports are complete).
 3. Uses an in-process mock `ctx` implementing each `CortexCtx` facade with a
    Vitest/sinon-style spy. `ctx.llm.complete` returns a canned JSON string.
@@ -517,7 +517,7 @@ Wired into the main `npm test` target. Sample failures block PR merge.
 Only one domain ships new code: **`agent-runtime` (new)**. Other domains are
 consumed read-only.
 
-### 8.1 `@method/agent-runtime` (this PRD)
+### 8.1 `@methodts/agent-runtime` (this PRD)
 
 **Layer:** L3.
 
@@ -528,11 +528,11 @@ is the largest at ~250 LOC.
 interfaces.
 
 **Ports consumed:**
-- `AgentProvider`, `MemoryPort`, `Pact<T>`, `AgentRequest`, `AgentResult<T>`, `AgentEvent` — from `@method/pacta`.
-- `EventBus`, `EventSink`, `SessionStore` (port only) — from `@method/runtime/ports`.
+- `AgentProvider`, `MemoryPort`, `Pact<T>`, `AgentRequest`, `AgentResult<T>`, `AgentEvent` — from `@methodts/pacta`.
+- `EventBus`, `EventSink`, `SessionStore` (port only) — from `@methodts/runtime/ports`.
 - `CortexCtx` and sub-facades — type-only re-declaration at `src/cortex/ctx-types.ts` (S1 §4.1).
-- `CortexLLMProvider`, `CortexAuditMiddleware`, `CortexTokenExchangeMiddleware` — from `@method/pacta-provider-cortex` (PRD-059).
-- `CortexEventConnector` (optional) — from `@method/pacta-provider-cortex` or separate `@method/agent-runtime-cortex-events`; final home decided by PRD-063.
+- `CortexLLMProvider`, `CortexAuditMiddleware`, `CortexTokenExchangeMiddleware` — from `@methodts/pacta-provider-cortex` (PRD-059).
+- `CortexEventConnector` (optional) — from `@methodts/pacta-provider-cortex` or separate `@methodts/agent-runtime-cortex-events`; final home decided by PRD-063.
 
 **Tests:**
 - Unit tests for: `create-method-agent.ts`, `method-agent-handle.ts`, `events-multiplexer.ts`, `resumption.ts`, `errors.ts`.
@@ -541,16 +541,16 @@ interfaces.
 
 **Verification:** `cd packages/agent-runtime && npm test` exits 0. Gates all green.
 
-### 8.2 `@method/pacta` (unchanged)
+### 8.2 `@methodts/pacta` (unchanged)
 
 No changes. Gate `G-PACTA-UNCHANGED` enforces.
 
-### 8.3 `@method/runtime` (consumed, unchanged)
+### 8.3 `@methodts/runtime` (consumed, unchanged)
 
 Imports: `EventBus`, `EventSink`, `SessionStore` (port only), `RuntimeEvent` type.
 No code changes here.
 
-### 8.4 `@method/pacta-provider-cortex` (consumed, separate PRD)
+### 8.4 `@methodts/pacta-provider-cortex` (consumed, separate PRD)
 
 PRD-059 ships this package. This PRD declares it as a dependency in
 `package.json` with a version range. If PRD-059 has not merged at PR time
@@ -619,7 +619,7 @@ All consumed surfaces frozen on 2026-04-14. No Wave 0 work in this PRD.
 ### Dependencies between waves
 
 Waves are strictly serial within this PRD (shared package). But:
-- **PRD-057 must merge before Wave 1** (needs `@method/runtime` types).
+- **PRD-057 must merge before Wave 1** (needs `@methodts/runtime` types).
 - **PRD-059 must merge before Wave 3** (needs adapter imports). If PRD-059 slips, Wave 3 substitutes stub adapters; Wave 4 tests then use the stubs.
 - **PRD-061 MAY slip past this PRD.** Its `ctx.storage`-backed store is optional; FS adapter is the default.
 
@@ -644,7 +644,7 @@ the drift.
   documents the pattern.
 - Every facade in `ctx-types.ts` has a pointer-comment to its Cortex
   source-of-truth file with a version date.
-- Ongoing: Cortex side adds `@method/agent-runtime` as a type-smoke consumer
+- Ongoing: Cortex side adds `@methodts/agent-runtime` as a type-smoke consumer
   (roadmap O-DRIFT, out of scope for this PRD).
 
 **Residual risk:** accepted. The whole point of the type-only seam is to keep
@@ -675,7 +675,7 @@ composition-time `ConfigurationError` surfaces confusingly.
 
 **Mitigation:**
 - Error message is explicit: "pacta peer version X.Y.Z outside supported
-  range ^N.M.0 — install `@method/pacta@^N.M` or see upgrade guide at..."
+  range ^N.M.0 — install `@methodts/pacta@^N.M` or see upgrade guide at..."
 - Peer-dep range is declared narrow (single major) to force explicit upgrade.
 
 **Residual risk:** minor annoyance for tenant teams on npm install. Acceptable.
@@ -776,7 +776,7 @@ session, as long as the S1 contract holds.
 3. **`wire-event-connector.ts` stub behavior when PRD-063 unmerged.** Plan:
    a no-op connector that logs "event connector not available" at warn once.
    Implementer may instead make the connector wiring conditional on a try/catch
-   around a dynamic `await import('@method/pacta-provider-cortex/event-connector')`
+   around a dynamic `await import('@methodts/pacta-provider-cortex/event-connector')`
    call. Either works; the contract (S6 gate G-AUDIT-SUPERSET still holds
    because audit path is always on).
 

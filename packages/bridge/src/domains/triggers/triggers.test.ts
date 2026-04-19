@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 018: Event Triggers — Tests (Phase 2a-1)
  *

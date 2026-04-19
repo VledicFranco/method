@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for event-topic-registry — PRD-063 §Tests.
  *

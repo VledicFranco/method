@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── HTTP Network Adapter ────────────────────────────────────────
 //
 // NetworkProvider implementation using Node.js built-in fetch (22+).
@@ -5,8 +6,8 @@
 // bridges. Incoming messages are dispatched from the cluster
 // HTTP routes — not from this adapter directly.
 
-import type { NetworkProvider } from '@method/cluster';
-import type { PeerAddress, ClusterMessage } from '@method/cluster';
+import type { NetworkProvider } from '@methodts/cluster';
+import type { PeerAddress, ClusterMessage } from '@methodts/cluster';
 
 // ── Types ─────────────────────────────────────────────────────
 

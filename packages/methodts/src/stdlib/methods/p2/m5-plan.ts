@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M5_PLAN — Phase Planning Method (M5-PLAN v1.0).
  *

@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CheckpointSink — event-bus adapter that writes SessionStore checkpoints.
  *
  * Co-designed in S4 (`fcd-surface-session-store`). Replaces the bridge's
  * legacy `SessionCheckpointSink` with a store-backed writer.
  *
- * Owner: @method/runtime
+ * Owner: @methodts/runtime
  * Producer: composition root (bridge server-entry, agent-runtime bootstrap)
  * Consumer: EventBus (via registerSink)
  *

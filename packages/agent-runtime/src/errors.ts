@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Error taxonomy for `@method/agent-runtime` (PRD-058 §6.5, S1 §4.6).
+ * Error taxonomy for `@methodts/agent-runtime` (PRD-058 §6.5, S1 §4.6).
  *
  * Four composition/runtime errors originate in this package:
  *   - `ConfigurationError`  — options violate a strict-mode rule or peer-dep mismatch
@@ -8,7 +9,7 @@
  *   - `IllegalStateError`   — `events()` called when `onEvent` was provided (or vice versa)
  *
  * All pacta error types pass through unchanged via the barrel re-export in
- * `index.ts`. Consumers never need to import from `@method/pacta` directly.
+ * `index.ts`. Consumers never need to import from `@methodts/pacta` directly.
  */
 
 /** Thrown at composition time when CreateMethodAgentOptions is invalid. */

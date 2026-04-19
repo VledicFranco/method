@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M3_TMP — Traditional Meta-Prompting Method (M3-TMP v1.0).
  *

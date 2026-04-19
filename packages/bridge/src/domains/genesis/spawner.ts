@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 020 Phase 2A: Genesis Spawner
  *
@@ -8,7 +9,7 @@
  * - Maintain across bridge restarts
  */
 
-import type { SessionPool, SessionStatusInfo } from '@method/runtime/sessions';
+import type { SessionPool, SessionStatusInfo } from '@methodts/runtime/sessions';
 import { getGenesisInitializationPrompt } from './initialization.js';
 
 export interface GenesisConfig {

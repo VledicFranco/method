@@ -1,4 +1,5 @@
-// PRD-057 / S2 §3.6: @method/runtime/config — cost-governor configuration schema.
+// SPDX-License-Identifier: Apache-2.0
+// PRD-057 / S2 §3.6: @methodts/runtime/config — cost-governor configuration schema.
 // Moved from packages/bridge/src/domains/cost-governor/config.ts.
 
 import { z } from 'zod';

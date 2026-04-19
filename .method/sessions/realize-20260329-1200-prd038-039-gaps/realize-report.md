@@ -44,7 +44,7 @@
 | Wave | File | Change |
 |------|------|--------|
 | pre-2 | root tsconfig.json | Added packages/cluster reference |
-| pre-2 | packages/bridge/package.json | Added @method/cluster dependency |
+| pre-2 | packages/bridge/package.json | Added @methodts/cluster dependency |
 | pre-4 | packages/cluster/src/index.ts | Re-exported routing + federation modules |
 | pre-4 | packages/bridge/src/ports/event-bus.ts | Added sourceNodeId, federated optional fields |
 | post-4 | packages/bridge/src/server-entry.ts | Full cluster domain wiring |

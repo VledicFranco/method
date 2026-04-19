@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Budget Enforcer Middleware — wraps provider invocations with budget tracking.
  *

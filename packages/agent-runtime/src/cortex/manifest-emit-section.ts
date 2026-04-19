@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * generate-manifest-emit-section — tenant-app build helper.
  *
@@ -11,7 +12,7 @@
  *        const entries = generateManifestEmitSection();
  *        const yaml = emitEntriesToYaml(entries);  // see below
  *   2. CLI (tenant-app build script):
- *        node -e "require('@method/agent-runtime/cortex/manifest-emit-section')\
+ *        node -e "require('@methodts/agent-runtime/cortex/manifest-emit-section')\
  *                 .cliMain(process.argv)"
  *
  * The YAML emitter is deliberately minimal — it does not depend on
@@ -50,7 +51,7 @@ export interface ManifestEmitOptions {
   readonly topics?: ReadonlySet<string>;
   /**
    * How the tenant app references shipped schemas.
-   *  - 'node_modules' (default): resolve via node_modules/@method/agent-runtime/
+   *  - 'node_modules' (default): resolve via node_modules/@methodts/agent-runtime/
    *  - 'copied': the tenant app vendors schemas locally. Use `copiedSchemaPrefix`
    *    (default './schemas/method/') to customise the path.
    */
@@ -64,7 +65,7 @@ export interface ManifestEmitOptions {
 // ── Core API ─────────────────────────────────────────────────────
 
 const DEFAULT_NODE_MODULES_PREFIX =
-  './node_modules/@method/agent-runtime/dist/cortex/';
+  './node_modules/@methodts/agent-runtime/dist/cortex/';
 const DEFAULT_COPIED_PREFIX = './schemas/method/';
 
 export function generateManifestEmitSection(
@@ -159,7 +160,7 @@ function quote(s: string): string {
 
 /**
  * CLI entry. Invoked as:
- *   node -e "require('@method/agent-runtime/...').cliMain(process.argv)" \
+ *   node -e "require('@methodts/agent-runtime/...').cliMain(process.argv)" \
  *     -- --format=yaml --mode=node_modules
  *
  * Accepted flags:
@@ -215,7 +216,7 @@ generate-manifest-emit-section — produce cortex-app.yaml emit[] entries
 from the method topic registry.
 
 Usage:
-  node -e "console.log(require('@method/agent-runtime/dist/cortex/manifest-emit-section').cliMain(process.argv))" -- [flags]
+  node -e "console.log(require('@methodts/agent-runtime/dist/cortex/manifest-emit-section').cliMain(process.argv))" -- [flags]
 
 Flags:
   --format=yaml|json          Output format (default: yaml)

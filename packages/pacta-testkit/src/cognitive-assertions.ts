@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Assertion helpers for cognitive composition test verification.
  *
@@ -20,7 +21,7 @@ import type {
   MemoryPortV3,
   EpisodicEntry,
   SemanticEntry,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 import type { RecordingModule } from './recording-module.js';
 

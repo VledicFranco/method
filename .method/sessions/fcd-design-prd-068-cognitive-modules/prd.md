@@ -7,9 +7,9 @@ status: implemented-partial (PR #187 — Wave 1 skeleton only; cognitive validat
 version: 0.1
 size: L
 domains:
-  - "@method/agent-runtime"
-  - "@method/pacta (cognitive/)"
-  - "@method/runtime (event-bus, continuation)"
+  - "@methodts/agent-runtime"
+  - "@methodts/pacta (cognitive/)"
+  - "@methodts/runtime (event-bus, continuation)"
   - "Cortex ctx.events (PRD-072)"
   - "Cortex ctx.jobs + ctx.schedule (PRD-071 / PRD-075)"
   - "Cortex manifest/registry (RFC-005 §10.2)"
@@ -36,7 +36,7 @@ experiment_dependencies:
 Ship method's canonical cognitive modules (Monitor, Planner, Critic, Observer,
 Reflector, Memory) as **standalone Cortex tenant apps** of `category: agent`.
 Instead of composing in one process via pacta's algebra, N cognitive modules
-run as N peer Cortex apps, each built on `@method/agent-runtime`
+run as N peer Cortex apps, each built on `@methodts/agent-runtime`
 (`createMethodAgent`), each with its own budget, audit trail, and lifecycle —
 and they coordinate by reading and writing a shared **cortical-workspace topic
 family** on `ctx.events`.
@@ -114,7 +114,7 @@ listed experiments in §10.
 ### 2.1 Hard platform constraints (from Cortex RFC-005 + PRDs 068/071/072/075)
 
 1. **Category = agent, Tier = 2 (service) per module.** Each cognitive module ships as its own tenant app. No exceptions. A module-bundle app (N modules in one container) is explicitly out of scope — it would re-collapse the isolation that justifies this PRD.
-2. **No direct module-to-module calls.** Modules cannot call each other's HTTP endpoints, cannot import each other's packages, cannot share code beyond `@method/agent-runtime` + `@method/pacta` library code.
+2. **No direct module-to-module calls.** Modules cannot call each other's HTTP endpoints, cannot import each other's packages, cannot share code beyond `@methodts/agent-runtime` + `@methodts/pacta` library code.
 3. **State sharing ONLY via `ctx.events` topics.** The cortical workspace is a topic family, not a shared database. `ctx.storage` is *per-app* and private. If two modules need to see the same fact, that fact flows through a topic.
 4. **Budget isolation per module.** `ctx.llm` budget is per-AppId. There is no cross-module budget pool. Total system budget = sum of per-module budgets, with no rebalancing at runtime.
 5. **Audit per module.** Every module's decisions emit to *its own* `ctx.audit` record. There is no unified "cognitive trace" audit — audit is per-app by design.
@@ -126,14 +126,14 @@ listed experiments in §10.
 
 ### 2.2 Method-side constraints
 
-1. **Built on frozen surfaces.** No new `@method/agent-runtime` or `@method/runtime` surfaces invented here. The two NEW surfaces introduced (S10 workspace topic spec, S11 handshake protocol) live *on top of* `CortexEventConnector` (S6) using `METHOD_TOPIC_REGISTRY` — they are topic-family specifications, not new runtime ports.
-2. **Each module = one `Pact` instance.** The module's cognitive function (Monitor, Planner, etc.) is expressed as the module's pact — same shape `@method/agent-runtime` already handles. No special "cognitive tenant app" runtime. This keeps the blast radius of the PRD small.
+1. **Built on frozen surfaces.** No new `@methodts/agent-runtime` or `@methodts/runtime` surfaces invented here. The two NEW surfaces introduced (S10 workspace topic spec, S11 handshake protocol) live *on top of* `CortexEventConnector` (S6) using `METHOD_TOPIC_REGISTRY` — they are topic-family specifications, not new runtime ports.
+2. **Each module = one `Pact` instance.** The module's cognitive function (Monitor, Planner, etc.) is expressed as the module's pact — same shape `@methodts/agent-runtime` already handles. No special "cognitive tenant app" runtime. This keeps the blast radius of the PRD small.
 3. **No regression for in-process cognitive composition.** `packages/pacta/src/cognitive/` continues to work standalone. This PRD adds a *deployment target*, not a replacement. Bridge-based use keeps in-process composition; Cortex-hosted use gets tenant-app-per-module.
 4. **Observer role unchanged.** The cortical workspace is observer-compatible — an ambient-UI app (roadmap item 15, PRD 025 Genesis) can subscribe to `method.cortex.workspace.*` to render the reasoning in real time without participating. This is essential for debugging and the demo.
 
 ### 2.3 Anti-constraints (what we explicitly forbid)
 
-- **No shared `@method/cognitive-workspace` singleton.** No library that holds state across module processes. Every bit of shared state is an event payload.
+- **No shared `@methodts/cognitive-workspace` singleton.** No library that holds state across module processes. Every bit of shared state is an event payload.
 - **No `POST /cognitive/reason` RPC.** Modules do not expose HTTP endpoints to each other. All coordination is pub/sub.
 - **No "lead module" pattern.** No module owns the cycle; any module can stall and the system must degrade gracefully (§6 failure modes).
 - **No synchronous workspace reads.** A module that needs the latest workspace snapshot reads it from its own local shadow (built from events it subscribed to), not by querying a peer.
@@ -142,7 +142,7 @@ listed experiments in §10.
 
 ### 3.1 Binary demo gate (Wave 1 — the shippable milestone)
 
-- [ ] **G-PAIR-LIVE:** Two Cortex tenant apps (Monitor + Planner) deployed from `samples/cortex-cognitive-monitor/` and `samples/cortex-cognitive-planner/` templates, both `category: agent`, both consuming `@method/agent-runtime`.
+- [ ] **G-PAIR-LIVE:** Two Cortex tenant apps (Monitor + Planner) deployed from `samples/cortex-cognitive-monitor/` and `samples/cortex-cognitive-planner/` templates, both `category: agent`, both consuming `@methodts/agent-runtime`.
 - [ ] **G-WORKSPACE-EXCHANGE:** Monitor emits `method.cortex.workspace.state` with anomaly flags; Planner subscribes, re-plans, emits `method.cortex.workspace.plan_updated`; Monitor subscribes to that in turn. Round-trip visible in both apps' audit logs and in `ctx.events` fan-out telemetry.
 - [ ] **G-BUDGET-ISOLATION:** `ctx.llm` budget ledger shows two separate reservations (one per AppId) with independent spend totals. Starving one module's budget does NOT block the other (degraded operation per §6).
 - [ ] **G-HANDSHAKE:** Both apps advertise presence via `method.cortex.workspace.module_online`; either app independently observes the other's JOIN within 10s of deploy.
@@ -166,7 +166,7 @@ listed experiments in §10.
    - `samples/cortex-cognitive-monitor/` — consumes `MonitorV2` module behavior from `packages/pacta/src/cognitive/modules/monitor-v2.ts`, wraps in a pact, ships as a Cortex agent app.
    - `samples/cortex-cognitive-planner/` — consumes `planner.ts`, same treatment.
    - `samples/cortex-cognitive-memory/` — consumes `memory-module-v3.ts` + `in-memory-dual-store.ts`; ships with `ctx.storage`-backed episodic/semantic store.
-2. **S10 — Cortical Workspace Topic Spec.** A topic family under `method.cortex.workspace.*` added to `METHOD_TOPIC_REGISTRY` (owned by `@method/agent-runtime`, per S6). Schemas + JSONPath classifications shipped. Manifest-generation helper `generateCortexCognitiveEmitSection(modules: ModuleRole[])` produces the `requires.events.{emit,on}` block.
+2. **S10 — Cortical Workspace Topic Spec.** A topic family under `method.cortex.workspace.*` added to `METHOD_TOPIC_REGISTRY` (owned by `@methodts/agent-runtime`, per S6). Schemas + JSONPath classifications shipped. Manifest-generation helper `generateCortexCognitiveEmitSection(modules: ModuleRole[])` produces the `requires.events.{emit,on}` block.
 3. **S11 — Module Handshake Protocol.** A lightweight `JOIN / HEARTBEAT / LEAVE` sub-protocol over `method.cortex.workspace.module_online` and `method.cortex.workspace.module_offline` topics. 30s heartbeat; 90s implicit LEAVE if heartbeats stop.
 4. **Session linkage via S5.** Every module's pact runs in `resumable` mode and uses the `ContinuationEnvelope` for cross-worker continuity. The envelope's `traceId` is the **coordination key** (§5.2) — all modules reacting to the same root user request share the `traceId` and use it as a cortical-workspace event filter.
 5. **Budget isolation decision** (§6): fixed per-module budgets, no rebalancing.
@@ -222,7 +222,7 @@ continuation envelope.
 ### 5.2 Cortical Workspace Topic Spec (S10)
 
 The topic family `method.cortex.workspace.*` is the substrate. All topics are
-added to `METHOD_TOPIC_REGISTRY` in `@method/agent-runtime` per S6.
+added to `METHOD_TOPIC_REGISTRY` in `@methodts/agent-runtime` per S6.
 
 #### 5.2.1 Coordination key: `traceId`
 
@@ -340,7 +340,7 @@ module that is actively processing workspace events are referring to the
 same reasoning episode by the same id. A debugger can join logs on `traceId`
 across:
 
-- `@method/agent-runtime` pact lifecycle events (audit)
+- `@methodts/agent-runtime` pact lifecycle events (audit)
 - `method.cortex.workspace.*` coordination events (ctx.events)
 - `method.pact.continue` job payloads (ctx.jobs)
 
@@ -407,7 +407,7 @@ PRD-079 extension or roadmap item 15).
 
 ### 7.2 Audit per module
 
-Every module's `@method/agent-runtime` instance emits to its own `ctx.audit`
+Every module's `@methodts/agent-runtime` instance emits to its own `ctx.audit`
 record per CortexAuditMiddleware (frozen in S3). The audit events are:
 
 - Per-invocation pacta lifecycle (`method.agent.*` audit eventTypes)
@@ -428,7 +428,7 @@ Each module exposes (via Cortex's standard Tier 2 observability):
 - `cortical.degradation_events_total{reason}`
 - `cortical.round_trip_seconds{from_topic, to_topic}` (for G-PAIR-LIVE SLO)
 
-These are Cortex metrics, not new method metrics — `@method/agent-runtime`
+These are Cortex metrics, not new method metrics — `@methodts/agent-runtime`
 uses Cortex's standard `ctx.metrics` (or equivalent) via S3-family adapters.
 
 ## 8. Risks
@@ -505,14 +505,14 @@ a flat agent."
 
 ### Wave 0 — Surfaces & Registry (this PRD's contribution to the shared fabric)
 
-1. Add `method.cortex.workspace.*` topics to `METHOD_TOPIC_REGISTRY` in `@method/agent-runtime` (consumes S6).
+1. Add `method.cortex.workspace.*` topics to `METHOD_TOPIC_REGISTRY` in `@methodts/agent-runtime` (consumes S6).
 2. Ship JSON schemas for each topic under `packages/agent-runtime/schemas/method/cortex/`.
-3. Define `ModuleRole` + `CorticalWorkspaceMembership` helper in `@method/agent-runtime/src/cortex/cortical-workspace.ts`.
+3. Define `ModuleRole` + `CorticalWorkspaceMembership` helper in `@methodts/agent-runtime/src/cortex/cortical-workspace.ts`.
 4. Define `generateCortexCognitiveEmitSection(roles)` manifest-generation helper.
 5. Add Gate A assertions to `packages/agent-runtime/src/gates/gates.test.ts`.
 
 **Dependency:** S6 frozen (yes). **Deliverable:** two published schemas +
-helper ship with the next `@method/agent-runtime` minor bump.
+helper ship with the next `@methodts/agent-runtime` minor bump.
 
 ### Wave 1a — Monitor tenant app template
 
@@ -534,7 +534,7 @@ dual-store. Longer-running app with scheduled consolidation via
 
 ### Wave 1d — Pair-exchange integration test
 
-Extends `@method/pacta-testkit/conformance` (S8) with a `cortical-pair` fixture
+Extends `@methodts/pacta-testkit/conformance` (S8) with a `cortical-pair` fixture
 that deploys Monitor + Planner to Cortex dev stack and validates Gate C.
 
 ### Wave 1e — Daily Twin Report flow hookup

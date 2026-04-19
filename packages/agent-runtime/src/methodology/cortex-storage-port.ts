@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Structural shim for the subset of PRD-064 `ctx.storage` that
  * `CortexMethodologySource` uses.
  *
- * This shim exists so `@method/agent-runtime` does NOT import from
+ * This shim exists so `@methodts/agent-runtime` does NOT import from
  * `@t1/cortex-sdk` — the SDK is adapted into this structural type at
  * the agent-runtime composition root (see PRD-064 §6.5).
  *

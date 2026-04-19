@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Test suite for PRD 020 Phase 4: Multi-Project Dashboard & Event Stream
  * Covers: project list fetching, event polling, filtering, cursor management, session isolation

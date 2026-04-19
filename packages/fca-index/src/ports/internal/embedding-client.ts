@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * EmbeddingClientPort — Internal port isolating index-store domain from HTTP calls.
  *
- * Owner: @method/fca-index (defines interface + provides VoyageEmbeddingClient impl)
+ * Owner: @methodts/fca-index (defines interface + provides VoyageEmbeddingClient impl)
  * Consumer: index-store domain (internal)
  * Direction: embedding service → index-store (unidirectional)
  * Status: frozen 2026-04-08

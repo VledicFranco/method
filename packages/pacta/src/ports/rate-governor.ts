@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RateGovernor — Base port interface (PRD 051 S2).
  *
@@ -6,7 +7,7 @@
  * and extends it with utilization/activeSlots for admin endpoints.
  */
 
-import type { ProviderClass, SlotId, AccountId } from '@method/types';
+import type { ProviderClass, SlotId, AccountId } from '@methodts/types';
 
 // ── Slot types ──────────────────────────────────────────────────
 

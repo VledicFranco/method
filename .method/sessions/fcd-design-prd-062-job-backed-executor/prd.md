@@ -9,10 +9,10 @@ size: M
 group: B
 phase: 3
 domains:
-  - "@method/runtime (new package — continuation model lives here)"
-  - "@method/agent-runtime (re-exports ScheduledPact + payload builder)"
-  - "@method/bridge (in-process executor preserved for standalone mode)"
-  - "@method/pacta (extends AgentEvent union with pact.dead_letter)"
+  - "@methodts/runtime (new package — continuation model lives here)"
+  - "@methodts/agent-runtime (re-exports ScheduledPact + payload builder)"
+  - "@methodts/bridge (in-process executor preserved for standalone mode)"
+  - "@methodts/pacta (extends AgentEvent union with pact.dead_letter)"
 surfaces:
   - S5 (JobBackedExecutor + CortexScheduledPact) — IMPLEMENTS
   - S4 (SessionStore + CheckpointSink) — CONSUMES
@@ -172,20 +172,20 @@ wraps today's `StrategyExecutor` without changing its behaviour.
 
 ### In scope
 
-- `@method/runtime` port files from S5 §7: `job-backed-executor.ts`,
+- `@methodts/runtime` port files from S5 §7: `job-backed-executor.ts`,
   `continuation-envelope.ts`, `dlq-observer.ts`, `scheduled-pact.ts`,
   plus new `schedule-client.ts`.
-- `@method/runtime/executors/cortex-job-backed-executor.ts` — concrete
+- `@methodts/runtime/executors/cortex-job-backed-executor.ts` — concrete
   Cortex implementation.
-- `@method/runtime/executors/in-process-executor.ts` — standalone bridge
+- `@methodts/runtime/executors/in-process-executor.ts` — standalone bridge
   implementation wrapping `StrategyExecutor`.
-- `@method/runtime/scheduling/scheduled-pact.ts` — payload builder +
+- `@methodts/runtime/scheduling/scheduled-pact.ts` — payload builder +
   runtime binding helper.
-- `@method/runtime/dlq/cortex-dlq-observer.ts` — DLQ inspection adapter
+- `@methodts/runtime/dlq/cortex-dlq-observer.ts` — DLQ inspection adapter
   emitting `PactDeadLetterEvent`.
-- `@method/agent-runtime` re-exports: `ScheduledPact`, `JobBackedExecutor`
+- `@methodts/agent-runtime` re-exports: `ScheduledPact`, `JobBackedExecutor`
   type, `ContinuationEnvelope` type, the `payload()` builder.
-- `@method/pacta` `AgentEvent` union extension: adds
+- `@methodts/pacta` `AgentEvent` union extension: adds
   `PactDeadLetterEvent` variant.
 - Manifest schema additions (see Architecture §9) for
   `spec.methodology.scheduledPacts[]` and the `method.pact.continue`
@@ -193,7 +193,7 @@ wraps today's `StrategyExecutor` without changing its behaviour.
 - Gate assertions from S5 §8: `G-PORT`, `G-BOUNDARY`, `G-ENVELOPE-VERSION`,
   `G-IDEMPOTENCY`, `G-ONE-HANDLER`.
 - Conformance fixtures: restart-fuzz (SC-1), replay-fuzz (SC-4),
-  dlq-terminal (SC-3). Shipped via `@method/pacta-testkit/conformance`
+  dlq-terminal (SC-3). Shipped via `@methodts/pacta-testkit/conformance`
   (PRD-065).
 
 ### Out of scope
@@ -222,7 +222,7 @@ wraps today's `StrategyExecutor` without changing its behaviour.
 ## Domain Map
 
 ```
- @method/runtime                      @method/agent-runtime                Cortex ctx.*
+ @methodts/runtime                      @methodts/agent-runtime                Cortex ctx.*
  ───────────────                      ─────────────────────                ────────────
  JobBackedExecutor port  ───defines───────────────────────────>
  ContinuationEnvelope    ───defines───────────────────────────>
@@ -233,7 +233,7 @@ wraps today's `StrategyExecutor` without changing its behaviour.
  (CortexLLMProvider/S3)  ──reserve/settle (via BudgetRef)────────────────> ctx.llm.reserve [O1]
  SessionStore (S4)       ──resume/appendCheckpoint/lastAckedTurn─────────> ctx.storage [PRD-064]
 
- @method/bridge                       @method/pacta
+ @methodts/bridge                       @methodts/pacta
  ──────────────                       ─────────────
  InProcessExecutor  ─implements port  AgentEvent += pact.dead_letter
    wraps StrategyExecutor (today)
@@ -242,7 +242,7 @@ wraps today's `StrategyExecutor` without changing its behaviour.
 **Arrow classification (per S5):** all producer/consumer relationships are
 already frozen as S5 ports. This PRD adds **zero new cross-domain ports**
 — it is an *implementation* PRD. The only new shared type is the
-`PactDeadLetterEvent` variant added to the `@method/pacta` `AgentEvent`
+`PactDeadLetterEvent` variant added to the `@methodts/pacta` `AgentEvent`
 union, which is additive.
 
 ---
@@ -257,7 +257,7 @@ consumption map only.
 | S5 JobBackedExecutor + ScheduledPact | **implements** | `fcd-surface-job-backed-executor/decision.md` | entire port — §2 interfaces, §3 handler model, §5 budget strategies, §6 idempotency, §8 gates |
 | S4 SessionStore + CheckpointSink | consumes | `fcd-surface-session-store/decision.md` | `resume(sessionId, workerId)`, `appendCheckpoint(sessionId, checkpoint, fencingToken)`, `lastAckedTurn` field, `loadLatestCheckpoint` |
 | S3 CortexServiceAdapters | consumes | `fcd-surface-cortex-service-adapters/decision.md` | `BudgetRef.reservationId` from `CortexLLMProvider`, the `ctx.llm.reserve/settle` handle shape (pending O1) |
-| S2 RuntimePackageBoundary | consumes | `fcd-surface-runtime-package-boundary/decision.md` | `@method/runtime` subpath exports (`/ports`, `/executors`, `/scheduling`) |
+| S2 RuntimePackageBoundary | consumes | `fcd-surface-runtime-package-boundary/decision.md` | `@methodts/runtime` subpath exports (`/ports`, `/executors`, `/scheduling`) |
 
 **No new surfaces.** If implementation reveals a needed contract change,
 it requires a fresh `/fcd-surface` session and promotes envelope to
@@ -530,7 +530,7 @@ spec:
     # (existing fields from PRD-064 …)
 
     # NEW: pact continuation handler declaration. Required for any app
-    # that uses @method/runtime JobBackedExecutor. Exactly one per app.
+    # that uses @methodts/runtime JobBackedExecutor. Exactly one per app.
     pactContinueHandler:
       jobType: method.pact.continue
       # Concurrency is taken from PRD-071 default (1 in-flight) unless
@@ -550,7 +550,7 @@ spec:
             twinId: franco
 ```
 
-Build-time generator (`@method/agent-runtime/bin/gen-manifest`) reads this
+Build-time generator (`@methodts/agent-runtime/bin/gen-manifest`) reads this
 block and emits the raw Cortex `schedules[]` entries with
 `ScheduledPact.payload(...)` values. Gate: the generator must be idempotent
 — running it twice produces identical manifest output.
@@ -563,17 +563,17 @@ additions are a convenience, not a requirement.
 
 | Component | Package | Layer | Notes |
 |-----------|---------|-------|-------|
-| `JobBackedExecutor` port | `@method/runtime/ports` | L3 | Zero transport deps |
-| `ContinuationEnvelope` types | `@method/runtime/ports` | L3 | Plain data |
-| `CortexJobBackedExecutor` | `@method/runtime/executors` | L3 | Imports `JobClient` only |
-| `InProcessExecutor` | `@method/runtime/executors` | L3 | Wraps `StrategyExecutor` — forwards unchanged |
-| `ScheduledPact` | `@method/runtime/scheduling` | L3 | Consumer-facing re-exported from `@method/agent-runtime` |
-| `CortexDlqObserver` | `@method/runtime/dlq` | L3 | Emits `AgentEvent` |
-| `PactDeadLetterEvent` | `@method/pacta` (extend `AgentEvent` union) | L2 | Additive — one-line union extension |
-| Manifest generator | `@method/agent-runtime/bin` | L4 (tool) | Build-time CLI; not imported by runtime |
+| `JobBackedExecutor` port | `@methodts/runtime/ports` | L3 | Zero transport deps |
+| `ContinuationEnvelope` types | `@methodts/runtime/ports` | L3 | Plain data |
+| `CortexJobBackedExecutor` | `@methodts/runtime/executors` | L3 | Imports `JobClient` only |
+| `InProcessExecutor` | `@methodts/runtime/executors` | L3 | Wraps `StrategyExecutor` — forwards unchanged |
+| `ScheduledPact` | `@methodts/runtime/scheduling` | L3 | Consumer-facing re-exported from `@methodts/agent-runtime` |
+| `CortexDlqObserver` | `@methodts/runtime/dlq` | L3 | Emits `AgentEvent` |
+| `PactDeadLetterEvent` | `@methodts/pacta` (extend `AgentEvent` union) | L2 | Additive — one-line union extension |
+| Manifest generator | `@methodts/agent-runtime/bin` | L4 (tool) | Build-time CLI; not imported by runtime |
 
-Bridge `@method/bridge/domains/strategies/strategy-executor.ts` stays put
-— `InProcessExecutor` is a new thin adapter over it, in `@method/runtime`.
+Bridge `@methodts/bridge/domains/strategies/strategy-executor.ts` stays put
+— `InProcessExecutor` is a new thin adapter over it, in `@methodts/runtime`.
 
 ### 11. Gate plan
 
@@ -643,7 +643,7 @@ atomically, escalate to S4 amendment.
 
 **Severity:** LOW. **Probability:** LOW.
 Adding `PactDeadLetterEvent` to pacta's discriminated union is a minor
-version bump in `@method/pacta`. Any existing `switch` on `AgentEvent`
+version bump in `@methodts/pacta`. Any existing `switch` on `AgentEvent`
 variants without a default case becomes non-exhaustive. Mitigation: grep
 for `switch (event.type)` across the monorepo; add default cases;
 changelog entry; TS strict "noImplicitReturns" catches at compile time.
@@ -665,8 +665,8 @@ addition in Wave 2.
 
 - `packages/runtime/src/ports/{job-backed-executor,continuation-envelope,dlq-observer,schedule-client}.ts` exist with frozen signatures from S5.
 - `packages/runtime/src/scheduling/scheduled-pact.ts` exists as a typed stub.
-- `@method/pacta` `AgentEvent` union extended with `PactDeadLetterEvent`; all downstream exhaustive switches updated.
-- `@method/agent-runtime` re-exports `ScheduledPact`, `JobBackedExecutor` type, `ContinuationEnvelope` type, `payload()` builder.
+- `@methodts/pacta` `AgentEvent` union extended with `PactDeadLetterEvent`; all downstream exhaustive switches updated.
+- `@methodts/agent-runtime` re-exports `ScheduledPact`, `JobBackedExecutor` type, `ContinuationEnvelope` type, `payload()` builder.
 - Gates `G-PORT` + `G-BOUNDARY` + `G-ENVELOPE-VERSION` green.
 - **Definition of done:** PRD-061 (SessionStore) + PRD-059 (BudgetRef from S3) Wave 0 merged; this Wave 0 compiles against them.
 

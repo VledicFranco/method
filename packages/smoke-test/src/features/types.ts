@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Feature + Cluster — the smoke test's catalog of what the method runtime does.
  *

@@ -15,7 +15,7 @@ Core `Agent<TOutput>` type and `createAgent()` factory. Wires a pact definition 
 ## Usage
 
 ```typescript
-import { createAgent } from '@method/pacta/engine';
+import { createAgent } from '@methodts/pacta/engine';
 
 const agent = createAgent({
   pact: myPact,

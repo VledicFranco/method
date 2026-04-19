@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for enriched AgentProvider — rich cost tracking, resume support,
  * streaming interface, and new type constructions.

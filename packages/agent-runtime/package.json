@@ -1,22 +1,44 @@
 {
-  "name": "@method/agent-runtime",
+  "name": "@methodts/agent-runtime",
   "version": "0.1.0",
   "description": "Cortex-targeted public API for method-governed agents — createMethodAgent factory, middleware composition, opaque resumption (PRD-058).",
-  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/agent-runtime"
+  },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -b",
     "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@method/pacta-provider-cortex": "*",
-    "@method/runtime": "*"
+    "@methodts/pacta-provider-cortex": "*",
+    "@methodts/runtime": "*"
   },
   "peerDependencies": {
-    "@method/pacta": "*"
-  }
+    "@methodts/pacta": "*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module"
 }

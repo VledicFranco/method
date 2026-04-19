@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * asFlatAgent — adapter that bridges CognitiveAgent to the flat Agent interface.
  *

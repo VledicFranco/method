@@ -15,7 +15,7 @@ domains_affected: [pacta, pacta-playground, experiments]
 **Status:** Implemented (all 8 patterns — including P4 dynamic personas with 5 built-in profiles)
 **Author:** PO + Lysica
 **Date:** 2026-03-28
-**Package:** `@method/pacta` (L3 — library)
+**Package:** `@methodts/pacta` (L3 — library)
 **Depends on:** PRD 030 (Cognitive Composition), PRD 031 (Cognitive Memory Module)
 **Research:** `ov-research/experiments/EXP-027-advanced-cognitive-patterns.md`
 **Organization:** Vidtecci — vida, ciencia y tecnologia
@@ -45,7 +45,7 @@ Humans do all eight naturally. The cognitive composition algebra supports all ei
 
 ## Objective
 
-Implement 8 advanced cognitive patterns as composable modules and strategies within `@method/pacta`, organized into three tiers:
+Implement 8 advanced cognitive patterns as composable modules and strategies within `@methodts/pacta`, organized into three tiers:
 
 **Tier 1 — Foundation (Phases 1-3):** Patterns that fix known deficiencies
 - P6: Reflection (post-outcome learning)

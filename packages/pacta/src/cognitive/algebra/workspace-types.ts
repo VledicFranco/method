@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Workspace Types — port-mediated access to the shared cognitive workspace.
  *

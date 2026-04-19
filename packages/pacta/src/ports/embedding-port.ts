@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Embedding Port — vector generation abstraction for semantic search.
  *

@@ -15,7 +15,7 @@ Composable middleware for intercepting and augmenting agent provider calls. Midd
 ## Usage
 
 ```typescript
-import { budgetEnforcer, throttler } from '@method/pacta/middleware';
+import { budgetEnforcer, throttler } from '@methodts/pacta/middleware';
 
 const provider = throttler({ maxRpm: 60 })(
   budgetEnforcer({ maxTokens: 100_000 })(baseProvider)

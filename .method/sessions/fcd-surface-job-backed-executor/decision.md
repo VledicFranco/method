@@ -3,8 +3,8 @@ type: co-design-record
 surface: "JobBackedExecutor + CortexScheduledPact"
 slug: fcd-surface-job-backed-executor
 date: "2026-04-14"
-owner: "@method/runtime"
-producer: "@method/runtime (defines ports + helper)"
+owner: "@methodts/runtime"
+producer: "@methodts/runtime (defines ports + helper)"
 consumer: "Cortex tenant app (via ctx.jobs + ctx.schedule)"
 direction: "A -> B (runtime declares contract; tenant app provides transport)"
 status: frozen
@@ -13,7 +13,7 @@ related_prds: [062, 061, 057, 058, 060, 071, 075]
 depends_on:
   - fcd-surface-session-store (S4 — checkpointRef semantics; session dir empty at freeze time, carry-over documented)
   - fcd-surface-method-agent-port (MethodAgentPort — Ctx shape; session dir empty at freeze time)
-  - fcd-surface-runtime-package-boundary (what lives in @method/runtime vs @method/agent-runtime)
+  - fcd-surface-runtime-package-boundary (what lives in @methodts/runtime vs @methodts/agent-runtime)
 ---
 
 # Co-Design Record — JobBackedExecutor + CortexScheduledPact
@@ -38,7 +38,7 @@ depends_on:
 provides `ctx.jobs` + `ctx.schedule` transports. The runtime does NOT own SQS or
 EventBridge — those are Cortex's. The runtime owns what a "continuation" IS.
 
-**Ownership:** `@method/runtime` owns `JobBackedExecutor`, `ScheduledPact`, and
+**Ownership:** `@methodts/runtime` owns `JobBackedExecutor`, `ScheduledPact`, and
 the continuation envelope schema. Cortex owns the transport (PRD-071 / PRD-075)
 and provides it via `ctx`.
 
@@ -143,7 +143,7 @@ export type BudgetCarryStrategy =
 ```typescript
 // packages/runtime/src/ports/job-backed-executor.ts
 
-import type { Pact, AgentEvent, AgentResult } from '@method/pacta';
+import type { Pact, AgentEvent, AgentResult } from '@methodts/pacta';
 import type {
   ContinuationEnvelope,
   CheckpointRef,
@@ -154,8 +154,8 @@ import type {
 /**
  * JobBackedExecutor — drives a pact across worker boundaries via ctx.jobs.
  *
- * Owner:    @method/runtime
- * Producer: @method/runtime (impl: CortexJobBackedExecutor)
+ * Owner:    @methodts/runtime
+ * Producer: @methodts/runtime (impl: CortexJobBackedExecutor)
  * Consumer: tenant app composition root (wires ctx.jobs into the executor)
  * Status:   frozen 2026-04-14
  *
@@ -327,7 +327,7 @@ export interface ScheduleClient {
 ```typescript
 // packages/runtime/src/ports/dlq-observer.ts
 
-import type { AgentEvent } from '@method/pacta';
+import type { AgentEvent } from '@methodts/pacta';
 import type { ContinuationEnvelope } from './continuation-envelope.js';
 
 /**
@@ -484,7 +484,7 @@ execution is at-most-once.
 
 ## 7. Producer / Consumer Mapping
 
-### Producer: `@method/runtime`
+### Producer: `@methodts/runtime`
 
 - **`packages/runtime/src/ports/job-backed-executor.ts`** — port interface (this doc).
 - **`packages/runtime/src/ports/continuation-envelope.ts`** — envelope schema.
@@ -493,10 +493,10 @@ execution is at-most-once.
 - **`packages/runtime/src/executors/cortex-job-backed-executor.ts`** — concrete impl (Wave 1 of PRD-062).
 - **`packages/runtime/src/executors/in-process-executor.ts`** — backwards-compatible impl for standalone bridge (wraps today's `StrategyExecutor`).
 
-Wiring: the `@method/agent-runtime` composition helper exposes
+Wiring: the `@methodts/agent-runtime` composition helper exposes
 `runtime.attach(ctx.jobs)` + `runtime.registerPact(...)` as the
 consumer-facing API. The tenant never imports from
-`packages/runtime/src/ports/` directly — `@method/agent-runtime`
+`packages/runtime/src/ports/` directly — `@methodts/agent-runtime`
 re-exports `ScheduledPact` and the payload builder.
 
 ### Consumer: tenant Cortex app
@@ -587,7 +587,7 @@ Picked up from roadmap §8 and specific to this surface:
 | **Frozen** | 2026-04-14 |
 | **Surface name** | `JobBackedExecutor + CortexScheduledPact` |
 | **Port files** | `packages/runtime/src/ports/{job-backed-executor,continuation-envelope,dlq-observer}.ts`, `packages/runtime/src/scheduling/scheduled-pact.ts` |
-| **Consumer-facing re-export** | `@method/agent-runtime` re-exports `ScheduledPact`, `JobBackedExecutor` type, and the `payload` builder |
+| **Consumer-facing re-export** | `@methodts/agent-runtime` re-exports `ScheduledPact`, `JobBackedExecutor` type, and the `payload` builder |
 | **Changes require** | new `/fcd-surface` session; breaking envelope change → `version: 2` |
 | **Related surfaces** | S3 (CortexLLMProvider — reservation API), S4 (SessionStore — checkpointRef + lastAckedTurn), MethodAgentPort (Ctx shape) |
 | **PRD container** | PRD-062 |

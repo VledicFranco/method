@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Events multiplexer — pacta `AgentEvent` fan-out over an `onEvent` callback
  * AND/OR an async-iterable channel (PRD-058 §6.2, §6.4 D4).
@@ -19,7 +20,7 @@
  * `onEvent` and delegates to all subscribers.
  */
 
-import type { AgentEvent } from '@method/pacta';
+import type { AgentEvent } from '@methodts/pacta';
 import { IllegalStateError } from './errors.js';
 import type { CortexLogger } from './cortex/ctx-types.js';
 

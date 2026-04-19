@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── method-ctl — Config Management ──────────────────────────────
 //
 // Reads ~/.method/cluster.json for CLI configuration. Gracefully

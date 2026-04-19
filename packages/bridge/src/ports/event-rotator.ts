@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * EventRotator — archives events older than a cutoff window to keep the log bounded.
  *

@@ -18,7 +18,7 @@ import { createMockCtx } from './mock-ctx.js';
 import {
   createMethodAgent,
   type CortexCtx,
-} from '@method/agent-runtime';
+} from '@methodts/agent-runtime';
 import { incidentTriagePact } from '../src/pacts/incident-triage.js';
 
 describe('sample cortex-incident-triage-agent — end to end', () => {

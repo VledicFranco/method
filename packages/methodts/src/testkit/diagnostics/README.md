@@ -10,7 +10,7 @@ Formatting utilities for test output and debugging. Converts execution traces an
 ## Usage
 
 ```typescript
-import { printTrace, printReport } from '@method/methodts/testkit';
+import { printTrace, printReport } from '@methodts/methodts/testkit';
 
 // In test failure output:
 const result = await runMethodologyInTest(methodology, options);

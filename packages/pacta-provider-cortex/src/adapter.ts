@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Shared Cortex adapter pattern (S3 §1, frozen 2026-04-14).
  *

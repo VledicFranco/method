@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * StdlibStrategySource — wraps prebuilt strategies behind the StrategySource port.
  *

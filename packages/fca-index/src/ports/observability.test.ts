@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * observability.test.ts — Contract tests for ObservabilityPort and its
  * bundled implementations (Null, Stderr, Recording).

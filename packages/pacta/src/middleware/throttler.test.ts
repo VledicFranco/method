@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { throttler, brandSlotId } from './throttler.js';
 import type { RateGovernor, DispatchSlot, AcquireOptions, ObserveOutcome } from '../ports/rate-governor.js';
-import type { AccountId } from '@method/types';
+import type { AccountId } from '@methodts/types';
 import {
   RateLimitError,
   AuthError,

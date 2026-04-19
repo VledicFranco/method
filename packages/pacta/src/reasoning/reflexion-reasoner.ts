@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reflexion Reasoner — multi-trial with verbal self-critique.
  *

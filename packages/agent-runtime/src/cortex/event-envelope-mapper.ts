@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * event-envelope-mapper — pure RuntimeEvent → Cortex envelope projection.
  *
@@ -18,7 +19,7 @@
  * Pure — no I/O, no side effects. Testable in isolation.
  */
 
-import type { RuntimeEvent } from '@method/runtime/ports';
+import type { RuntimeEvent } from '@methodts/runtime/ports';
 
 import type { MethodTopicDescriptor } from './ctx-types.js';
 import { RUNTIME_EVENT_TYPE_TO_TOPIC } from './event-topic-registry.js';

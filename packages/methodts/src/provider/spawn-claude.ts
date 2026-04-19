@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * spawnClaude — Isolated spawn logic for `claude --print`.
  *

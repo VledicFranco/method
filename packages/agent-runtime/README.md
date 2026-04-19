@@ -1,4 +1,4 @@
-# @method/agent-runtime
+# @methodts/agent-runtime
 
 Cortex-targeted public API for method-governed agents (PRD-058).
 
@@ -8,16 +8,16 @@ re-deriving the Cortex composition wiring.
 ## Install
 
 ```bash
-npm install @method/agent-runtime @method/pacta
+npm install @methodts/agent-runtime @methodts/pacta
 ```
 
-`@method/pacta` is a **peer dependency** — a single pacta version flows
+`@methodts/pacta` is a **peer dependency** — a single pacta version flows
 through the tenant app's dep graph.
 
 ## Usage
 
 ```typescript
-import { createMethodAgent } from '@method/agent-runtime';
+import { createMethodAgent } from '@methodts/agent-runtime';
 import { incidentTriagePact } from './pacts/incident-triage.js';
 
 export default async function app(ctx) {
@@ -53,7 +53,7 @@ This package realizes the **MethodAgentPort** frozen co-design record:
 
 ## Public API
 
-Exported from `@method/agent-runtime`:
+Exported from `@methodts/agent-runtime`:
 
 - `createMethodAgent<T>(options)` — synchronous factory
 - `MethodAgent<T>` — handle: `invoke / resume / abort / events / dispose`

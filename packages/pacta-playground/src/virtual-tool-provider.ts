@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * VirtualToolProvider — ToolProvider backed by an in-memory Map<string, string>.
  *
@@ -5,7 +6,7 @@
  * filesystem. No real host side effects. Tier 3 (virtual) fidelity.
  */
 
-import type { ToolProvider, ToolDefinition, ToolResult } from '@method/pacta';
+import type { ToolProvider, ToolDefinition, ToolResult } from '@methodts/pacta';
 
 // ── Path normalization ───────────────────────────────────────────
 

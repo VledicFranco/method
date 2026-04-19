@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Integration tests for enrichedPreset — v2 cognitive agent composition.
  *

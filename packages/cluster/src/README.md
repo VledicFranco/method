@@ -1,4 +1,4 @@
-# @method/cluster — Cluster Protocol
+# @methodts/cluster — Cluster Protocol
 
 L3 library. Transport-agnostic cluster protocol for coordinating multiple bridge instances. Defines membership state machine, resource reporting, work routing, and peer federation. Zero transport dependencies — all I/O enters through ports.
 
@@ -16,7 +16,7 @@ Enables multiple bridge instances to discover each other, share load, and federa
 ## Public API
 
 ```typescript
-import { MembershipManager, RoutingManager, FederationManager } from '@method/cluster';
+import { MembershipManager, RoutingManager, FederationManager } from '@methodts/cluster';
 
 // Wire with ports
 const membership = new MembershipManager({ discovery, network, resource }, config);

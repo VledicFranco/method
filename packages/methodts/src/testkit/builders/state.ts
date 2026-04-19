@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * WorldState helper — construct WorldState<S> values with minimal ceremony.
  */

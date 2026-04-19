@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method fixture: analyse → critique → propose
  *
@@ -5,7 +6,7 @@
  * with data flowing through an accumulating bundle.
  */
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 export const METHOD_ID = 'analyse-critique-propose';
 

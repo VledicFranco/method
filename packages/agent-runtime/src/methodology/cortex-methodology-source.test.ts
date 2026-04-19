@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for CortexMethodologySource — PRD-064 §13.1 acceptance
  * criteria.
  *
- * Run with: npm --workspace=@method/agent-runtime test
+ * Run with: npm --workspace=@methodts/agent-runtime test
  */
 
 import { describe, it } from 'node:test';

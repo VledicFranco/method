@@ -32,4 +32,4 @@ bus.subscribe(new WebSocketSink(wsServer));
 
 ## Methodology Source (docs/arch/methodology-source.md)
 
-`StdlibSource` wraps `@method/methodts` stdlib catalog. `InMemorySource` is used for testing. The bridge never imports methodts directly in domain code — always through this port.
+`StdlibSource` wraps `@methodts/methodts` stdlib catalog. `InMemorySource` is used for testing. The bridge never imports methodts directly in domain code — always through this port.

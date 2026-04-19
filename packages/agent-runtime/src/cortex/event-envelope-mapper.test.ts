@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for event-envelope-mapper — PRD-063 §Tests (unit).
  *
@@ -11,7 +12,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { RuntimeEvent } from '@method/runtime/ports';
+import type { RuntimeEvent } from '@methodts/runtime/ports';
 
 import {
   mapRuntimeEventToEnvelope,

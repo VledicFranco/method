@@ -100,7 +100,7 @@ PRD 005 Phase 1 introduces four bridge proxy tools (`bridge_spawn`, `bridge_prom
 
 **Error pattern:** All `fetch` errors are wrapped with a `"Bridge error:"` prefix to distinguish transport failures from methodology domain errors. This lets the orchestrating agent differentiate between "the bridge is down" and "the methodology logic rejected the input."
 
-**Design rationale:** The proxy tools follow DR-04's spirit (thin wrappers) but the wrapped target is HTTP instead of core. There is no compile-time dependency between `@method/mcp` and `@method/bridge` — communication is HTTP only. The MCP server does not import any bridge types or modules.
+**Design rationale:** The proxy tools follow DR-04's spirit (thin wrappers) but the wrapped target is HTTP instead of core. There is no compile-time dependency between `@methodts/mcp` and `@methodts/bridge` — communication is HTTP only. The MCP server does not import any bridge types or modules.
 
 The 5 channel tools added by PRD 008 follow the same HTTP proxy pattern as the existing 4 bridge tools.
 

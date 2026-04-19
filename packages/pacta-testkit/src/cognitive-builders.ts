@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Fluent builders for cognitive composition test objects.
  *
@@ -19,9 +20,9 @@ import type {
   EnrichedMonitoringSignal,
   ImpasseSignal,
   ImpasseType,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
-import { moduleId } from '@method/pacta';
+import { moduleId } from '@methodts/pacta';
 
 import type {
   CycleConfig,
@@ -36,7 +37,7 @@ import type {
   ActivationConfig,
   ConsolidationConfig,
   ConsolidationResult,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 import { RecordingModule } from './recording-module.js';
 
@@ -230,7 +231,7 @@ export function buildMonitorV2Config(overrides?: Partial<MonitorV2Config>): Moni
  * Compute ACT-R activation for a memory chunk (testkit-local copy).
  *
  * Mirrors the production activation computation from
- * `@method/pacta/cognitive/modules/activation.ts` without requiring
+ * `@methodts/pacta/cognitive/modules/activation.ts` without requiring
  * a deep import into the pacta package (which is not exported from
  * the barrel). Testkit test doubles are intentionally self-contained.
  */
@@ -280,7 +281,7 @@ function computeTestActivation(
  * Create an in-memory MemoryPortV3 test double.
  *
  * Self-contained implementation that mirrors `createInMemoryDualStore`
- * from `@method/pacta` without requiring a deep import. Follows the
+ * from `@methodts/pacta` without requiring a deep import. Follows the
  * testkit pattern where test doubles are fully owned by the testkit.
  */
 function createTestDualStore(

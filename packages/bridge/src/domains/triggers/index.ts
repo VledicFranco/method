@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 018: Event Triggers — Module Exports (Phase 2a-1 + Phase 2a-2 + Phase 2a-3)
  */

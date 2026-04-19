@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/mcp — MCP Protocol Adapter
+ * @methodts/mcp — MCP Protocol Adapter
  *
  * Thin MCP stdio server exposing methodts methodology tools, fca-index context
  * tools, and bridge session tools to Claude agents.
@@ -23,7 +24,7 @@ import { createValidationMiddleware } from "./validate-project-access.js";
 import { theoryInput, sessionIdProperty } from "./schemas.js";
 import { bridgeHandlers } from "./bridge-tools.js";
 import { experimentHandlers, EXPERIMENT_TOOLS } from "./experiment-tools.js";
-import { createDefaultFcaIndex } from "@method/fca-index";
+import { createDefaultFcaIndex } from "@methodts/fca-index";
 import { createContextTools, CONTEXT_TOOLS } from "./context-tools.js";
 
 // Path resolution

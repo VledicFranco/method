@@ -15,7 +15,7 @@ domains_affected: [pacta, pacta-testkit]
 **Status:** Validated (2026-03-29) — v2 modules empirically tested, see Validation Results section
 **Author:** PO + Lysica
 **Date:** 2026-03-29
-**Package:** `@method/pacta` (L3 — library)
+**Package:** `@methodts/pacta` (L3 — library)
 **Depends on:** PRD 030 (Pacta Cognitive Composition)
 **Enables:** PRD 037 (Affect Module)
 **Organization:** Vidtecci — vida, ciencia y tecnologia
@@ -77,7 +77,7 @@ const agent = createCognitiveAgent({
 ### Module Catalog Exports
 
 ```typescript
-// New exports from @method/pacta
+// New exports from @methodts/pacta
 export { createMonitorV2, type MonitorV2Config, type MonitorV2State, type EnrichedMonitoringSignal } from './cognitive/modules/monitor-v2.js';
 export { createReasonerActorV2, type ReasonerActorV2Config, type ImpasseSignal } from './cognitive/modules/reasoner-actor-v2.js';
 export { createPriorityAttend, type PriorityAttendConfig, type PriorityScore } from './cognitive/modules/priority-attend.js';

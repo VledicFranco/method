@@ -7,7 +7,9 @@
   ],
   "scripts": {
     "build": "tsc -b && npm run build --workspace=packages/bridge --if-present",
-    "test": "npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\" \"packages/agent-runtime/src/**/*.test.ts\" \"samples/cortex-incident-triage-agent/test/**/*.test.ts\" && npx vitest run --config packages/fca-index/vitest.config.ts && npx vitest run --config packages/mcp/vitest.config.ts",
+    "test": "node scripts/test-pkgs.mjs --published",
+    "test:internal": "node scripts/test-pkgs.mjs --internal",
+    "test:all": "node scripts/test-pkgs.mjs --all",
     "test:coverage": "c8 --reporter=text --reporter=html npx tsx --test \"packages/bridge/src/domains/**/*.test.ts\" \"packages/bridge/src/shared/**/*.test.ts\"",
     "bridge": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
     "bridge:dev": "npm run build && npm run build --workspace=packages/bridge && node scripts/start-bridge.js",
@@ -17,12 +19,17 @@
     "bridge:cleanup": "node scripts/cleanup-claude.js",
     "run-method": "npx tsx scripts/run-method.ts",
     "test:real-claude": "npx tsx scripts/test-real-claude.ts",
-    "test:forge-surface": "npx tsx scripts/test-forge-surface.ts"
+    "test:forge-surface": "npx tsx scripts/test-forge-surface.ts",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "c8": "^11.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo"
 }

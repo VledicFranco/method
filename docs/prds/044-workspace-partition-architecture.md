@@ -72,7 +72,7 @@ Implement RFC 003 Phase 1 — split the monolithic workspace into typed partitio
 
 ### Domain Map
 
-All work within `@method/pacta/src/cognitive/`:
+All work within `@methodts/pacta/src/cognitive/`:
 
 ```
 algebra/  ──defines types──→  partitions/     (types consumed by implementations)
@@ -365,7 +365,7 @@ Modules are unchanged. Their `step(input, state, control)` signature doesn't cha
 | `algebra/partition-types.ts` | All 7 surface definitions + PartitionId, SelectStrategy, etc. |
 | `algebra/index.ts` | Re-export partition types |
 
-**Gate:** `npm run build` passes. Types importable from `@method/pacta`.
+**Gate:** `npm run build` passes. Types importable from `@methodts/pacta`.
 
 ### Phase C-1: Eviction Policies + Generic Partition (2-3 days)
 

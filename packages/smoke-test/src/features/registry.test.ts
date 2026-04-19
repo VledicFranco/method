@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Feature registry invariants — verifies that the feature, cluster, and
  * layer registries are internally consistent and that every case's

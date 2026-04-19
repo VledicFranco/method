@@ -6,7 +6,7 @@ date: "2026-04-14"
 status: implemented (PR #181, merged 2026-04-15)
 version: 0.1
 size: S
-domains: ["@method/agent-runtime", "@method/runtime (event bus, consumer of port)"]
+domains: ["@methodts/agent-runtime", "@methodts/runtime (event bus, consumer of port)"]
 surfaces:
   implements: ["S6 — CortexEventConnector"]
   consumes: ["S3 — CortexServiceAdapters (audit superset + adapter pattern)", "S2 — RuntimePackageBoundary (RuntimeEvent, EventConnector, EventBus)"]
@@ -26,8 +26,8 @@ author: "Lysica (fcd-design, PO=Franco)"
 
 ## Summary
 
-Ship `CortexEventConnector` inside `@method/agent-runtime` — an `EventConnector`
-(extending `EventSink`) that translates `@method/runtime` `RuntimeEvent`
+Ship `CortexEventConnector` inside `@methodts/agent-runtime` — an `EventConnector`
+(extending `EventSink`) that translates `@methodts/runtime` `RuntimeEvent`
 emissions into Cortex `ctx.events` envelopes. The surface (`S6`) is frozen;
 PRD-063 is a small, pure-library, implementation-only container. It builds
 three cooperating pieces — connector + static topic registry + manifest-emit
@@ -42,7 +42,7 @@ files + tests inside one domain.
 
 ## Problem
 
-Today, `@method/runtime`'s Universal Event Bus (PRD 026) emits `RuntimeEvent`
+Today, `@methodts/runtime`'s Universal Event Bus (PRD 026) emits `RuntimeEvent`
 objects to in-process sinks: WebSocketSink, PersistenceSink, ChannelSink,
 GenesisSink, WebhookConnector. These sinks serve the **standalone bridge**.
 They cannot reach **other Cortex tenant apps** — in a Cortex deployment, the
@@ -81,17 +81,17 @@ rate, back-pressure, and fire-and-forget failure propagation.
   `fcd-surface-event-connector/decision.md` is verbatim. Changes require a
   new `/fcd-surface` session. Implementation must import `RuntimeEvent`,
   `EventConnector`, `ConnectorHealth`, `EventFilter` exclusively from
-  `@method/runtime/ports` — never from `@method/bridge` or
-  `@method/runtime/event-bus` internals.
+  `@methodts/runtime/ports` — never from `@methodts/bridge` or
+  `@methodts/runtime/event-bus` internals.
 - **S3 (frozen).** `CortexEventConnector` shares the
   `CortexServiceAdapter<CtxSlice, Config>` shape with `CortexLLMProvider`,
   `CortexAuditMiddleware`, `CortexTokenExchangeMiddleware`. Compose-time
   validation rejects a malformed connector at `createMethodAgent(...)`
   construction, not at first `emit`.
-- **S2 (frozen).** `@method/runtime` exports `RuntimeEvent`, `EventBus`,
+- **S2 (frozen).** `@methodts/runtime` exports `RuntimeEvent`, `EventBus`,
   `EventConnector`, `EventFilter` under the `/ports` subpath. PRD-063 does
   **not** modify the runtime package. The bridge and agent-runtime both
-  depend on `@method/runtime`, and only agent-runtime depends on this
+  depend on `@methodts/runtime`, and only agent-runtime depends on this
   connector.
 
 ### From Cortex PRDs
@@ -136,7 +136,7 @@ rate, back-pressure, and fire-and-forget failure propagation.
 - No new runtime deps (no ULID lib, no schema-validator, no retry lib).
   ULIDs are generated from the already-UUID `runtimeEvent.id`. Retry is
   hand-rolled exponential backoff matching `WebhookConnector` idioms.
-- No changes to `@method/runtime` (out of scope — PRD-057 owns that package).
+- No changes to `@methodts/runtime` (out of scope — PRD-057 owns that package).
 
 ---
 
@@ -230,7 +230,7 @@ Each success criterion maps to a named test in §Tests.
    `generateManifestEmitSection(registry, options?) → ManifestEmitSection`.
    Reads the registry, produces the `requires.events.emit[]` YAML block
    the tenant app concatenates into its `cortex-app.yaml`. Offered both
-   as a programmatic API and a CLI entry (`npx @method/agent-runtime
+   as a programmatic API and a CLI entry (`npx @methodts/agent-runtime
    emit-section`).
 8. **Compose-time wiring into `createMethodAgent`** — narrow addition to
    the factory: when `ctx.events` is present, construct and register the
@@ -259,7 +259,7 @@ Each success criterion maps to a named test in §Tests.
   (`ctx.schedule` + checkpoints) and is explicitly deferred.
 - **Subscriber introspection helper** (S6 O3). `listSubscribers(topic)` is
   not needed for Wave 1.
-- **Modifying `@method/runtime`.** PRD-057 owns the runtime package. PRD-063
+- **Modifying `@methodts/runtime`.** PRD-057 owns the runtime package. PRD-063
   is consumer-only. If S6 or PRD-063 discovers a needed runtime-port
   change, it raises an S2 revision, it does not patch runtime directly.
 - **Modifying the bridge.** The bridge keeps its existing sinks
@@ -286,14 +286,14 @@ Each success criterion maps to a named test in §Tests.
 
 ```
     ┌────────────────────────────────────────────────┐
-    │  @method/runtime (L3, frozen S2 exports)        │
+    │  @methodts/runtime (L3, frozen S2 exports)        │
     │  - EventBus emits RuntimeEvent                  │
     │  - EventConnector port defined here             │
     └────────────────────────┬───────────────────────┘
                              │ (registers as sink at compose-time)
                              ▼
     ┌────────────────────────────────────────────────┐
-    │  @method/agent-runtime (L3, Cortex-facing)      │
+    │  @methodts/agent-runtime (L3, Cortex-facing)      │
     │  createMethodAgent({ ctx, pact })               │
     │    ├─ CortexLLMProvider    ─┐                   │
     │    ├─ CortexAuditMiddleware ┼── S3 adapters     │
@@ -370,8 +370,8 @@ src/cortex/__tests__/
   envelope-sizes.measure.ts       — O8 harness (opt-in, not in default test run)
 ```
 
-No module under `src/cortex/` may import from `@method/bridge`, nor from
-any `@method/runtime/event-bus` internals. Only `@method/runtime/ports`
+No module under `src/cortex/` may import from `@methodts/bridge`, nor from
+any `@methodts/runtime/event-bus` internals. Only `@methodts/runtime/ports`
 is permitted for runtime types.
 
 ### In-process bounded buffer (500 default)
@@ -549,7 +549,7 @@ export function generateManifestEmitSection(
   options?: ManifestEmitOptions
 ): ManifestEmitEntry[];
 
-// CLI entry: npx @method/agent-runtime emit-section [--topics=...] [--format=yaml|json]
+// CLI entry: npx @methodts/agent-runtime emit-section [--topics=...] [--format=yaml|json]
 // Writes to stdout. Tenant-app build scripts pipe into cortex-app.yaml.
 ```
 
@@ -563,7 +563,7 @@ section, fail if mismatch.
 
 ## Per-Domain Architecture
 
-### `@method/agent-runtime` (the only affected domain)
+### `@methodts/agent-runtime` (the only affected domain)
 
 **Layer placement.** The cortex subtree (`src/cortex/`) sits at L3 —
 library-shaped, transport-aware (it knows about `ctx.*` and HTTP-like
@@ -574,7 +574,7 @@ process-free.
 
 **Port implementations.** Consumes:
 - `RuntimeEvent`, `EventConnector`, `ConnectorHealth`, `EventFilter` from
-  `@method/runtime/ports` (S2).
+  `@methodts/runtime/ports` (S2).
 - `CortexEventsCtx` from local `ctx-types.ts` (a narrow slice of PRD-072).
 - `CortexAuditCtx` re-used via `CortexAuditMiddleware`'s audit hook — the
   connector does not directly hold an audit port; it goes through the
@@ -607,14 +607,14 @@ backwards compatibility concerns yet.
 
 | Gate | Scope | Assertion |
 |------|-------|-----------|
-| `G-CONNECTOR-RUNTIME-IMPORTS-ONLY` | file-scope | `event-connector.ts` imports only from `@method/runtime/ports`, never from bridge or event-bus internals |
+| `G-CONNECTOR-RUNTIME-IMPORTS-ONLY` | file-scope | `event-connector.ts` imports only from `@methodts/runtime/ports`, never from bridge or event-bus internals |
 | `G-CONNECTOR-TOPIC-ALLOWLIST` | runtime | Envelope mapper throws on topic not in `METHOD_TOPIC_REGISTRY` |
 | `G-EVENTS-FIRE-AND-FORGET` | integration | `ctx.events.emit` rejection does not propagate to pacta agent invocation |
 | `G-AUDIT-SUPERSET` | cross-surface compile-time | Every `METHOD_TOPIC_REGISTRY.sourceEventTypes` member has a corresponding entry in `CortexAuditMiddleware`'s event→audit mapping |
 | `G-PORT` | structural | `CortexEventConnector` implements `EventConnector` interface shape verbatim |
 | `G-LAYER` | structural | `packages/agent-runtime/src/cortex/` imports only from L3-and-below (pacta, runtime, methodts) — no fastify, no pty, no Cortex-specific process deps |
 
-All gates run under `npm --workspace=@method/agent-runtime test`.
+All gates run under `npm --workspace=@methodts/agent-runtime test`.
 
 ---
 
@@ -706,12 +706,12 @@ Wave 0 work is minimal — all cross-domain surfaces are already frozen.
 
 ### Wave 0 — Surfaces (≤ 1 day)
 
-- **W0.1** Confirm `@method/runtime/ports` exports `RuntimeEvent`,
+- **W0.1** Confirm `@methodts/runtime/ports` exports `RuntimeEvent`,
   `EventConnector`, `EventFilter`, `ConnectorHealth` per S2. (Should be
   true after PRD-057 ships — blocker if not.)
 - **W0.2** Confirm `CortexAuditMiddleware` exposes `writeAudit(record)` or
   equivalent, usable from the connector for dual-write. (If not, add a
-  small internal convenience method inside `@method/agent-runtime` — NOT
+  small internal convenience method inside `@methodts/agent-runtime` — NOT
   a new surface.)
 - **W0.3** Add `G-AUDIT-SUPERSET` gate test skeleton (empty — to be
   filled in Wave 1 once both mapping tables exist).
@@ -739,9 +739,9 @@ added.
 2. All 6 gates pass.
 3. O8 measurement report produced; if `max_envelope_bytes > 200 KB` for
    any topic, flag to S6 owner for re-freeze.
-4. `@method/agent-runtime` builds with zero new `@method/bridge` or
-   `@method/runtime/event-bus` imports under `src/cortex/`.
-5. `npm --workspace=@method/agent-runtime test` green.
+4. `@methodts/agent-runtime` builds with zero new `@methodts/bridge` or
+   `@methodts/runtime/event-bus` imports under `src/cortex/`.
+5. `npm --workspace=@methodts/agent-runtime test` green.
 
 ### Dependency DAG
 
@@ -762,7 +762,7 @@ review (confirms S2 exports).
 | # | Risk | Likelihood | Impact | Mitigation |
 |---|------|------------|--------|------------|
 | R1 | **Gate-approval payload exceeds 32 KB truncation threshold** on real workloads — some orchestrator patterns concatenate multiple artifacts into one markdown (O8 from S6). | Medium | Medium — subscriber apps get truncated previews | N4 measurement harness runs *early* in Wave 1 (before connector assembly). If P99 > 32 KB, bump to 64 KB (still ≪ 256 KB SNS ceiling) and revisit with S6 owner. Ship `artifact_ref` pointer so full artifact is always retrievable via bridge or audit. |
-| R2 | **`METHOD_TOPIC_REGISTRY` drifts from `RuntimeEvent` type definitions** — a new RuntimeEvent type is added in `@method/runtime` without a registry entry, going silently audit-only. | Medium | Low — silent events-path gap | Compile-time test (`gates.test.ts`) walks every `RuntimeEvent.type` literal (discoverable via exhaustive union check) and asserts either a registry entry OR an explicit allowlist of audit-only types. Fails CI on drift. S6 O4 (schema codegen) is a longer-term fix. |
+| R2 | **`METHOD_TOPIC_REGISTRY` drifts from `RuntimeEvent` type definitions** — a new RuntimeEvent type is added in `@methodts/runtime` without a registry entry, going silently audit-only. | Medium | Low — silent events-path gap | Compile-time test (`gates.test.ts`) walks every `RuntimeEvent.type` literal (discoverable via exhaustive union check) and asserts either a registry entry OR an explicit allowlist of audit-only types. Fails CI on drift. S6 O4 (schema codegen) is a longer-term fix. |
 | R3 | **Hand-written JSON Schemas drift from TypeScript payload types** — fields renamed in TS without schema update. | Medium | Medium — ctx.events 4xx schema-rejected in prod | Same as R2 — compile-time test materializes each topic's TS payload shape via a type-level helper and asserts JSON schema round-trip. Defer `zod-to-json-schema` codegen (S6 O4) unless drift materializes repeatedly. |
 | R4 | **Rate limiter miscalibration** — 12/s too conservative (drops reactive signal) or too aggressive (trips PRD-069 429). | Low | Low | Measurement N2 + audit dual-write ensure no silent loss; retunable via config without a new surface session. |
 | R5 | **Audit dual-write amplifies load** — every schema-rejected event writes to audit, which writes to Mongo, which may throttle. | Low | Low | Dual-write is permanent-failure-only (should be near-zero in steady state). Failures cluster around topic/schema mismatches caught at CI. Add circuit-breaker if field reports show volume. |
@@ -792,7 +792,7 @@ harness early in Wave 1, not at the end.
 PRD-063 is accepted when:
 
 1. **All 11 success criteria tests pass** (see §Tests) under
-   `npm --workspace=@method/agent-runtime test`.
+   `npm --workspace=@methodts/agent-runtime test`.
 2. **All 6 gates pass** (G-CONNECTOR-RUNTIME-IMPORTS-ONLY,
    G-CONNECTOR-TOPIC-ALLOWLIST, G-EVENTS-FIRE-AND-FORGET,
    G-AUDIT-SUPERSET, G-PORT, G-LAYER).
@@ -817,7 +817,7 @@ PRD-063 is accepted when:
 - **Composition symmetry:** `CortexEventConnector` completes the S3 adapter
   family (LLM, Audit, TokenExchange, Events). S4 (SessionStore, PRD-061)
   and S5 (JobBackedExecutor, PRD-062) are the last two adapters in the
-  pattern. Once all five land, `@method/agent-runtime` is feature-complete
+  pattern. Once all five land, `@methodts/agent-runtime` is feature-complete
   for Group B of the roadmap checklist.
 - **Audit is the compliance record; events is best-effort reactive.**
   This PRD holds that invariant on the events path. The runtime ring buffer

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * federation/ — Event federation across cluster peers (PRD 039).
  *

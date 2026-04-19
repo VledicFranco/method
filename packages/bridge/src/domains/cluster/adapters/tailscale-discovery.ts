@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Tailscale Discovery Adapter ─────────────────────────────────
 //
 // DiscoveryProvider implementation that uses the Tailscale CLI
@@ -8,8 +9,8 @@
 // `tailscale` CLI which is available on all platforms.
 
 import { execFile } from 'node:child_process';
-import type { DiscoveryProvider } from '@method/cluster';
-import type { PeerAddress, NodeIdentity } from '@method/cluster';
+import type { DiscoveryProvider } from '@methodts/cluster';
+import type { PeerAddress, NodeIdentity } from '@methodts/cluster';
 
 // ── Tailscale Status Response (subset) ────────────────────────
 

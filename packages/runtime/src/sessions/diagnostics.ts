@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── PRD 012 Phase 1: Diagnostic Instrumentation ─────────────────
 // Per-session timing metrics and stall detection.
 

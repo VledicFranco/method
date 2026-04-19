@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * NodeFileSystem — real FileSystemPort adapter for production use.
  *

@@ -3,8 +3,8 @@ type: co-design-record
 surface: "MCPCortexTransport (S9)"
 slug: "mcp-cortex-transport"
 date: "2026-04-14"
-owner: "@method/mcp"
-producer: "@method/mcp (L3) — CortexToolRegistrationClient + MethodologyToolPublisher"
+owner: "@methodts/mcp"
+producer: "@methodts/mcp (L3) — CortexToolRegistrationClient + MethodologyToolPublisher"
 consumer: "Cortex platform tool registry (POST /v1/platform/apps/:appId/tools) via @cortex/sdk typed client (consumer-of-platform)"
 direction: "method → Cortex platform API (outbound REST); Cortex → method (MCP tool dispatch over existing MCP JSON-RPC, out of scope here)"
 status: needs-follow-up
@@ -34,7 +34,7 @@ blocks: "roadmap item C1 and any Cortex-hosted tenant app whose methodology set 
 > *The transport that lets a Cortex-hosted methodology agent expose its*
 > *methodology-derived tools through Cortex's platform tool registry, so that*
 > *Cortex enforces operation-grammar authorization on every tool call — rather*
-> *than `@method/mcp` trusting MCP stdio alone.*
+> *than `@methodts/mcp` trusting MCP stdio alone.*
 
 ---
 
@@ -43,7 +43,7 @@ blocks: "roadmap item C1 and any Cortex-hosted tenant app whose methodology set 
 This surface freezes (or marks follow-up where blocked on Cortex):
 
 1. **`CortexToolRegistrationClient`** — thin, typed HTTP wrapper
-   `@method/mcp` uses to POST/DELETE tools against
+   `@methodts/mcp` uses to POST/DELETE tools against
    `/v1/platform/apps/:appId/tools`.
 2. **`MethodologyToolPublisher`** — composition that translates a loaded
    methodts `Methodology` into a set of Cortex `ToolDescriptor` +
@@ -52,19 +52,19 @@ This surface freezes (or marks follow-up where blocked on Cortex):
    `Tool<S>` into a Cortex `operations[]` entry and a Cortex
    `tools[]` entry (RFC-005 §3, §3.4.1).
 4. **Registration timing model** — what must be in the manifest at deploy
-   time vs what `@method/mcp` pushes at runtime when a new methodology
+   time vs what `@methodts/mcp` pushes at runtime when a new methodology
    ships into a tenant app's registry.
 5. **Deregistration policy** for superseded or unloaded methodologies.
 6. **Runtime-discovered tool policy** — whether an agent mid-session may
    register new tools (spoiler: **forbidden** in Cortex model).
-7. **Auth mechanism** — what token `@method/mcp` presents to call the
+7. **Auth mechanism** — what token `@methodts/mcp` presents to call the
    registry (app service-account JWT via `ctx.auth`).
 
 **Out of scope:**
 - The MCP stdio/JSON-RPC protocol itself (`@modelcontextprotocol/sdk`) — that
   stays the dispatch mechanism Cortex calls *back* to invoke a tool. This
   surface only covers the **registration** direction.
-- The internal dispatch adapter inside `@method/mcp` that turns a
+- The internal dispatch adapter inside `@methodts/mcp` that turns a
   Cortex-issued `tool.call` into a methodts step/tool invocation — a
   separate adapter concern (co-design S10 if needed).
 - Bridge proxy tools (`bridge_spawn`, `bridge_prompt`, …) — those are
@@ -76,11 +76,11 @@ This surface freezes (or marks follow-up where blocked on Cortex):
 
 ## 1. Context
 
-### 1.1 Where `@method/mcp` is today
+### 1.1 Where `@methodts/mcp` is today
 
 From `docs/arch/mcp-layer.md` + `packages/mcp/src/index.ts`:
 
-- `@method/mcp` is a thin stdio MCP server (`@modelcontextprotocol/sdk`).
+- `@methodts/mcp` is a thin stdio MCP server (`@modelcontextprotocol/sdk`).
 - It defines a **fixed** set of ~23 tools via `ListToolsRequestSchema`
   (registry listing, methodology/step lifecycle, theory lookup, bridge
   proxies, fca-index context queries).
@@ -93,7 +93,7 @@ From `docs/arch/mcp-layer.md` + `packages/mcp/src/index.ts`:
 Consequence: for a Cortex-hosted methodology agent, two gaps exist.
 
 - (a) The Cortex host expects tool definitions at the **platform** level
-  (operation-grammar authz per RFC-005 §3.4); `@method/mcp` today trusts
+  (operation-grammar authz per RFC-005 §3.4); `@methodts/mcp` today trusts
   stdio-local MCP with no authz check.
 - (b) The methodology's own Hoare tools never became MCP tools, so the
   agent currently manipulates state via `step_context`/`step_validate`
@@ -149,7 +149,7 @@ Three reasons:
    *and* each referenced tool must land in a Cortex `operations[]` entry
    with the right `write` flag. Putting that in an ad-hoc fetch call
    would bury the mapping in the MCP server's startup path.
-3. **Auth lives on `ctx`, not in env vars.** `@method/mcp` today assumes
+3. **Auth lives on `ctx`, not in env vars.** `@methodts/mcp` today assumes
    `BRIDGE_URL` + no auth. Cortex-mode requires an app service-account
    JWT from `ctx.auth.issueServiceToken()` (per S1 `CortexCtx.auth`).
    Plumbing that through the MCP server's module-scope fetches is
@@ -171,8 +171,8 @@ Considered and rejected:
 - `CortexMCPAdapter` — ambiguous (is it dispatch, registration, or both?).
 - `MCPRegistrationClient` — loses the "Cortex" information; there is no
   MCP-level "registration" outside this host's model.
-- `ToolRegistry` — reads as if `@method/mcp` *owns* a registry; it does
-  not. Cortex owns the registry; `@method/mcp` registers into it.
+- `ToolRegistry` — reads as if `@methodts/mcp` *owns* a registry; it does
+  not. Cortex owns the registry; `@methodts/mcp` registers into it.
 - `CortexToolGateway` — implies bidirectional dispatch; registration
   direction is one-way A → B.
 
@@ -193,7 +193,7 @@ only one is chosen.
 | # | Model | What it means for method | Works today? |
 |---|-------|--------------------------|--------------|
 | A | **Deploy-time only (manifest)** | Every methodology a tenant app will ever run must be listed in `cortex-app.yaml` before `cortex-app deploy`. Adding a methodology requires a redeploy + admin re-approval (RFC-005 §3.4.4). | Yes (matches RFC-005 §3 `spec.tools`). |
-| B | **Deploy-time + hot-reload (bounded)** | The manifest declares a *methodology pool* (allowed methodology ids, max tool count, max scope). `@method/mcp` can POST/DELETE tools at runtime, but only within the pool boundaries. Each runtime change triggers a Layer-2 autopolicy from a pre-approved template (§3.4.4). | Likely — but requires CORTEX-Q1 + CORTEX-Q2 confirmation. |
+| B | **Deploy-time + hot-reload (bounded)** | The manifest declares a *methodology pool* (allowed methodology ids, max tool count, max scope). `@methodts/mcp` can POST/DELETE tools at runtime, but only within the pool boundaries. Each runtime change triggers a Layer-2 autopolicy from a pre-approved template (§3.4.4). | Likely — but requires CORTEX-Q1 + CORTEX-Q2 confirmation. |
 | C | **Fully dynamic** | Any methodology anywhere, no manifest ceiling, admin approval per tool at runtime. | No — incompatible with RFC-005 §3.4.4 `pending-approval` and `immutable: true` security blocks. |
 
 ### 3.2 Decision
@@ -232,7 +232,7 @@ spec:
                                      # any tool this app publishes at runtime
 ```
 
-- `mode: manifest` forces `@method/mcp` to fail-closed if it finds a
+- `mode: manifest` forces `@methodts/mcp` to fail-closed if it finds a
   tool not already in `spec.tools[]`.
 - `mode: dynamic` authorizes runtime POSTs, bounded by `maxTools` and
   `authzTemplate`.
@@ -246,7 +246,7 @@ doesn't.
 ### 3.4 Registration lifecycle events
 
 ```
-  [startup]  @method/mcp boots with ctx
+  [startup]  @methodts/mcp boots with ctx
        │
        ▼
   MethodologyToolPublisher.publishAll(ctx, activeMethodologies)
@@ -308,7 +308,7 @@ From `packages/methodts/src/method/`:
 | `Tool<S>.description` | `ToolDescriptor.description` + `OperationDef.description` | Same text on both sides; single source of truth is the methodology YAML |
 | `Tool<S>.category = "write"` or `"execute"` | `OperationDef.write = true` | Truthfulness declaration per RFC-005 §3.4.1. `"execute"` → write true because of observable side effects. |
 | `Tool<S>.category = "read"` or `"communicate"` | `OperationDef.write = false` | Reads are cacheable; platform honors scope-claim cache. `"communicate"` is write-free in the Cortex sense (no platform state change). |
-| `Tool<S>.precondition` | *(not mapped)* | Cortex authz is state-free (role+operation). Preconditions stay inside methodts and fire at dispatch time inside `@method/mcp`'s adapter. A precondition violation returns an MCP error; it is **not** a Cortex authz failure. |
+| `Tool<S>.precondition` | *(not mapped)* | Cortex authz is state-free (role+operation). Preconditions stay inside methodts and fire at dispatch time inside `@methodts/mcp`'s adapter. A precondition violation returns an MCP error; it is **not** a Cortex authz failure. |
 | `Tool<S>.postcondition` | *(not mapped)* | Same reason. Enforced by methodts runtime post-dispatch. |
 | `Step<S>.tools[]` | *(not mapped directly)* | Cortex `operations[]` is flat. The step-level authorization (only these tools at this step) is enforced by methodts at dispatch; Cortex only sees "can role R call operation O?" Role gating below covers the coarser check. |
 | `Role<S>.id` | `CortexRules` role id | At registration time, `MethodologyToolPublisher` emits a **suggested Layer-2 default_policy** as a sidecar JSON artifact the admin approves (RFC-005 §3.4.2 + §3.4.4). Publisher **does not** write to policy — it *proposes*. |
@@ -497,7 +497,7 @@ HTTP envelope details:
  * events and keeps the Cortex registry in sync with the loaded
  * methodology set.
  *
- * Lifecycle owned by the @method/mcp composition root (stdio server
+ * Lifecycle owned by the @methodts/mcp composition root (stdio server
  * main()), NOT by the MCP Server object. Starts before
  * server.connect(transport); stops in process shutdown.
  */
@@ -579,7 +579,7 @@ executable code.
   on every restart would churn Cortex's audit log.
 - **Cortex-side tombstone semantics** are not this surface's concern —
   `DELETE` returns `retracted` count and that's the whole contract. If
-  Cortex soft-deletes (keeps for audit) or hard-deletes, `@method/mcp`
+  Cortex soft-deletes (keeps for audit) or hard-deletes, `@methodts/mcp`
   sees identical behavior.
 
 **Follow-up (CORTEX-Q3):** Confirm a `DELETE` verb on
@@ -623,7 +623,7 @@ A gate (see §8) asserts no code path from
 
 ## 8. Auth Mechanism
 
-The token `@method/mcp` presents on every call to the registry is:
+The token `@methodts/mcp` presents on every call to the registry is:
 
 - **Subject:** the tenant app's service account (NOT a user).
 - **Issuer:** Cortex (`ctx.auth.issueServiceToken()`).
@@ -674,9 +674,9 @@ asserted at `createCortexToolRegistrationClient` call time.
 | # | Question | Blocks | Default if unanswered |
 |---|---|---|---|
 | Q1 | Does `POST /v1/platform/apps/:appId/tools` accept runtime updates after the app is `active`, or is it deploy-time-only (redeploy required to change tools)? | §3 Model B | Assume deploy-time-only → fall back to Model A; methodology set fixed at manifest. Methodologies added post-deploy cannot surface their tools via Cortex authz — they execute via MCP-local dispatch only (less safe) or fail. |
-| Q2 | Layer-2 `default_policy` for a runtime-registered tool — does the platform accept a template-based auto-approval (`authzTemplate`) or does each new tool enter `pending-approval` until admin touches it? | §3.3, §5.2 | Assume `pending-approval`. Tools stay unreachable until approved. The publisher logs and surfaces `state: 'pending-approval'` on the `RegistrationResult`; `@method/mcp` then surfaces a visible "tool awaiting approval" MCP-side hint. |
+| Q2 | Layer-2 `default_policy` for a runtime-registered tool — does the platform accept a template-based auto-approval (`authzTemplate`) or does each new tool enter `pending-approval` until admin touches it? | §3.3, §5.2 | Assume `pending-approval`. Tools stay unreachable until approved. The publisher logs and surfaces `state: 'pending-approval'` on the `RegistrationResult`; `@methodts/mcp` then surfaces a visible "tool awaiting approval" MCP-side hint. |
 | Q3 | Deregistration endpoint — is there a `DELETE` on tools, or is `POST` the only write? | §6 | Fall back to `replaceAll` with omitted entries. Costly but correct. |
-| Q4 | Does Cortex emit an event when an admin edits Layer-2 policy for a method-registered operation? | Observability | `@method/mcp` polls `list()` on a slow timer (e.g., 5 min) to reconcile. Out of scope here beyond noting the hook. |
+| Q4 | Does Cortex emit an event when an admin edits Layer-2 policy for a method-registered operation? | Observability | `@methodts/mcp` polls `list()` on a slow timer (e.g., 5 min) to reconcile. Out of scope here beyond noting the hook. |
 | Q5 | Does the registry honor the `scope: { methodologyId }` discriminator for batched retracts, or must method maintain its own tool→methodology index? | §5.2 `retract` | Publisher maintains an in-memory index keyed by `methodologyId` and lists concrete names on `DELETE`. One extra round-trip at retract; tolerable. |
 
 These five must be answered before this surface leaves
@@ -719,8 +719,8 @@ describe('G-PORT: runtime-discovered tools are blocked structurally', () => {
   });
 });
 
-// G-LAYER: @method/mcp does not import from @cortex/* at runtime
-describe('G-LAYER: @method/mcp keeps Cortex as injected ctx', () => {
+// G-LAYER: @methodts/mcp does not import from @cortex/* at runtime
+describe('G-LAYER: @methodts/mcp keeps Cortex as injected ctx', () => {
   it('no value import from @cortex/* in packages/mcp/src', () => {
     const valueImports = grepImports('packages/mcp/src', /^@cortex\//, { excludeTypeOnly: true });
     assert.deepStrictEqual(valueImports, []);
@@ -743,7 +743,7 @@ describe('G-MAP: methodtsToCortex output is unique-named', () => {
 
 ### 11.1 Producer
 
-- **Package:** `@method/mcp` (L3).
+- **Package:** `@methodts/mcp` (L3).
 - **Entry file (new):** `packages/mcp/src/cortex/index.ts`.
 - **Composition root:** `packages/mcp/src/index.ts`'s `main()` — construct
   the client + publisher **before** `server.connect(transport)`. The
@@ -763,7 +763,7 @@ describe('G-MAP: methodtsToCortex output is unique-named', () => {
   part of Q1/Q2 resolution.
 - **Downstream consumers of the registered tools:** Cortex's
   `McpServerInterpreter` (RFC-005 §1072 table row 7) dispatches to the
-  MCP server — i.e., back into `@method/mcp`'s existing
+  MCP server — i.e., back into `@methodts/mcp`'s existing
   `CallToolRequestSchema` handler, which translates the call into a
   methodts step/tool invocation. That dispatch path is **not** this
   surface.
@@ -801,7 +801,7 @@ async function main(ctx: CortexCtx | undefined) {
 
 ---
 
-## 12. Compatibility (semver, @method/mcp)
+## 12. Compatibility (semver, @methodts/mcp)
 
 | Change | Bump |
 |---|---|
@@ -812,7 +812,7 @@ async function main(ctx: CortexCtx | undefined) {
 | Rename or remove any exported symbol | major |
 
 **Tool-name migration rule:** any change that alters a tool's Cortex name
-between `@method/mcp` versions MUST publish both the old and new names
+between `@methodts/mcp` versions MUST publish both the old and new names
 for one minor version cycle, then retract the old name at the next major
 bump. Cortex Layer-2 `default_policy` references operations by name; a
 silent rename breaks authz for every admin rule that references the old
@@ -822,15 +822,15 @@ name.
 
 ## 13. Non-Goals
 
-- Cortex-side tool dispatch (Cortex → `@method/mcp` over MCP JSON-RPC).
+- Cortex-side tool dispatch (Cortex → `@methodts/mcp` over MCP JSON-RPC).
 - `cortex-app.yaml` authoring tools. Method documents what the block
   needs to contain; Cortex owns the parser and admin UI.
-- Bridge-proxy tools registration. These are `@method/bridge`-local;
+- Bridge-proxy tools registration. These are `@methodts/bridge`-local;
   Cortex does not see them.
 - Tool schema generation beyond "pass through whatever the methodology
   YAML declares." If a methodology tool has no `inputSchema`, the
   publisher emits `{ type: 'object' }` and logs a warning once.
-- A `@method/mcp` SDK for non-Cortex external hosts. If another host
+- A `@methodts/mcp` SDK for non-Cortex external hosts. If another host
   emerges, a sibling `CortexToolRegistrationClient` (renamed) is the
   pattern; this surface doesn't abstract across hosts prematurely.
 
@@ -840,7 +840,7 @@ name.
 
 **Status:** `needs-follow-up` — frozen on everything not contingent on
 CORTEX-Q1/Q2/Q3. Those three questions must be answered by the Cortex
-team before `@method/mcp` implementation starts (PRD-066 / roadmap C1).
+team before `@methodts/mcp` implementation starts (PRD-066 / roadmap C1).
 
 **Path-forward decision tree:**
 
@@ -867,7 +867,7 @@ team before `@method/mcp` implementation starts (PRD-066 / roadmap C1).
   with migration plan.
 
 **Unblocks on transition to `frozen`:** PRD-066, roadmap item C1
-(Phase 5 — MCP + multi-app + cognitive). Until then, `@method/mcp`
+(Phase 5 — MCP + multi-app + cognitive). Until then, `@methodts/mcp`
 continues to register tools in-process via the bridge (the existing
 stdio model), and Cortex-hosted agents ship with a **static** tool
 set declared in `cortex-app.yaml spec.tools[]` hand-curated from the
@@ -875,7 +875,7 @@ methodology YAML. The existing demos (incident triage, feature dev)
 can operate under that constraint.
 
 **Reviewers (implicit via FCD discipline):**
-- Method team: `@method/mcp` maintainers, `@method/methodts` owners
+- Method team: `@methodts/mcp` maintainers, `@methodts/methodts` owners
   (mapping correctness).
 - Cortex team: RFC-005 authors, platform registry owners
   (CORTEX-Q1/Q2/Q3 answers).

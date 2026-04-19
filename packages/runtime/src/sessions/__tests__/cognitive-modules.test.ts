@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for cognitive-modules.ts — BridgeReasonerActorModule and BridgeMonitorModule.
  *
@@ -20,8 +21,8 @@ import type {
   WorkspaceReadPort,
   WorkspaceWritePort,
   SalienceContext,
-} from '@method/pacta';
-import { moduleId, createWorkspace } from '@method/pacta';
+} from '@methodts/pacta';
+import { moduleId, createWorkspace } from '@methodts/pacta';
 import {
   createBridgeReasonerActorModule,
   createBridgeMonitorModule,

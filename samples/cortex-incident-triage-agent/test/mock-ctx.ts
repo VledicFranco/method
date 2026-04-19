@@ -1,7 +1,7 @@
 /**
  * In-process mock Cortex `ctx` for the sample app E2E tests (PRD-058 §7.2).
  *
- * Intentionally duplicates the test-support mock in `@method/agent-runtime`
+ * Intentionally duplicates the test-support mock in `@methodts/agent-runtime`
  * — the sample should be usable by tenant teams without depending on
  * internals of the runtime. The mock's surface matches `CortexCtx`.
  */
@@ -13,7 +13,7 @@ import type {
   CortexLlmFacade,
   CortexLogger,
   CortexStorageFacade,
-} from '@method/agent-runtime';
+} from '@methodts/agent-runtime';
 
 export interface Spy<Args extends unknown[]> {
   calls: Args[];

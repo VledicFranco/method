@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * InMemoryEventBus — Production implementation of the EventBus port (PRD 026).
  *

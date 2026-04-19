@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `MethodAgent<T>` handle — PRD-058 §4.3 (S1 §4.3).
  *
@@ -26,7 +27,7 @@ import type {
   AgentResult,
   AgentState,
   Pact,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import type { CortexCtx } from './cortex/ctx-types.js';
 import { EventsMultiplexer } from './events-multiplexer.js';
 import { UnknownSessionError } from './errors.js';

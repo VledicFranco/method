@@ -1,5 +1,5 @@
 ---
-title: "@method/pacta"
+title: "@methodts/pacta"
 scope: package
 layer: L3
 contents:
@@ -33,7 +33,7 @@ contents:
   - src/agents/review-agent.ts
 ---
 
-# @method/pacta
+# @methodts/pacta
 
 Modular Agent SDK -- typed contracts, composable middleware, and reference agents.
 
@@ -48,18 +48,18 @@ Pacta formalizes agent deployment as **pacts** -- typed contracts between caller
 ## Install
 
 ```bash
-npm install @method/pacta
+npm install @methodts/pacta
 ```
 
 ## Layer Position
 
 ```
-L4  @method/bridge                  Uses pacta to deploy agents
-L3  @method/pacta                   Agent SDK (this package)
-    @method/pacta-provider-*        Provider implementations
-    @method/pacta-testkit           Verification affordances
-    @method/pacta-playground        Evaluation environment
-L2  @method/methodts                Domain extensions
+L4  @methodts/bridge                  Uses pacta to deploy agents
+L3  @methodts/pacta                   Agent SDK (this package)
+    @methodts/pacta-provider-*        Provider implementations
+    @methodts/pacta-testkit           Verification affordances
+    @methodts/pacta-playground        Evaluation environment
+L2  @methodts/methodts                Domain extensions
 ```
 
 ## Usage
@@ -67,8 +67,8 @@ L2  @method/methodts                Domain extensions
 ### Tier 1 -- Reference Agents
 
 ```typescript
-import { codeAgent } from '@method/pacta';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { codeAgent } from '@methodts/pacta';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 
 const agent = codeAgent({ provider: claudeCliProvider() });
 
@@ -100,9 +100,9 @@ const cheapAgent = codeAgent({ provider }).with({
 ### Tier 2 -- createAgent Composition
 
 ```typescript
-import { createAgent } from '@method/pacta';
-import type { Pact } from '@method/pacta';
-import { anthropicProvider } from '@method/pacta-provider-anthropic';
+import { createAgent } from '@methodts/pacta';
+import type { Pact } from '@methodts/pacta';
+import { anthropicProvider } from '@methodts/pacta-provider-anthropic';
 
 const pact: Pact = {
   mode: { type: 'oneshot' },
@@ -148,9 +148,9 @@ const result = await agent.invoke({
 ### Tier 3 -- Custom Middleware
 
 ```typescript
-import { budgetEnforcer, outputValidator } from '@method/pacta';
-import { reactReasoner, reflexionReasoner, fewShotInjector, effortMapper } from '@method/pacta';
-import { compactionManager, noteTakingManager, subagentDelegator } from '@method/pacta';
+import { budgetEnforcer, outputValidator } from '@methodts/pacta';
+import { reactReasoner, reflexionReasoner, fewShotInjector, effortMapper } from '@methodts/pacta';
+import { compactionManager, noteTakingManager, subagentDelegator } from '@methodts/pacta';
 
 // Reasoning middleware -- wraps invoke with reasoning strategies
 const react = reactReasoner({ thinkTool: true, planBetweenActions: true });

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * EventBus Effect service — in-memory event bus for runtime events.
  *

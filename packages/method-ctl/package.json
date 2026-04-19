@@ -1,5 +1,5 @@
 {
-  "name": "@method/method-ctl",
+  "name": "@methodts/method-ctl",
   "version": "0.1.0",
   "description": "CLI for unified cluster management — query health, nodes, projects across bridge instances",
   "type": "module",
@@ -16,5 +16,8 @@
   },
   "dependencies": {
     "zod": "^3.23.0"
-  }
+  },
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo"
 }

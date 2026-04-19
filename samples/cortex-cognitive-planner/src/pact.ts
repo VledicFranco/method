@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Planner cognitive-module pact — PRD-068 Wave 1.
  *
@@ -7,7 +8,7 @@
  * (PRD-068 §5.1).
  */
 
-import type { Pact, SchemaDefinition, SchemaResult } from '@method/agent-runtime';
+import type { Pact, SchemaDefinition, SchemaResult } from '@methodts/agent-runtime';
 
 /**
  * Plan update shape — returned by a single Planner pass.

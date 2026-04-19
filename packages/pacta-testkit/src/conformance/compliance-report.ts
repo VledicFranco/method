@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `ComplianceReport` — JSON artifact produced by
  * {@link runCortexAgentConformance} and consumed by Cortex to flip the

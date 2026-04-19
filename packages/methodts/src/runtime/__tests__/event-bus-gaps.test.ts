@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Additional EventBus tests targeting coverage gaps:
  * - Waiter cleanup after resolution (lines 128-130)

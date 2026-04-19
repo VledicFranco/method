@@ -15,7 +15,7 @@ domains_affected: [bridge/sessions, bridge/experiments (new), mcp, pacta/cogniti
 **Status:** Implemented (2026-03-30)
 **Author:** PO + Lysica (informed by council debate — Warden, Spark, Dr. Meridian, Prism, Atlas, Cipher)
 **Date:** 2026-03-30
-**Packages:** `@method/bridge` (L4), `@method/mcp` (L3), `@method/pacta` (L3)
+**Packages:** `@methodts/bridge` (L4), `@methodts/mcp` (L3), `@methodts/pacta` (L3)
 **Depends on:** PRD 033 (Cognitive Session UX), PRD 035 (Monitoring & Control v2), PRD 040 (Cognitive Agent Maturity)
 **Organization:** Vidtecci — vida, ciencia y tecnologia
 

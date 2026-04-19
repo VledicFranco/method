@@ -62,7 +62,7 @@ observations:
   - >
     Adding an optional constructor parameter to internal classes (QueryEngine,
     VoyageEmbeddingClient) was safe because neither is publicly exported from
-    @method/fca-index. Verified by grepping index.ts. Would have needed a
+    @methodts/fca-index. Verified by grepping index.ts. Would have needed a
     different approach (e.g., a setter) if they were public.
   - >
     The `scoped()` helper in the port file earned its keep. Call sites now
@@ -88,7 +88,7 @@ proposed_deltas:
   - >
     When a second L3 consumer (mcp, pacta, or similar) needs observability,
     extract ObservabilityPort + ObservabilityEvent to a shared L2 package
-    (e.g. @method/observability or add to @method/methodts). Current
+    (e.g. @methodts/observability or add to @methodts/methodts). Current
     placement in fca-index is fine until then; extraction is one file move
     + re-export. Keep a thin fca-index re-export so consumers don't break.
   - >

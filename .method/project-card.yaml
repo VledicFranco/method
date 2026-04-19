@@ -60,19 +60,19 @@ project_card:
     monorepo: true
     layer_stack: "L2 methodts → L3 mcp → L4 bridge (deps flow downward only)"
     packages:
-      - name: "@method/methodts"
+      - name: "@methodts/methodts"
         path: "packages/methodts/"
         layer: L2
         purpose: "TypeScript methodology type system, stdlib catalog, strategy logic"
-      - name: "@method/testkit"
+      - name: "@methodts/testkit"
         path: "packages/testkit/"
         layer: L2
         purpose: "Testing framework — assertions, builders, diagnostics, runners"
-      - name: "@method/mcp"
+      - name: "@methodts/mcp"
         path: "packages/mcp/"
         layer: L3
         purpose: "MCP server — thin protocol adapter over methodts"
-      - name: "@method/bridge"
+      - name: "@methodts/bridge"
         path: "packages/bridge/"
         layer: L4
         purpose: "HTTP server — PTY session pool, domain-co-located FCA architecture"
@@ -104,7 +104,7 @@ project_card:
     # --- Package boundary discipline ---
     - id: DR-03
       rule: >
-        Domain packages (@method/methodts) must have zero transport dependencies — no MCP
+        Domain packages (@methodts/methodts) must have zero transport dependencies — no MCP
         SDK, no HTTP, no socket imports. Domain packages export pure functions that the MCP
         package wraps. This separation allows domain logic to be used by other
         transports in the future.
@@ -113,7 +113,7 @@ project_card:
 
     - id: DR-04
       rule: >
-        MCP package (@method/mcp) is a thin wrapper over methodts. MCP tool handlers
+        MCP package (@methodts/mcp) is a thin wrapper over methodts. MCP tool handlers
         should be minimal: parse input, call domain function, format output. Business
         logic in MCP handlers is a violation — move it to methodts. Boundary: response
         envelope construction from domain return types is formatting (acceptable in

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for cognitive scenario DSL (PRD 030, C-7).
  *
@@ -16,7 +17,7 @@ import {
   moduleStepCount,
   RecordingModule,
 } from './cognitive-scenario.js';
-import type { MonitoringSignal } from '@method/pacta';
+import type { MonitoringSignal } from '@methodts/pacta';
 
 describe('cognitiveScenario', () => {
   it('executes with default recording modules', async () => {

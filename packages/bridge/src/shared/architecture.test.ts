@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * FCA Architecture Gate Tests
  *
@@ -380,19 +381,19 @@ describe('G-LAYER: Package layer ordering is respected', () => {
     forbidden: string[];
   }> = [
     {
-      name: '@method/types (L0)',
+      name: '@methodts/types (L0)',
       srcDir: TYPES_SRC,
-      forbidden: ['@method/methodts', '@method/mcp', '@method/bridge'],
+      forbidden: ['@methodts/methodts', '@methodts/mcp', '@methodts/bridge'],
     },
     {
-      name: '@method/methodts (L2)',
+      name: '@methodts/methodts (L2)',
       srcDir: METHODTS_SRC,
-      forbidden: ['@method/mcp', '@method/bridge'],
+      forbidden: ['@methodts/mcp', '@methodts/bridge'],
     },
     {
-      name: '@method/mcp (L3)',
+      name: '@methodts/mcp (L3)',
       srcDir: MCP_SRC,
-      forbidden: ['@method/bridge'],
+      forbidden: ['@methodts/bridge'],
     },
   ];
 
@@ -434,7 +435,7 @@ describe('G-LAYER: Package layer ordering is respected', () => {
 
 // ── G-PRD051-TAXONOMY: Provider files use ProviderError taxonomy ──
 
-describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @method/pacta', () => {
+describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @methodts/pacta', () => {
   const PROVIDER_FILES = [
     join(BRIDGE_SRC, '..', '..', 'pacta-provider-claude-cli', 'src', 'cli-executor.ts'),
     join(BRIDGE_SRC, '..', '..', 'pacta-provider-claude-cli', 'src', 'claude-cli-provider.ts'),
@@ -467,7 +468,7 @@ describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @method/p
     ].join('\n'));
   });
 
-  it('providers import from @method/pacta error taxonomy', () => {
+  it('providers import from @methodts/pacta error taxonomy', () => {
     const TAXONOMY_CLASSES = [
       'ProviderError', 'PermanentError', 'TransientError',
       'RateLimitError', 'AuthError', 'NetworkError', 'TimeoutError',
@@ -481,7 +482,7 @@ describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @method/p
       } catch {
         continue;
       }
-      const importsFromPacta = /from\s+['"]@method\/pacta['"]/.test(content);
+      const importsFromPacta = /from\s+['"]@methodts\/pacta['"]/.test(content);
       const hasTaxonomyImport = TAXONOMY_CLASSES.some(cls =>
         new RegExp(`\\b${cls}\\b`).test(content),
       );
@@ -492,16 +493,16 @@ describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @method/p
       }
     }
     assert.deepStrictEqual(violations, [], [
-      'G-PRD051 violation: providers must import error taxonomy from @method/pacta.',
+      'G-PRD051 violation: providers must import error taxonomy from @methodts/pacta.',
       '',
       ...violations,
     ].join('\n'));
   });
 });
 
-// ── G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @method/fca-index ──
+// ── G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @methodts/fca-index ──
 
-describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @method/fca-index', () => {
+describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @methodts/fca-index', () => {
   it('methodts strategy domain does not import fca-index directly', () => {
     const strategyDir = join(METHODTS_SRC, 'strategy');
     const files = collectTsFiles(strategyDir).filter(f => !isTestFile(f));
@@ -509,7 +510,7 @@ describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @method/fca-in
     for (const file of files) {
       const imports = extractImports(file);
       for (const imp of imports) {
-        if (imp.specifier.includes('@method/fca-index')) {
+        if (imp.specifier.includes('@methodts/fca-index')) {
           violations.push(
             `${relative(METHODTS_SRC, file).replace(/\\/g, '/')}:${imp.line} — imports '${imp.specifier}'`,
           );
@@ -517,7 +518,7 @@ describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @method/fca-in
       }
     }
     assert.deepStrictEqual(violations, [], [
-      'G-LAYER-CONTEXT-LOAD violation: methodts/strategy must not import @method/fca-index.',
+      'G-LAYER-CONTEXT-LOAD violation: methodts/strategy must not import @methodts/fca-index.',
       'Use the ContextLoadExecutor port (defined in dag-executor.ts) instead.',
       '',
       ...violations,

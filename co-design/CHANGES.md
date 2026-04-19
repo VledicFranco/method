@@ -36,11 +36,11 @@ drift.
 
 ## Versioning authority
 
-- **Producer owns the version number.** `@method/agent-runtime` (and each
+- **Producer owns the version number.** `@methodts/agent-runtime` (and each
   method-owned package behind a ratified surface) owns its semver tag.
   Consumers cannot unilaterally declare a bump.
 - **Producer-side bump cadence is independent** of the consumer's version
-  cadence. Cortex pins a range `"@method/agent-runtime": "^X.Y.Z"` and
+  cadence. Cortex pins a range `"@methodts/agent-runtime": "^X.Y.Z"` and
   updates on a schedule it controls.
 - **Major bumps are joint releases.** A consumer-side migration PR lands on
   the same day as the producer-side release. PR descriptions cross-link.
@@ -52,11 +52,11 @@ drift.
 
 ## Peer-dependency cascade
 
-`@method/agent-runtime` declares `@method/pacta` as a peer dependency, so a
+`@methodts/agent-runtime` declares `@methodts/pacta` as a peer dependency, so a
 single version of pacta flows through the tenant app. This creates a
 cascade rule:
 
-1. If `@method/pacta` majors, `@method/agent-runtime` majors in the same
+1. If `@methodts/pacta` majors, `@methodts/agent-runtime` majors in the same
    release window. No exceptions.
 2. The cascade major is treated as **breaking** per the classification
    table, even if no field in `decision.md` §4 literally changed. The
@@ -72,7 +72,7 @@ cascade rule:
    testkit (PRD-065) against the new major.
 5. Pacta release process notifies the agent-runtime Surface Advocate
    *before* tagging the pacta major. This captured-in-process rule is
-   mirrored to `@method/pacta`'s CONTRIBUTING.md the next time that file is
+   mirrored to `@methodts/pacta`'s CONTRIBUTING.md the next time that file is
    touched.
 
 ## Deprecation protocol
@@ -118,7 +118,7 @@ quarter. Method side books and hosts; Cortex side attends and prepares.
    for removal in next major).
 3. Review Cortex RFC-005 amendments landed since last review, scanned for
    any that touch the facades listed on ratified surfaces.
-4. Review peer-dep cascade risk: any planned `@method/pacta` majors?
+4. Review peer-dep cascade risk: any planned `@methodts/pacta` majors?
 5. Review G-RATIFIED and related gates in CI — still passing?
 
 **Output.** A short review note checked into `co-design/history/` as
@@ -183,12 +183,12 @@ this gate's six checks in its PR description.
 ### G-BOUNDARY, G-PORT, G-LAYER (inherited from S1)
 
 See `.method/sessions/fcd-surface-method-agent-port/decision.md` §8. These
-gates assert that `@method/agent-runtime`:
+gates assert that `@methodts/agent-runtime`:
 
 - has no value imports from `@cortex/*` (G-BOUNDARY, keeps the structural
   typing invariant that makes S1 testable without Cortex).
 - exports the exact symbol set declared in S1's §4 (G-PORT).
-- does not import from `@method/bridge` — L3 does not reach L4 (G-LAYER).
+- does not import from `@methodts/bridge` — L3 does not reach L4 (G-LAYER).
 
 These gates land in PRD-058 and are referenced by G-RATIFIED: a surface is
 not truly ratified until its producer package passes its own gates.
@@ -229,7 +229,7 @@ consumer columns.
 | Define S1 interface | **A** / **R** | **C** |
 | Ratify S1 (PRD-060) | **R** | **A** |
 | Sign `co-design/method-agent-port.md` | **R** (method advocate) | **R** (cortex advocate) |
-| Own `@method/agent-runtime` semver | **A** / **R** | **I** |
+| Own `@methodts/agent-runtime` semver | **A** / **R** | **I** |
 | Own `@cortex/sdk` `ctx.*` shape | **I** | **A** / **R** |
 | Propose a **clarification** | method or cortex | method or cortex |
 | Approve a **clarification** | advocate | advocate |

@@ -1,28 +1,80 @@
 {
-  "name": "@method/methodts",
+  "name": "@methodts/methodts",
   "version": "0.1.0",
-  "type": "module",
-  "main": "dist/index.js",
-  "exports": {
-    ".": "./dist/index.js",
-    "./stdlib": "./dist/stdlib/index.js",
-    "./stdlib/metadata": "./dist/stdlib/metadata/index.js",
-    "./strategy/dag-types.js": "./dist/strategy/dag-types.js",
-    "./strategy/dag-parser.js": "./dist/strategy/dag-parser.js",
-    "./strategy/dag-gates.js": "./dist/strategy/dag-gates.js",
-    "./strategy/dag-artifact-store.js": "./dist/strategy/dag-artifact-store.js",
-    "./strategy/dag-executor.js": "./dist/strategy/dag-executor.js",
-    "./strategy/dag-retro.js": "./dist/strategy/dag-retro.js",
-    "./strategy/strategy-source.js": "./dist/strategy/strategy-source.js",
-    "./strategy/stdlib-strategy-source.js": "./dist/strategy/stdlib-strategy-source.js",
-    "./semantic/node-executor.js": "./dist/semantic/node-executor.js"
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/methodts"
   },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./stdlib": {
+      "types": "./dist/stdlib/index.d.ts",
+      "default": "./dist/stdlib/index.js"
+    },
+    "./stdlib/metadata": {
+      "types": "./dist/stdlib/metadata/index.d.ts",
+      "default": "./dist/stdlib/metadata/index.js"
+    },
+    "./strategy/dag-types.js": {
+      "types": "./dist/strategy/dag-types.d.ts",
+      "default": "./dist/strategy/dag-types.js"
+    },
+    "./strategy/dag-parser.js": {
+      "types": "./dist/strategy/dag-parser.d.ts",
+      "default": "./dist/strategy/dag-parser.js"
+    },
+    "./strategy/dag-gates.js": {
+      "types": "./dist/strategy/dag-gates.d.ts",
+      "default": "./dist/strategy/dag-gates.js"
+    },
+    "./strategy/dag-artifact-store.js": {
+      "types": "./dist/strategy/dag-artifact-store.d.ts",
+      "default": "./dist/strategy/dag-artifact-store.js"
+    },
+    "./strategy/dag-executor.js": {
+      "types": "./dist/strategy/dag-executor.d.ts",
+      "default": "./dist/strategy/dag-executor.js"
+    },
+    "./strategy/dag-retro.js": {
+      "types": "./dist/strategy/dag-retro.d.ts",
+      "default": "./dist/strategy/dag-retro.js"
+    },
+    "./strategy/strategy-source.js": {
+      "types": "./dist/strategy/strategy-source.d.ts",
+      "default": "./dist/strategy/strategy-source.js"
+    },
+    "./strategy/stdlib-strategy-source.js": {
+      "types": "./dist/strategy/stdlib-strategy-source.d.ts",
+      "default": "./dist/strategy/stdlib-strategy-source.js"
+    },
+    "./semantic/node-executor.js": {
+      "types": "./dist/semantic/node-executor.d.ts",
+      "default": "./dist/semantic/node-executor.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:integration": "vitest run src/__tests__/claude-integration.test.ts"
+    "test:integration": "vitest run src/__tests__/claude-integration.test.ts",
+    "test:experiments": "vitest run \"src/**/experiment-*.test.ts\""
   },
   "dependencies": {
     "effect": "^3.12.0",
@@ -33,5 +85,10 @@
     "@vitest/coverage-v8": "^2.1.9",
     "fast-check": "^4.0.0",
     "vitest": "^2.1.0"
-  }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module"
 }

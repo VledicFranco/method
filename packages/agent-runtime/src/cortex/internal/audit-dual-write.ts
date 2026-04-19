@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Audit dual-write — the permanent-failure safety net.
  *

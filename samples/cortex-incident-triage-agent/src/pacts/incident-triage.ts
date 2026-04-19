@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Incident triage pact (PRD-058 §7.3).
  *
@@ -10,7 +11,7 @@
  *     the tenant app's onEvent handler, not the pact's scope)
  */
 
-import type { Pact } from '@method/agent-runtime';
+import type { Pact } from '@methodts/agent-runtime';
 import { triageSchema, type TriageOutput } from '../types.js';
 
 export const incidentTriagePact: Pact<TriageOutput> = {

@@ -86,7 +86,7 @@ const args = process.platform === 'win32' ? ['/c', fullCmd] : ['-c', fullCmd];
 
 #### MCP-side: 4 proxy tools
 
-Add 4 new MCP tools in `@method/mcp` that proxy to the bridge HTTP API. These are thin transport adapters — they translate MCP tool calls into HTTP requests.
+Add 4 new MCP tools in `@methodts/mcp` that proxy to the bridge HTTP API. These are thin transport adapters — they translate MCP tool calls into HTTP requests.
 
 **Configuration:** `BRIDGE_URL` environment variable (default: `http://localhost:3456`). Same pattern as `METHOD_ROOT`.
 
@@ -193,9 +193,9 @@ This distinguishes bridge infrastructure errors from methodology domain errors f
 
 #### Implementation constraints
 
-- **DR-03 preserved.** The proxy tools live in `@method/mcp`, not `@method/core`. Core remains transport-free.
+- **DR-03 preserved.** The proxy tools live in `@methodts/mcp`, not `@methodts/core`. Core remains transport-free.
 - **DR-04 extended.** The proxy tools follow the same pattern: parse input → make HTTP call → format response. The HTTP call replaces the core function call, but the wrapper pattern is identical.
-- **No bridge dependency.** `@method/mcp` does not import from `@method/bridge`. The proxy communicates via HTTP only. The two packages have no compile-time relationship.
+- **No bridge dependency.** `@methodts/mcp` does not import from `@methodts/bridge`. The proxy communicates via HTTP only. The two packages have no compile-time relationship.
 
 ---
 
@@ -415,7 +415,7 @@ See `mocks/dashboard-overview.html` for the full Vidtecci OS design system mocku
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ @method/bridge                              Port 3456 │ v0.2.0 │
+│ @methodts/bridge                              Port 3456 │ v0.2.0 │
 │ Agent Session Dashboard                     Started ...        │
 ├─────────────────────────────────────────────────────────────────┤
 │ HEALTH CARDS ROW 1: Bridge                                      │
@@ -442,7 +442,7 @@ See `mocks/dashboard-overview.html` for the full Vidtecci OS design system mocku
 │ 1dc309d3 │ ready   │ /pv-mthd │ impl-2  │ 12  │ 51.2k  │  82% │
 │ a3f7bc01 │ dead    │ /pv-agi  │ cncl-1  │  7  │ 23.1k  │  54% │
 ├─────────────────────────────────────────────────────────────────┤
-│ @method/bridge v0.2.0         Auto-refresh 5s · Usage poll 60s │
+│ @methodts/bridge v0.2.0         Auto-refresh 5s · Usage poll 60s │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -567,7 +567,7 @@ After Phase 1, the MCP server exposes **18 tools** (14 methodology + 4 bridge pr
 | `bridge.md` | Already updated with PRD 004 integration section. Phase 1 requires adding: MCP proxy architecture, `BRIDGE_URL` config, error handling pattern, session ID correlation. Phase 2 requires: dashboard endpoint, template rendering, session tracking fields. |
 | `mcp-layer.md` | Add 4 bridge proxy tools to the tool table. Add proxy error handling pattern (distinct from core error handling). Update tool count to 18. |
 | `state-model.md` | No change — bridge sessions are not methodology sessions |
-| `dependencies.md` | Note that `@method/mcp` now makes HTTP calls to the bridge (runtime dependency, not compile-time) |
+| `dependencies.md` | Note that `@methodts/mcp` now makes HTTP calls to the bridge (runtime dependency, not compile-time) |
 
 ### Guides (`docs/guides/`)
 

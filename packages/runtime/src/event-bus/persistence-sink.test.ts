@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for PersistenceSink (PRD 026 Phase 3).
  * Uses in-memory FileSystemProvider mock — no real I/O.

@@ -13,15 +13,15 @@
 
 | Commission | Domain/Package | PR | Status | Fix Cycles |
 |-----------|---------------|-----|--------|------------|
-| C-1 | @method/pacta core (types + engine + middleware) | #58 | done | 0 |
-| C-2 | @method/pacta-testkit | #59 | done | 0 |
-| C-3 | @method/pacta-provider-claude-cli | #62 | done | 0 |
-| C-4 | @method/pacta-playground | #65 | done | 0 |
-| C-5 | @method/pacta src/reasoning/ | #60 | done | 0 |
-| C-6 | @method/pacta src/context/ | #61 | done | 0 |
-| C-7 | @method/pacta-provider-anthropic | #64 | done | 0 |
-| C-8 | @method/pacta src/agents/ | #63 | done | 0 |
-| C-9 | @method/bridge (integration spike) | #66 | done | 0 |
+| C-1 | @methodts/pacta core (types + engine + middleware) | #58 | done | 0 |
+| C-2 | @methodts/pacta-testkit | #59 | done | 0 |
+| C-3 | @methodts/pacta-provider-claude-cli | #62 | done | 0 |
+| C-4 | @methodts/pacta-playground | #65 | done | 0 |
+| C-5 | @methodts/pacta src/reasoning/ | #60 | done | 0 |
+| C-6 | @methodts/pacta src/context/ | #61 | done | 0 |
+| C-7 | @methodts/pacta-provider-anthropic | #64 | done | 0 |
+| C-8 | @methodts/pacta src/agents/ | #63 | done | 0 |
+| C-9 | @methodts/bridge (integration spike) | #66 | done | 0 |
 
 ## Acceptance Gates
 
@@ -59,22 +59,22 @@
 
 | Package | Tests | Pass | Fail |
 |---------|-------|------|------|
-| @method/pacta (core + reasoning + context + agents + gates) | 138 | 138 | 0 |
-| @method/pacta-testkit | 37 | 37 | 0 |
-| @method/pacta-provider-claude-cli | 21 | 21 | 0 |
-| @method/pacta-provider-anthropic | 27 | 27 | 0 |
-| @method/pacta-playground | 41 | 41 | 0 |
+| @methodts/pacta (core + reasoning + context + agents + gates) | 138 | 138 | 0 |
+| @methodts/pacta-testkit | 37 | 37 | 0 |
+| @methodts/pacta-provider-claude-cli | 21 | 21 | 0 |
+| @methodts/pacta-provider-anthropic | 27 | 27 | 0 |
+| @methodts/pacta-playground | 41 | 41 | 0 |
 | **Total** | **264** | **264** | **0** |
 
 ## New Packages Created
 
 | Package | Layer | Files | Lines |
 |---------|-------|-------|-------|
-| @method/pacta (additions) | L3 | 22 | ~2,246 |
-| @method/pacta-testkit | L3 | 9 | ~1,015 |
-| @method/pacta-provider-claude-cli | L3 | 5 | ~778 |
-| @method/pacta-provider-anthropic | L3 | 6 | ~1,762 |
-| @method/pacta-playground | L3 | 10 | ~1,441 |
+| @methodts/pacta (additions) | L3 | 22 | ~2,246 |
+| @methodts/pacta-testkit | L3 | 9 | ~1,015 |
+| @methodts/pacta-provider-claude-cli | L3 | 5 | ~778 |
+| @methodts/pacta-provider-anthropic | L3 | 6 | ~1,762 |
+| @methodts/pacta-playground | L3 | 10 | ~1,441 |
 | Bridge integration (additions) | L4 | 5 | ~976 |
 | **Total** | — | **57** | **~8,218** |
 

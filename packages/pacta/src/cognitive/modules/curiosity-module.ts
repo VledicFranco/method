@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Curiosity Module — learning progress tracking and explore/exploit decisions (PRD 037).
  *

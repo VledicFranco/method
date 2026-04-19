@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for P1-EXEC methods — M1_COUNCIL, M2_ORCH, M3_TMP, M4_ADVREV.
  *

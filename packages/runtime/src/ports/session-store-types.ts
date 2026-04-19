@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SessionStore + Checkpoint type definitions — PRD-061 / S4 §4.3.
  *
- * Owner: @method/runtime
+ * Owner: @methodts/runtime
  * Frozen: 2026-04-14 (FCD surface `fcd-surface-session-store`)
  *
  * These types flow across the port interface and are serialized to every

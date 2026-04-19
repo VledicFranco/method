@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Model Pricing — cost calculation for Anthropic models.
  *
@@ -5,7 +6,7 @@
  * Cache pricing follows Anthropic's prompt caching tiers.
  */
 
-import type { TokenUsage, CostReport } from '@method/pacta';
+import type { TokenUsage, CostReport } from '@methodts/pacta';
 import type { AnthropicUsage } from './types.js';
 
 // ── Price Table ───────────────────────────────────────────────────

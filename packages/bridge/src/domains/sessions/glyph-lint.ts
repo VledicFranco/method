@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * GlyphJS block linter — validates ui: fenced code blocks in agent responses.
  *

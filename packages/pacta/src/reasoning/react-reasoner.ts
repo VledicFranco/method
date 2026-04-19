@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ReAct Reasoner — injects think tool and planning instructions.
  *

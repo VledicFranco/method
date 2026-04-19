@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Wanderer — background creative association module (PRD 032, P7).
  *

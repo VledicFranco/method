@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tool<S> — Hoare-typed agent capability.
  *

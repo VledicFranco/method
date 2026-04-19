@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Narrow structural re-declaration of the Cortex SDK types this adapter
- * consumes — the SINGLE seam between `@method/pacta-provider-cortex` and
+ * consumes — the SINGLE seam between `@methodts/pacta-provider-cortex` and
  * `@t1/cortex-sdk`.
  *
  * Gate `G-CORTEX-ONLY-PATH` (S3 §7, PRD-059 §7.1) forbids any runtime

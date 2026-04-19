@@ -25,7 +25,7 @@ Standard `AgentProvider.execute()` returns raw text. The caller must parse it â€
 ## Quickstart
 
 ```typescript
-import { createStructuredProvider, type JsonSchema } from "@method/methodts";
+import { createStructuredProvider, type JsonSchema } from "@methodts/methodts";
 
 // Wrap any existing AgentProvider
 const structured = createStructuredProvider(baseProvider);
@@ -69,7 +69,7 @@ If the response isn't valid JSON, the effect fails with `AgentCrash`.
 ## With ClaudeHeadlessProvider
 
 ```typescript
-import { StructuredClaudeHeadlessProvider } from "@method/methodts";
+import { StructuredClaudeHeadlessProvider } from "@methodts/methodts";
 
 const layer = StructuredClaudeHeadlessProvider({ model: "sonnet" });
 ```
@@ -81,7 +81,7 @@ This creates a `Layer<StructuredAgentProvider>` that spawns `claude --print` und
 Pass `structuredProvider` and `schema` in `RunSemanticConfig` to bypass text parsing in `runAtomic()`:
 
 ```typescript
-import { runSemantic, type RunSemanticConfig } from "@method/methodts";
+import { runSemantic, type RunSemanticConfig } from "@methodts/methodts";
 
 const config: RunSemanticConfig = {
   structuredProvider: createStructuredProvider(baseProvider),

@@ -1,6 +1,6 @@
 # Membership
 
-State machine managing cluster membership for `@method/cluster`.
+State machine managing cluster membership for `@methodts/cluster`.
 
 ## State Transitions
 

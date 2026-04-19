@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SingleAccountRateGovernor — implements RuntimeRateGovernor for a single
  * account (no routing, no policies). Multi-account deferred to a future PRD.
@@ -18,22 +19,22 @@ import type {
   AccountId,
   AccountUtilization,
   InvocationSignature,
-} from '@method/types';
+} from '@methodts/types';
 import type {
   RuntimeRateGovernor,
   DispatchSlot,
   AcquireOptions,
   ObserveOutcome,
 } from '../ports/rate-governor.js';
-import { SaturationError } from '@method/pacta';
+import { SaturationError } from '@methodts/pacta';
 import { TokenBucket } from './token-bucket.js';
 import { BackpressureQueue } from './backpressure-queue.js';
 
 /**
  * Per-PRD-057 / S2 §8: Optional application identifier for per-tenant
  * (Cortex AppId) scoping. Branded string to avoid collision with other
- * string types. Declared locally in runtime until `@method/types` defines
- * a canonical `AppId`; the downstream `@method/agent-runtime` (PRD-058)
+ * string types. Declared locally in runtime until `@methodts/types` defines
+ * a canonical `AppId`; the downstream `@methodts/agent-runtime` (PRD-058)
  * will likely re-brand.
  */
 export type AppId = string & { readonly __brand: 'AppId' };

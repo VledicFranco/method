@@ -6,7 +6,7 @@
 
 ## Task Summary
 
-Bug fixes and small enhancements within the `@method/fca-index` package:
+Bug fixes and small enhancements within the `@methodts/fca-index` package:
 1. Scanner: exclude test dirs/files by default
 2. Index store: skip Lance upsert for components with < 100 chars of doc text
 3. Coverage CLI: exit with code 1 when below threshold

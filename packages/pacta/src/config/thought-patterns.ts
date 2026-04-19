@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Thought Patterns — reusable cognitive templates for common task types (PRD 032, P5).
  *

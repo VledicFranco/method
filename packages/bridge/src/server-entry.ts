@@ -1,13 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileSync, appendFileSync, unlinkSync } from 'node:fs';
 import { exec as nodeExec } from 'node:child_process';
 import { runStartupRecovery } from './startup-recovery.js';
 import { createNodeNativeSessionDiscovery } from './ports/native-session-discovery.js';
-import { SessionCheckpointSink } from '@method/runtime/event-bus';
+import { SessionCheckpointSink } from '@methodts/runtime/event-bus';
 import Fastify from 'fastify';
-// PRD-057 / S2 §3.3 / C5: session pool + channels moved to @method/runtime/sessions.
-import { createPool, createSessionChannels } from '@method/runtime/sessions';
+// PRD-057 / S2 §3.3 / C5: session pool + channels moved to @methodts/runtime/sessions.
+import { createPool, createSessionChannels } from '@methodts/runtime/sessions';
 import { createUsagePoller } from './domains/tokens/usage-poller.js';
 import { createTokenTracker } from './domains/tokens/tracker.js';
 import { registerTokenRoutes } from './domains/tokens/routes.js';
@@ -35,8 +36,8 @@ import { setStrategyRoutesEventBus, setStrategyRoutesPool } from './domains/stra
 import { DiscoveryService } from './domains/projects/discovery-service.js';
 import { InMemoryProjectRegistry } from './domains/registry/index.js';
 // PRD 026 Phase 4: JsonLineEventPersistence removed — PersistenceSink handles unified event persistence
-// PRD-057 / S2 §3.6 / C7: config schemas live in @method/runtime/config.
-import { loadSessionsConfig, loadStrategiesConfig } from '@method/runtime/config';
+// PRD-057 / S2 §3.6 / C7: config schemas live in @methodts/runtime/config.
+import { loadSessionsConfig, loadStrategiesConfig } from '@methodts/runtime/config';
 import { loadTokensConfig } from './domains/tokens/config.js';
 import { loadTriggersConfig } from './domains/triggers/config.js';
 import { loadGenesisConfig } from './domains/genesis/config.js';
@@ -47,7 +48,7 @@ import { ClusterFederationSink } from './domains/cluster/federation-sink.js';
 import { TailscaleDiscovery } from './domains/cluster/adapters/tailscale-discovery.js';
 import { HttpNetwork } from './domains/cluster/adapters/http-network.js';
 import { NodeResource } from './domains/cluster/adapters/node-resource.js';
-import { CapacityWeightedRouter, EventRelay } from '@method/cluster';
+import { CapacityWeightedRouter, EventRelay } from '@methodts/cluster';
 import { NodeFileSystemProvider } from './ports/file-system.js';
 import { JsYamlLoader } from './ports/yaml-loader.js';
 import { StdlibSource } from './ports/stdlib-source.js';
@@ -55,16 +56,16 @@ import { InMemoryEventBus, WebSocketSink, PersistenceSink, ChannelSink, GenesisS
 import type { EventFilter, EventSeverity } from './ports/event-bus.js';
 import { setExperimentRoutesPorts, registerExperimentRoutes, createExperimentEventSink } from './domains/experiments/index.js';
 import { createBuildDomain, StrategyExecutorAdapter } from './domains/build/index.js';
-import { StrategyExecutor } from '@method/runtime/strategy';
+import { StrategyExecutor } from '@methodts/runtime/strategy';
 import { loadExecutorConfig } from './domains/strategies/strategy-routes.js';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
-// PRD-057 / S2 §3.5 / C4: cost-governor factory moved to @method/runtime.
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
+// PRD-057 / S2 §3.5 / C4: cost-governor factory moved to @methodts/runtime.
 // Bridge keeps its Fastify route registration locally.
-import { createCostGovernor, loadCostGovernorConfig } from '@method/runtime/cost-governor';
+import { createCostGovernor, loadCostGovernorConfig } from '@methodts/runtime/cost-governor';
 import { registerCostGovernorRoutes } from './domains/cost-governor/routes.js';
 // PRD-057 / S2 §14 Q6 / C7: cognitive sink class renamed to CognitiveEventBusSink
-// and lives in @method/runtime/sessions. Bridge-side alias shim removed.
-import { CognitiveEventBusSink } from '@method/runtime/sessions';
+// and lives in @methodts/runtime/sessions. Bridge-side alias shim removed.
+import { CognitiveEventBusSink } from '@methodts/runtime/sessions';
 // PRD-057 / S2 §6 / C7: inject bridge PTY/print session factory into createPool.
 import { createBridgeSessionProviderFactory } from './domains/sessions/factory.js';
 
@@ -94,14 +95,14 @@ const clusterConfig = loadClusterConfig({
   mkdirSync: (p, opts) => fsProvider.mkdirSync(p, opts),
 });
 
-// Strategies domain — engine logic now lives in @method/runtime/strategy (PRD-057 / S2 §3.2 / C2)
+// Strategies domain — engine logic now lives in @methodts/runtime/strategy (PRD-057 / S2 §3.2 / C2)
 import {
   setRetroWriterFs,
   setStrategyParserYaml,
   setRetroGeneratorYaml,
   EventBusHumanApprovalResolver,
   FsSubStrategySource,
-} from '@method/runtime/strategy';
+} from '@methodts/runtime/strategy';
 import { setStrategyRoutesPorts, setStrategyRoutesHumanApprovalResolver, setStrategyRoutesSubStrategySource } from './domains/strategies/strategy-routes.js';
 setRetroWriterFs(fsProvider);
 setStrategyRoutesPorts(fsProvider, yamlLoader);
@@ -179,7 +180,7 @@ setProjectRoutesEventBus(eventBus);
 
 // PRD-044: Wire HumanApprovalResolver and SubStrategySource into the strategies domain.
 // Created once at startup and reused across all executions (singleton lifecycle).
-// PRD-057 / S2 §3.2 / C2: classes renamed and moved to @method/runtime/strategy.
+// PRD-057 / S2 §3.2 / C2: classes renamed and moved to @methodts/runtime/strategy.
 const humanApprovalResolver = new EventBusHumanApprovalResolver(eventBus);
 const subStrategySource = new FsSubStrategySource(
   process.env.TRIGGERS_STRATEGY_DIR ?? '.method/strategies',
@@ -231,7 +232,7 @@ const transcriptReader = createTranscriptReader({
 });
 
 // PRD 026 Phase 4: GenesisSink replaces polling loop (module-scoped for shutdown disposal)
-let genesisSink: import('@method/runtime/event-bus').GenesisSink | null = null;
+let genesisSink: import('@methodts/runtime/event-bus').GenesisSink | null = null;
 
 const BRIDGE_STARTED_AT = new Date();
 
@@ -470,7 +471,7 @@ const methodologyStore = new MethodologySessionStore(methodologySource);
 // PRD-064 / S7 §6.4: subscribe the session store to methodology-source
 // change notifications. StdlibSource is a no-op emitter; the wiring is
 // in place so that a Cortex deployment (swapping in `CortexMethodologySource`
-// from `@method/agent-runtime`) drops routing caches on admin edits
+// from `@methodts/agent-runtime`) drops routing caches on admin edits
 // without a bridge restart.
 methodologySource.onChange?.((change) => {
   methodologyStore.onMethodologyChange(change);
@@ -596,7 +597,7 @@ async function start() {
     buildDomain.registerRoutes(app);
 
     // PRD 051 / PRD-057 C4: Register Cost Governor.
-    // Factory lives in @method/runtime/cost-governor (transport-free).
+    // Factory lives in @methodts/runtime/cost-governor (transport-free).
     // Route registration stays in bridge (Fastify coupling).
     const costGovernorConfig = loadCostGovernorConfig();
     const costGovernor = costGovernorConfig.enabled
@@ -627,7 +628,7 @@ async function start() {
     await clusterDomain.start();
 
     await app.listen({ port: PORT, host: '0.0.0.0' });
-    app.log.info(`@method/bridge listening on port ${PORT}`);
+    app.log.info(`@methodts/bridge listening on port ${PORT}`);
 
     // PRD 026 Phase 5: Connect all registered connectors
     await eventBus.connectAll();

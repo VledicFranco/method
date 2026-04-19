@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M2_DIMPL — Distributed Implementation Method (M2-DIMPL v1.0).
  *

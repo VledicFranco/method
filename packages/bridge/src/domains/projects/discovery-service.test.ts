@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Test suite for DiscoveryService
  * Covers: recursive scan, timeout, max_projects, error recovery, performance

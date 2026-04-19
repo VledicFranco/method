@@ -30,8 +30,8 @@ With the bridge MCP proxy tools + methodology tools, the orchestrator:
 ```
 Orchestrator (human's Claude Code session)
     │
-    ├── MCP methodology tools ──→ @method/mcp ──→ MethodologySource port ──→ StdlibSource
-    │   methodology_start        (initialize session)        (@method/methodts stdlib)
+    ├── MCP methodology tools ──→ @methodts/mcp ──→ MethodologySource port ──→ StdlibSource
+    │   methodology_start        (initialize session)        (@methodts/methodts stdlib)
     │   methodology_route         (evaluate delta_phi)
     │   methodology_load_method   (load method in session)
     │   step_context              (get step + prior method outputs)
@@ -39,7 +39,7 @@ Orchestrator (human's Claude Code session)
     │   step_advance              (advance steps)
     │   methodology_transition    (complete method, re-route)
     │
-    └── MCP bridge proxy tools ──→ @method/mcp ──→ HTTP ──→ @method/bridge
+    └── MCP bridge proxy tools ──→ @methodts/mcp ──→ HTTP ──→ @methodts/bridge
         bridge_spawn              (spawn sub-agent)     → POST /sessions
         bridge_prompt             (send step prompt)    → POST /sessions/:id/prompt
         bridge_kill               (cleanup)             → DELETE /sessions/:id
@@ -52,9 +52,9 @@ Orchestrator (human's Claude Code session)
 ```
 
 > **Deprecation note:** The previous diagram showed methodology tools flowing through
-> `@method/core` (the legacy YAML loader). As of WS-1, methodology data access goes through
-> the `MethodologySource` port backed by `StdlibSource` (wrapping `@method/methodts` stdlib).
-> `@method/core` is deprecated for methodology loading. See `docs/arch/methodology-source.md`.
+> `@methodts/core` (the legacy YAML loader). As of WS-1, methodology data access goes through
+> the `MethodologySource` port backed by `StdlibSource` (wrapping `@methodts/methodts` stdlib).
+> `@methodts/core` is deprecated for methodology loading. See `docs/arch/methodology-source.md`.
 
 The MCP server exposes both methodology tools and bridge proxy tools. The orchestrator calls everything through MCP — methodology tools for intelligence, bridge proxy tools for agent labor. The proxy tools internally call the bridge HTTP API, so the orchestrator never needs to make raw HTTP requests.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Monitor cognitive-module — Cortex tenant app composition root.
  *
@@ -33,7 +34,7 @@ import {
   type MethodAgent,
   type CorticalWorkspaceMembershipHandle,
   type WorkspaceEventEmitter,
-} from '@method/agent-runtime';
+} from '@methodts/agent-runtime';
 
 import { monitorPact, type MonitorReport } from './pact.js';
 

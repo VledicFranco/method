@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/scheduling — PRD-062 / S5.
+ * @methodts/runtime/scheduling — PRD-062 / S5.
  */
 
 export {

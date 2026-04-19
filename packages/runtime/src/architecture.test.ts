@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Architecture gate tests for @method/runtime (PRD-057 / S2 §11).
+ * Architecture gate tests for @methodts/runtime (PRD-057 / S2 §11).
  *
  * - G-RUNTIME-ZERO-TRANSPORT: no fastify / @fastify / ws / node-pty / express
  *   imports under packages/runtime/src.
- * - G-RUNTIME-NO-BRIDGE-BACKREF: no `@method/bridge` or `../../bridge/`
+ * - G-RUNTIME-NO-BRIDGE-BACKREF: no `@methodts/bridge` or `../../bridge/`
  *   imports under packages/runtime/src.
  * - G-RUNTIME-EVENT-TYPE-NEUTRAL: EventDomain keeps the `(string & {})`
  *   escape hatch (no closed union reintroduced).
@@ -56,7 +57,7 @@ function extractImportSpecifiers(content: string): string[] {
   return results;
 }
 
-describe('@method/runtime — architecture gates (PRD-057 / S2 §11)', () => {
+describe('@methodts/runtime — architecture gates (PRD-057 / S2 §11)', () => {
   const srcDir = join(PACKAGE_DIR, 'src');
   const files = walkTsFiles(srcDir);
 
@@ -81,18 +82,18 @@ describe('@method/runtime — architecture gates (PRD-057 / S2 §11)', () => {
     assert.deepEqual(
       violations,
       [],
-      `@method/runtime must have zero transport dependencies. Violations: ${JSON.stringify(violations, null, 2)}`,
+      `@methodts/runtime must have zero transport dependencies. Violations: ${JSON.stringify(violations, null, 2)}`,
     );
   });
 
-  it('G-RUNTIME-NO-BRIDGE-BACKREF: no imports from @method/bridge', () => {
+  it('G-RUNTIME-NO-BRIDGE-BACKREF: no imports from @methodts/bridge', () => {
     const violations: Array<{ file: string; specifier: string }> = [];
 
     for (const file of files) {
       const content = readFileSync(file, 'utf-8');
       const specifiers = extractImportSpecifiers(content);
       for (const spec of specifiers) {
-        if (spec === '@method/bridge' || spec.startsWith('@method/bridge/')) {
+        if (spec === '@methodts/bridge' || spec.startsWith('@methodts/bridge/')) {
           violations.push({ file, specifier: spec });
         }
         if (spec.includes('/bridge/src/') || spec.includes('../../bridge/')) {
@@ -104,7 +105,7 @@ describe('@method/runtime — architecture gates (PRD-057 / S2 §11)', () => {
     assert.deepEqual(
       violations,
       [],
-      `@method/runtime must not back-reference @method/bridge. Violations: ${JSON.stringify(violations, null, 2)}`,
+      `@methodts/runtime must not back-reference @methodts/bridge. Violations: ${JSON.stringify(violations, null, 2)}`,
     );
   });
 

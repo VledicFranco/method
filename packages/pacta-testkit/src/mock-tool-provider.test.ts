@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { MockToolProvider } from './mock-tool-provider.js';

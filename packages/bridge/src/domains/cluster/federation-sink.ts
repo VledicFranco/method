@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Cluster Federation Sink ─────────────────────────────────────
 //
 // EventSink implementation that federates local bridge events to
-// cluster peers via the EventRelay from @method/cluster.
+// cluster peers via the EventRelay from @methodts/cluster.
 //
 // Lives in domains/cluster/ because it IS cluster-specific logic —
 // the bridge composition root registers it as a sink on the EventBus
@@ -11,9 +12,9 @@
 // re-relaying events received from other bridges.
 
 import type { BridgeEvent, EventSink } from '../../ports/event-bus.js';
-import type { EventRelay } from '@method/cluster';
+import type { EventRelay } from '@methodts/cluster';
 import type { ClusterDomain } from './core.js';
-import type { ClusterNode } from '@method/cluster';
+import type { ClusterNode } from '@methodts/cluster';
 
 // ── ClusterFederationSink ─────────────────────────────────────
 
@@ -51,7 +52,7 @@ export class ClusterFederationSink implements EventSink {
     }
 
     // Adapt BridgeEvent to the shape EventRelay.relay() expects.
-    // EventRelay's RelayableEvent is not re-exported from @method/cluster,
+    // EventRelay's RelayableEvent is not re-exported from @methodts/cluster,
     // but relay() accepts compatible structural types.
     const relayable = {
       domain: event.domain,

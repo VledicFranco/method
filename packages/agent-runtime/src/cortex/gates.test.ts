@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD-063 architecture gates.
  *
  * Gates covered:
  *   G-CONNECTOR-RUNTIME-IMPORTS-ONLY — static import-scan of
- *     event-connector.ts: must only import from @method/runtime/ports,
- *     never from @method/bridge or @method/runtime/event-bus internals.
+ *     event-connector.ts: must only import from @methodts/runtime/ports,
+ *     never from @methodts/bridge or @methodts/runtime/event-bus internals.
  *   G-CONNECTOR-TOPIC-ALLOWLIST — mapRuntimeEventOrThrow throws on
  *     unknown topic.
  *   G-AUDIT-SUPERSET — every METHOD_TOPIC_REGISTRY source type has an
@@ -19,7 +20,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import type { EventConnector } from '@method/runtime/ports';
+import type { EventConnector } from '@methodts/runtime/ports';
 
 import { CortexEventConnector } from './event-connector.js';
 import {
@@ -35,20 +36,20 @@ import type { CortexEventsCtx } from './ctx-types.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 describe('G-CONNECTOR-RUNTIME-IMPORTS-ONLY', () => {
-  it('event-connector.ts does not import from @method/bridge', () => {
+  it('event-connector.ts does not import from @methodts/bridge', () => {
     const src = readFileSync(join(HERE, 'event-connector.ts'), 'utf-8');
-    assert.doesNotMatch(src, /from\s+['"]@method\/bridge/);
+    assert.doesNotMatch(src, /from\s+['"]@methodts\/bridge/);
   });
 
   it('event-connector.ts does not import from runtime event-bus internals', () => {
     const src = readFileSync(join(HERE, 'event-connector.ts'), 'utf-8');
-    assert.doesNotMatch(src, /from\s+['"]@method\/runtime\/event-bus/);
-    assert.doesNotMatch(src, /from\s+['"]@method\/runtime\/src\/event-bus/);
+    assert.doesNotMatch(src, /from\s+['"]@methodts\/runtime\/event-bus/);
+    assert.doesNotMatch(src, /from\s+['"]@methodts\/runtime\/src\/event-bus/);
   });
 
-  it('event-connector.ts imports runtime types from @method/runtime/ports only', () => {
+  it('event-connector.ts imports runtime types from @methodts/runtime/ports only', () => {
     const src = readFileSync(join(HERE, 'event-connector.ts'), 'utf-8');
-    assert.match(src, /from\s+['"]@method\/runtime\/ports['"]/);
+    assert.match(src, /from\s+['"]@methodts\/runtime\/ports['"]/);
   });
 });
 
@@ -138,9 +139,9 @@ describe('G-LAYER — no disallowed imports in src/cortex/', () => {
   ];
   // Packages higher or laterally-inappropriate to import
   const FORBIDDEN = [
-    '@method/bridge',
-    '@method/cluster',
-    '@method/mcp',
+    '@methodts/bridge',
+    '@methodts/cluster',
+    '@methodts/mcp',
     'fastify',
     'node-pty',
     '@t1/cortex-sdk',

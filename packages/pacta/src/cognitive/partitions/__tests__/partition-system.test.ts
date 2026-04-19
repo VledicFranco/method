@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Partition System Tests — PRD 044 C-2.
  *

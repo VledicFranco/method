@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for SessionCheckpointSink (PRD 029 Phase C-2).
  */

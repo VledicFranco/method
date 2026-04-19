@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Discovery Provider Port ─────────────────────────────────────
 //
 // How a bridge finds other bridges in the cluster. Implementations

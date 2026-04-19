@@ -60,7 +60,7 @@ control upward.
 - **FCA-compliant.** Verifier module in `modules/verifier.ts`. Algebra types in
   `algebra/`. Cycle changes in `engine/`. No cross-layer imports.
 - **Reuse methodts primitives.** The `Gate<S>`, `Predicate<A>`, `executeWithRetry`,
-  `GateResult`, and `EvalTrace` from `@method/methodts` provide the verification
+  `GateResult`, and `EvalTrace` from `@methodts/methodts` provide the verification
   infrastructure. The Verifier composes these, not reinvents them.
 - **Token budget.** Verification adds LLM calls. Budget: ≤ 1 verification call per
   write action (not per cycle). Total overhead ≤ 20% of ReasonerActor tokens.
@@ -77,7 +77,7 @@ L3  modules/verifier.ts       Verifier module — CognitiveModule contract
     modules/planner.ts         Planner — produces CheckableKPIs (extended)
 L2  algebra/verification.ts   Verification types: CheckableKPI, VerificationResult, CorrectionSignal
     algebra/goal-types.ts      Extended: KPI now has checkable predicate variant
-L1  @method/methodts           Gate<S>, Predicate<A>, executeWithRetry, GateResult
+L1  @methodts/methodts           Gate<S>, Predicate<A>, executeWithRetry, GateResult
 ```
 
 ### New Algebra Surfaces
@@ -354,5 +354,5 @@ Verifier runs programmatic checks before LLM fallback.
   memory) are prerequisites. Part IV is this PRD.
 - **RFC 001 (Cognitive Composition):** The Reflector module (LEARN phase) is related
   but operates post-session. The Verifier operates within the session, per-action.
-- **@method/methodts:** Gate, Predicate, executeWithRetry, GateResult provide the
+- **@methodts/methodts:** Gate, Predicate, executeWithRetry, GateResult provide the
   infrastructure. The Verifier composes them into the cognitive module contract.

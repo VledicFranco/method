@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Few-Shot Injector — injects example prompt-response pairs into the system prompt.
  *

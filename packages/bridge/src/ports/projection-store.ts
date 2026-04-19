@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ProjectionStore — composition-root port for projection-based state persistence.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * domain/ — Domain theory types and validators (F1-FTH).
  *

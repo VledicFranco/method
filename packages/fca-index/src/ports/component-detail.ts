@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ComponentDetailPort — Port for full component detail retrieval from an FCA-indexed project.
  *
@@ -7,8 +8,8 @@
  *
  * No embedding calls are made — this is a pure SQLite lookup.
  *
- * Owner:     @method/fca-index
- * Consumer:  @method/mcp (context_detail tool handler)
+ * Owner:     @methodts/fca-index
+ * Consumer:  @methodts/mcp (context_detail tool handler)
  * Direction: fca-index → mcp (unidirectional)
  * Co-designed: 2026-04-09
  * Status:    frozen

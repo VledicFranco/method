@@ -1,5 +1,5 @@
 {
-  "name": "@method/bridge",
+  "name": "@methodts/bridge",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/server-entry.js",
@@ -12,13 +12,13 @@
   "dependencies": {
     "@fastify/websocket": "^11.2.0",
     "@glyphjs/compiler": "^0.9.1",
-    "@method/types": "*",
-    "@method/methodts": "*",
-    "@method/pacta": "*",
-    "@method/runtime": "*",
-    "@method/pacta-provider-anthropic": "*",
-    "@method/cluster": "*",
-    "@method/pacta-provider-claude-cli": "*",
+    "@methodts/types": "*",
+    "@methodts/methodts": "*",
+    "@methodts/pacta": "*",
+    "@methodts/runtime": "*",
+    "@methodts/pacta-provider-anthropic": "*",
+    "@methodts/cluster": "*",
+    "@methodts/pacta-provider-claude-cli": "*",
     "fastify": "^5.0.0",
     "js-yaml": "^4.1.1",
     "p-queue": "^8.0.0",
@@ -26,11 +26,14 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@method/pacta-testkit": "*",
+    "@methodts/pacta-testkit": "*",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
     "@types/ws": "^8.18.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
-  }
+  },
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo"
 }

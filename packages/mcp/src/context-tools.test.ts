@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest';
 import { createContextTools, CONTEXT_TOOLS } from './context-tools.js';
 import {
   RecordingContextQueryPort,
   RecordingCoverageReportPort,
   RecordingComponentDetailPort,
-} from '@method/fca-index/testkit';
-import { ContextQueryError, CoverageReportError, ComponentDetailError } from '@method/fca-index';
-import type { ComponentContext } from '@method/fca-index';
+} from '@methodts/fca-index/testkit';
+import { ContextQueryError, CoverageReportError, ComponentDetailError } from '@methodts/fca-index';
+import type { ComponentContext } from '@methodts/fca-index';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

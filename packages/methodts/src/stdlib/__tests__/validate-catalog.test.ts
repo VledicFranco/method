@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * validate-catalog.test.ts — Comprehensive stdlib validation.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * InsightStore — In-memory key-value store for cross-step insights.
  *

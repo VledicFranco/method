@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Structural mirrors of `CortexCtx` + `MethodAgentResult` from
- * `@method/agent-runtime` (frozen by S1).
+ * `@methodts/agent-runtime` (frozen by S1).
  *
  * These types are duplicated here (not imported) so that consumers of
- * `@method/pacta-testkit` do not need a TypeScript project reference to
- * `@method/agent-runtime`. The conformance runner / mock ctx structurally
+ * `@methodts/pacta-testkit` do not need a TypeScript project reference to
+ * `@methodts/agent-runtime`. The conformance runner / mock ctx structurally
  * match whatever `CortexCtx` the caller passes (`structural type` means the
  * shapes align at the call site).
  *
@@ -13,7 +14,7 @@
  * `packages/agent-runtime/src/method-agent-handle.ts`. When the agent
  * runtime adds a facade field or widens a method, this file adds the same.
  * Compat gate `G-BOUNDARY` scans the conformance directory for **value**
- * imports from `@method/agent-runtime` (none permitted); the type-level
+ * imports from `@methodts/agent-runtime` (none permitted); the type-level
  * alignment is enforced by convention + this mirrored file.
  *
  * Last sync: 2026-04-14 against agent-runtime@0.1.0.

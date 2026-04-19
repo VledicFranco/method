@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * System Prompt Budget Tracker — tracks system prompt token consumption.
  *

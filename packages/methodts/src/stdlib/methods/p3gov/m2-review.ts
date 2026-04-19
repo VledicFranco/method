@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M2_REVIEW_GOV — Council Review Method (M2-REVIEW v0.2).
  *

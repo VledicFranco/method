@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method<S> — The 5-tuple from F1-FTH Definition 6.1.
  *

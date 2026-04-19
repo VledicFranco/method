@@ -1,4 +1,5 @@
-// @method/pacta-playground — simulated agent evaluation environment
+// SPDX-License-Identifier: Apache-2.0
+// @methodts/pacta-playground — simulated agent evaluation environment
 // Scenario runner, virtual FS, scripted tools, comparative eval
 
 // Types

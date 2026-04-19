@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ObservabilityPort — Structured observability signal for fca-index domains.
  *
- * Owner:       @method/fca-index
+ * Owner:       @methodts/fca-index
  * Callers:     query, index-store (future: scanner, coverage, compliance)
  * Implementers:
  *   - StderrObservabilitySink (fca-index/cli)     — standalone / CLI default

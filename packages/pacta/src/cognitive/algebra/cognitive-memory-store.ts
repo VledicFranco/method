@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CognitiveMemoryStore — unified memory architecture (RFC 006 Part III).
  *

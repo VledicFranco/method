@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Task Partition Monitor — goal staleness detection.
  *

@@ -29,7 +29,7 @@ The autonomous government design (Section 7) defines nine event trigger types (E
 
 An **event trigger system** that watches for project events, matches them to registered Strategy definitions, and invokes the existing Strategy executor (PRD 017) automatically. Strategies declare their triggers in YAML (extending the existing `triggers:` field). The bridge process hosts the trigger watchers. Trigger fires are debounced, logged, and visible in the dashboard. The system restores registered triggers on bridge restart by scanning Strategy YAML files in `.method/strategies/`.
 
-**Architectural constraint (DR-03):** The trigger system lives entirely in `@method/bridge` at `packages/bridge/src/triggers/`. It does NOT touch `@method/core`. The strategy executor is invoked via HTTP, not direct import.
+**Architectural constraint (DR-03):** The trigger system lives entirely in `@methodts/bridge` at `packages/bridge/src/triggers/`. It does NOT touch `@methodts/core`. The strategy executor is invoked via HTTP, not direct import.
 
 ---
 
@@ -508,7 +508,7 @@ All items below are documented for future phases.
 
 ### Architectural Note
 
-Per the DR-03 constraint stated in Section 1, the trigger system lives entirely in `@method/bridge`. The trigger watcher implementations depend on Node.js APIs (`fs.watch`, `child_process`, `setInterval`) and Fastify (webhooks), all of which are bridge-layer concerns.
+Per the DR-03 constraint stated in Section 1, the trigger system lives entirely in `@methodts/bridge`. The trigger watcher implementations depend on Node.js APIs (`fs.watch`, `child_process`, `setInterval`) and Fastify (webhooks), all of which are bridge-layer concerns.
 
 The TriggerRouter is instantiated alongside the Strategy routes during bridge startup. It receives a reference to the Fastify app (for webhook route registration) and the bridge's channel system (for event emission). Strategy execution is invoked through the internal HTTP endpoint, maintaining a clean separation — the trigger system is a client of the strategy executor, not a part of it.
 

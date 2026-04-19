@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M7_PRDS — PRD Sectioning Method (M7-PRDS v1.0).
  *

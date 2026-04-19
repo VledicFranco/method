@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Test suite for F-THANE-2: Project Config Discovery Integration
  *

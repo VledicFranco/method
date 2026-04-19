@@ -1,6 +1,6 @@
 # Cognitive Composition — Usage Guide
 
-This guide covers practical use of the cognitive composition system in `@method/pacta`. For architecture details, see `docs/arch/cognitive-composition.md`.
+This guide covers practical use of the cognitive composition system in `@methodts/pacta`. For architecture details, see `docs/arch/cognitive-composition.md`.
 
 ## Quick Start
 
@@ -13,17 +13,17 @@ import {
   type CycleConfig,
   type CycleModules,
   moduleId,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // Import specific module factories
-import { createObserver } from '@method/pacta/cognitive/modules/observer.js';
-import { createMemoryModule } from '@method/pacta/cognitive/modules/memory-module.js';
-import { createReasoner } from '@method/pacta/cognitive/modules/reasoner.js';
-import { createActor } from '@method/pacta/cognitive/modules/actor.js';
-import { createMonitor } from '@method/pacta/cognitive/modules/monitor.js';
-import { createEvaluator } from '@method/pacta/cognitive/modules/evaluator.js';
-import { createPlanner } from '@method/pacta/cognitive/modules/planner.js';
-import { createReflector } from '@method/pacta/cognitive/modules/reflector.js';
+import { createObserver } from '@methodts/pacta/cognitive/modules/observer.js';
+import { createMemoryModule } from '@methodts/pacta/cognitive/modules/memory-module.js';
+import { createReasoner } from '@methodts/pacta/cognitive/modules/reasoner.js';
+import { createActor } from '@methodts/pacta/cognitive/modules/actor.js';
+import { createMonitor } from '@methodts/pacta/cognitive/modules/monitor.js';
+import { createEvaluator } from '@methodts/pacta/cognitive/modules/evaluator.js';
+import { createPlanner } from '@methodts/pacta/cognitive/modules/planner.js';
+import { createReflector } from '@methodts/pacta/cognitive/modules/reflector.js';
 
 const workspace: WorkspaceConfig = {
   capacity: 100,
@@ -173,7 +173,7 @@ LEARN phase failures are special: they emit `CognitiveLEARNFailed` events and ro
 When you need a cognitive agent where a flat `Agent` is expected:
 
 ```typescript
-import { asFlatAgent } from '@method/pacta';
+import { asFlatAgent } from '@methodts/pacta';
 
 const cognitive = createCognitiveAgent({ modules, workspace, cycle: cycleConfig });
 
@@ -199,7 +199,7 @@ console.log(result.sessionId);   // 'cognitive-{cycleNumber}'
 The playground provides `RecordingModule` — a cognitive module that captures all step invocations and returns configurable outputs:
 
 ```typescript
-import { RecordingModule } from '@method/pacta-playground';
+import { RecordingModule } from '@methodts/pacta-playground';
 
 const reasoner = new RecordingModule('reasoner', {
   defaultOutput: { reasoning: 'test trace' },
@@ -228,7 +228,7 @@ import {
   monitorIntervened,
   workspaceSize,
   moduleStepCount,
-} from '@method/pacta-playground';
+} from '@methodts/pacta-playground';
 
 // Basic scenario with default recording modules
 const result = await cognitiveScenario('basic cycle')

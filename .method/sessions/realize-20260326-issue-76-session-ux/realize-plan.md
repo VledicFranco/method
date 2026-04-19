@@ -3,7 +3,7 @@
 **Session:** realize-20260326-issue-76-session-ux
 **Issue:** VledicFranco/method#76
 **Date:** 2026-03-26
-**Packages:** `@method/bridge` (frontend + backend sessions domain)
+**Packages:** `@methodts/bridge` (frontend + backend sessions domain)
 
 ---
 

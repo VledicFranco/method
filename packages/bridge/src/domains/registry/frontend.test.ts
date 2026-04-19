@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 019.2: Registry Frontend Smoke Tests
  *

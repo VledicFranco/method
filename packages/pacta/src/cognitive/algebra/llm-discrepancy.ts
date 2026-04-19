@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * LLM Discrepancy Function — frontier-model goal-state comparison.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for cortexAuditMiddleware (PRD-059 §5.1).
  *
@@ -14,7 +15,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Pact, AgentRequest, AgentResult, AgentEvent } from '@method/pacta';
+import type { Pact, AgentRequest, AgentResult, AgentEvent } from '@methodts/pacta';
 import {
   cortexAuditMiddleware,
   AUDIT_EVENT_MAP,

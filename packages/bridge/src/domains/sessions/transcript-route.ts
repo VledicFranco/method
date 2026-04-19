@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 import { FastifyInstance } from 'fastify';
-import type { SessionPool } from '@method/runtime/sessions';
+import type { SessionPool } from '@methodts/runtime/sessions';
 import type { TranscriptReader } from './transcript-reader.js';
 import { collapseToolRounds } from './transcript-reader.js';
 

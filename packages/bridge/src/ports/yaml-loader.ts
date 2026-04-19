@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { load, dump } from 'js-yaml';
 
 // ── Port interface ──────────────────────────────────────────────

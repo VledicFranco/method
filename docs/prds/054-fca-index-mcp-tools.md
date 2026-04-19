@@ -1,7 +1,7 @@
 ---
 type: prd
 id: "054"
-title: "@method/mcp context tools — FCA context query + coverage check"
+title: "@methodts/mcp context tools — FCA context query + coverage check"
 date: "2026-04-08"
 status: complete
 completed: "2026-04-08"
@@ -15,11 +15,11 @@ co-design-records:
   - .method/sessions/fcd-surface-fca-index-cli/record.md
 ---
 
-# PRD 054 — @method/mcp Context Tools
+# PRD 054 — @methodts/mcp Context Tools
 
 ## Problem
 
-`@method/fca-index` (PRD 053) provides a typed query engine over FCA-indexed projects,
+`@methodts/fca-index` (PRD 053) provides a typed query engine over FCA-indexed projects,
 but agents can only use it via a CLI or programmatic API. MCP tool exposure is what turns
 the library into agent-accessible infrastructure. Without MCP tools, the token reduction
 benefit (PRD 053 SC-1) is unreachable by running methodts methodology steps.
@@ -29,9 +29,9 @@ benefit (PRD 053 SC-1) is unreachable by running methodts methodology steps.
 - Thin wrapper rule (DR-04): MCP handlers parse input, call port, format output. No business logic.
 - Depends on PRD 053 Wave 3 complete (ContextQueryPort + CoverageReportPort implemented)
 - New file `packages/mcp/src/context-tools.ts` — does not modify existing tool handlers
-- `@method/mcp` gains `@method/fca-index` as a peer dependency
+- `@methodts/mcp` gains `@methodts/fca-index` as a peer dependency
 - Two new MCP tools: `context_query` and `coverage_check`
-- G-BOUNDARY gate: mcp must not import fca-index internals — only `@method/fca-index` public API
+- G-BOUNDARY gate: mcp must not import fca-index internals — only `@methodts/fca-index` public API
 
 ## Success Criteria
 
@@ -57,10 +57,10 @@ across multiple projects, real-time index refresh, streaming results.
 
 ```typescript
 /**
- * Context tools — MCP wrappers over @method/fca-index ports.
+ * Context tools — MCP wrappers over @methodts/fca-index ports.
  * Thin wrappers per DR-04: parse input, call port, format output.
  */
-import type { ContextQueryPort, CoverageReportPort } from '@method/fca-index';
+import type { ContextQueryPort, CoverageReportPort } from '@methodts/fca-index';
 
 export function createContextTools(
   contextQuery: ContextQueryPort,
@@ -187,7 +187,7 @@ Components: 47 total | 12 fully documented | 31 partial | 4 undocumented
 ### Composition root changes (`packages/mcp/src/index.ts`)
 
 ```typescript
-import { createFcaIndex } from '@method/fca-index';
+import { createFcaIndex } from '@methodts/fca-index';
 import { createContextTools } from './context-tools.js';
 
 const PROJECT_ROOT = process.env.METHOD_ROOT ?? process.cwd();
@@ -201,7 +201,7 @@ const { CONTEXT_TOOLS, handlers: contextHandlers } = createContextTools(
 const ALL_TOOLS = [...EXISTING_TOOLS, ...CONTEXT_TOOLS];
 ```
 
-`createFcaIndex()` is the factory exported by `@method/fca-index` — returns
+`createFcaIndex()` is the factory exported by `@methodts/fca-index` — returns
 `{ contextQuery: ContextQueryPort, coverageReport: CoverageReportPort }`.
 
 ### Error handling
@@ -219,8 +219,8 @@ Run 'fca-index scan' to build the index for this project.
 Add to `packages/mcp` (or create `packages/mcp/src/architecture.test.ts`):
 
 ```typescript
-// G-BOUNDARY: mcp context tools use @method/fca-index public API only
-it('context-tools.ts does not import @method/fca-index internals', () => {
+// G-BOUNDARY: mcp context tools use @methodts/fca-index public API only
+it('context-tools.ts does not import @methodts/fca-index internals', () => {
   const violations = scanImports('packages/mcp/src/context-tools.ts', {
     forbidden: [
       'packages/fca-index/src/query',
@@ -228,7 +228,7 @@ it('context-tools.ts does not import @method/fca-index internals', () => {
       'packages/fca-index/src/index-store',
       'packages/fca-index/src/coverage',
     ],
-    allowed: ['@method/fca-index'],
+    allowed: ['@methodts/fca-index'],
   });
   expect(violations).toEqual([]);
 });
@@ -251,9 +251,9 @@ Port contracts already frozen in PRD 053 Wave 0.
 
 **Deliverables:**
 - `packages/mcp/src/context-tools.ts` — tool definitions + handlers
-- `packages/mcp/src/context-tools.test.ts` — unit tests with RecordingContextQueryPort + RecordingCoverageReportPort from `@method/fca-index/testkit`
+- `packages/mcp/src/context-tools.test.ts` — unit tests with RecordingContextQueryPort + RecordingCoverageReportPort from `@methodts/fca-index/testkit`
 - `packages/mcp/src/index.ts` — composition root updated to wire fca-index instance
-- `packages/mcp/package.json` — add `@method/fca-index` dependency
+- `packages/mcp/package.json` — add `@methodts/fca-index` dependency
 
 **Acceptance gate:** Both tools appear in ListTools. Unit tests passing. G-BOUNDARY gate
 added and green. DR-04 compliance review passing (no business logic in handlers).

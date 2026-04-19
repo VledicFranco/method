@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Router Types — PRD 050 Meta-Cognitive Router.
  *

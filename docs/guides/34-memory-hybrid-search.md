@@ -42,7 +42,7 @@ The `InMemoryMemory` class implements `MemoryPortV2`. It works out of the box wi
 ### Keyword-Only Mode (Default)
 
 ```typescript
-import { InMemoryMemory } from '@method/pacta/ports/memory-impl.js';
+import { InMemoryMemory } from '@methodts/pacta/ports/memory-impl.js';
 
 const memory = new InMemoryMemory();
 
@@ -71,8 +71,8 @@ Keyword search uses BM25 scoring with stop-word removal, term frequency weightin
 Pass an `EmbeddingPort` to enable semantic search alongside BM25:
 
 ```typescript
-import { InMemoryMemory } from '@method/pacta/ports/memory-impl.js';
-import type { EmbeddingPort } from '@method/pacta/ports/embedding-port.js';
+import { InMemoryMemory } from '@methodts/pacta/ports/memory-impl.js';
+import type { EmbeddingPort } from '@methodts/pacta/ports/embedding-port.js';
 
 const embeddingPort: EmbeddingPort = {
   embed: async (text: string) => { /* return number[] */ },
@@ -119,7 +119,7 @@ const all = await memory.allCards();                  // dump everything
 The `JsonlMemoryStore` class provides file-backed persistence for FactCards using newline-delimited JSON.
 
 ```typescript
-import { JsonlMemoryStore } from '@method/pacta/ports/memory-persistence.js';
+import { JsonlMemoryStore } from '@methodts/pacta/ports/memory-persistence.js';
 
 const store = new JsonlMemoryStore('/path/to/memory.jsonl');
 ```

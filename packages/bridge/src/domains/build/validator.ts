@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Validator — evaluates TestableAssertions for Phase 7 (validate).
  *

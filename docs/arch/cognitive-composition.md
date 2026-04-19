@@ -1,6 +1,6 @@
 # Cognitive Composition — Bridge Integration
 
-Concern: how the bridge (L4) consumes `@method/pacta`'s `CognitiveModule` interface to
+Concern: how the bridge (L4) consumes `@methodts/pacta`'s `CognitiveModule` interface to
 structure its cognitive agent loop with explicit module boundaries and typed composition.
 
 **PRD:** `docs/prds/042-cognitive-composition-bridge-integration.md`
@@ -211,7 +211,7 @@ deferred to PRD 043.
 
 ## 7. Behavioral Fixes
 
-All 11 behavioral fixes live inside the bridge modules (L4), not in `@method/pacta` (L3).
+All 11 behavioral fixes live inside the bridge modules (L4), not in `@methodts/pacta` (L3).
 The canonical pacta modules remain lean and theory-grounded. Bridge-specific thresholds,
 workspace injection patterns, and tool-aware heuristics belong at the application layer.
 

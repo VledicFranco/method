@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ClaudeHeadless integration test (requires real claude binary).
  *

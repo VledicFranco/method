@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Extractor<A, R> — Produces a value of type A from the real world.
  *

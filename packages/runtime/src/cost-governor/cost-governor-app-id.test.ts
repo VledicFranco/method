@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD-057 / S2 §8 / G-COSTGOV-APP-ID gate test.
  *

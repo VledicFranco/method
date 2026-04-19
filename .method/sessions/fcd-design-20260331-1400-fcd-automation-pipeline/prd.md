@@ -275,7 +275,7 @@ approval_response event is received; rejection with feedback triggers retry cont
 
 ## Per-Domain Architecture
 
-### D-1: @method/methodts/strategy/
+### D-1: @methodts/methodts/strategy/
 
 **Files changed:**
 - `dag-types.ts` — add `prompt?` to MethodologyNodeConfig; add StrategyNodeConfig,
@@ -294,7 +294,7 @@ approval_response event is received; rejection with feedback triggers retry cont
 **New types exported from dag-types.ts:**
   StrategyNodeConfig, SubStrategyResult, SubStrategySource
 
-**FCA layer:** L2 — @method/methodts domain extensions. Zero transport dependencies.
+**FCA layer:** L2 — @methodts/methodts domain extensions. Zero transport dependencies.
 
 **Verification:**
 - Extend `dag-pipeline.test.ts` with: prompt injection test, strategy sub-invocation test,
@@ -437,7 +437,7 @@ checks all validation results are truthy.
 
 The orchestrator applies these changes to `master` before spawning any commission:
 
-**A. Type additions in dag-types.ts (@method/methodts)**
+**A. Type additions in dag-types.ts (@methodts/methodts)**
 - Add `prompt?: string` to `MethodologyNodeConfig`
 - Add `StrategyNodeConfig`, `SubStrategyResult`, `SubStrategySource` types
 - Update `NodeConfig` union to include `StrategyNodeConfig`

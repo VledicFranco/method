@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Stdlib Catalog — unified registry listing from typed definitions.
  * Replaces listMethodologiesTS() filesystem scanning.

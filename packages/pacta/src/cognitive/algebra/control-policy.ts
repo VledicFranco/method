@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Control Policy — validation and enforcement of control directives.
  *

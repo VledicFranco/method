@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RunFlow — enriched execution trace for strategy-layer cases.
  *

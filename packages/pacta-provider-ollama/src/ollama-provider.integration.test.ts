@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Integration test — runs against a live Ollama instance.
  *
@@ -8,7 +9,7 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { ollamaProvider } from './ollama-provider.js';
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST ?? 'http://chobits:11434';
 const SKIP = process.env.SKIP_INTEGRATION === '1';

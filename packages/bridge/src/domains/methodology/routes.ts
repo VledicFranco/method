@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Methodology HTTP Routes
  *
@@ -22,7 +23,7 @@
 
 import type { FastifyInstance } from "fastify";
 import type { MethodologySessionStore } from "./store.js";
-import type { SessionPool } from "@method/runtime/sessions";
+import type { SessionPool } from "@methodts/runtime/sessions";
 import type { EventBus } from "../../ports/event-bus.js";
 
 export interface MethodologyRoutesDeps {

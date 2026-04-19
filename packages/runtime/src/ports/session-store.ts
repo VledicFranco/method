@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SessionStore — persistence port for agent sessions and checkpoints.
  *
- * Owner: @method/runtime
- * Consumers: @method/pacta (ResumableMode), @method/methodts (strategy executor),
- *            @method/bridge (sessions + strategies domains), @method/agent-runtime
+ * Owner: @methodts/runtime
+ * Consumers: @methodts/pacta (ResumableMode), @methodts/methodts (strategy executor),
+ *            @methodts/bridge (sessions + strategies domains), @methodts/agent-runtime
  * Producers: FsSessionStore (bridge JSONL+FS), CortexSessionStore (ctx.storage)
  * Direction: runtime ↔ adapter (CRUD + lease)
  * Co-designed: 2026-04-14 (FCD surface session `fcd-surface-session-store`)

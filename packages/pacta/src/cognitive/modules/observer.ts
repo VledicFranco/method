@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Observer Module — processes raw inputs into structured observations.
  *

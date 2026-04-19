@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Measure<S> and ProgressOrder<S> tests.
  *

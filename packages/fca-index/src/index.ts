@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/fca-index — FCA-Indexed Context Library
+ * @methodts/fca-index — FCA-Indexed Context Library
  *
  * Public API. Exports port interfaces and canonical types.
  * The createFcaIndex() factory is added in Wave 4 (C-6).

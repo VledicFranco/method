@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Resource Provider Port ──────────────────────────────────────
 //
 // How a bridge reports its own machine resources. Implementations

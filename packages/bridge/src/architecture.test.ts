@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Architecture gate tests for @method/bridge (PRD-057 / S2 §11).
+ * Architecture gate tests for @methodts/bridge (PRD-057 / S2 §11).
  *
  * - G-BRIDGE-USES-RUNTIME-PORTS: ACTIVE in C7. The gate enforces that bridge
  *   cross-domain imports of strategy / event-bus / cost-governor / sessions
- *   engine internals go through `@method/runtime/*` subpaths, not relative
+ *   engine internals go through `@methodts/runtime/*` subpaths, not relative
  *   paths into moved directories. Violations are bugs.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -31,9 +32,9 @@ function walkTsFiles(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe('@method/bridge — architecture gates (PRD-057 / S2 §11)', () => {
+describe('@methodts/bridge — architecture gates (PRD-057 / S2 §11)', () => {
   // PRD-057 C7: gate activated. Runs on every build.
-  it('G-BRIDGE-USES-RUNTIME-PORTS: bridge imports engine internals via @method/runtime/*', () => {
+  it('G-BRIDGE-USES-RUNTIME-PORTS: bridge imports engine internals via @methodts/runtime/*', () => {
     const roots = [
       join(SRC_DIR, 'domains'),
       join(SRC_DIR, 'shared'),
@@ -63,7 +64,7 @@ describe('@method/bridge — architecture gates (PRD-057 / S2 §11)', () => {
     assert.deepEqual(
       violations,
       [],
-      `Bridge cross-domain imports must use @method/runtime/* subpaths. Violations: ${JSON.stringify(violations, null, 2)}`,
+      `Bridge cross-domain imports must use @methodts/runtime/* subpaths. Violations: ${JSON.stringify(violations, null, 2)}`,
     );
   });
 });

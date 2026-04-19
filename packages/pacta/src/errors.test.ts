@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -227,7 +228,7 @@ describe('providerClass and accountId', () => {
   it('carries optional accountId', () => {
     const err = new RateLimitError({
       ...CLI_CTX,
-      accountId: 'max-a' as import('@method/types').AccountId,
+      accountId: 'max-a' as import('@methodts/types').AccountId,
     });
     assert.equal(err.accountId, 'max-a');
   });

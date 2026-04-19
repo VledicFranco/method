@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Experiments domain — barrel exports (PRD 041 Phase 2).
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * scanner/ — FCA component detection and coverage scoring domain.
  *

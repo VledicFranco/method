@@ -12,7 +12,7 @@ touches:
 
 # Guide 23 — Testkit Reference
 
-Complete API reference for `@method/testkit`.
+Complete API reference for `@methodts/testkit`.
 
 ## Builders
 
@@ -79,10 +79,10 @@ const step = scriptStepEffect<MyState>("validate", {
 
 ### `agentStep<S>(id, options): Step<S>`
 
-Build an agent step (LLM-backed execution). Requires `Prompt` which is re-exported from `@method/testkit`.
+Build an agent step (LLM-backed execution). Requires `Prompt` which is re-exported from `@methodts/testkit`.
 
 ```typescript
-import { Prompt, agentStep } from "@method/testkit";
+import { Prompt, agentStep } from "@methodts/testkit";
 
 const step = agentStep<MyState>("analyze", {
   role: "analyst",

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Data-shape types for the CortexMethodologySource.
  *

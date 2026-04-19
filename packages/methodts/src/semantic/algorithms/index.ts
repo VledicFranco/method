@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * semantic/algorithms/ — Semantic algorithm implementations (incubating).
  *

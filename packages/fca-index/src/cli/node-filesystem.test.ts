@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * NodeFileSystem — integration tests against real fixture directories.
  */

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * WS-3: HTTP routes for session persistence — browse/resume past sessions per project.
  *
@@ -9,7 +10,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { SessionPersistenceStore } from './session-persistence.js';
-import type { SessionPool } from '@method/runtime/sessions';
+import type { SessionPool } from '@methodts/runtime/sessions';
 
 export interface PersistenceRouteDeps {
   persistence: SessionPersistenceStore;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Fixture validation tests — verifies all YAML fixtures parse correctly
  * via the methodts strategy parser, and all method fixtures import cleanly.
@@ -7,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
+import { parseStrategyYaml } from '@methodts/methodts/strategy/dag-parser.js';
 import { load as loadYaml } from 'js-yaml';
 import { strategyCases, allCases, allFeatures, casesByLayer } from '../cases/index.js';
 

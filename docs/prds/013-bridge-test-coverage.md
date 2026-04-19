@@ -315,7 +315,7 @@ The `fakePtySession` pattern in `pool.test.ts` is the model: implement the `PtyS
 
 ### Architectural Note
 
-PRD 013 is entirely within the `@method/bridge` package test surface. It does not add tests for `@method/core` or `@method/mcp`. It follows the existing test pattern (node:test, real fixtures, interface-based mocks) and requires no structural changes to the modules under test — only selective `export` additions for internal helpers.
+PRD 013 is entirely within the `@methodts/bridge` package test surface. It does not add tests for `@methodts/core` or `@methodts/mcp`. It follows the existing test pattern (node:test, real fixtures, interface-based mocks) and requires no structural changes to the modules under test — only selective `export` additions for internal helpers.
 
 ---
 

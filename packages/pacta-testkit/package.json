@@ -1,31 +1,60 @@
 {
-  "name": "@method/pacta-testkit",
+  "name": "@methodts/pacta-testkit",
   "version": "0.1.0",
   "description": "Pacta verification affordances — RecordingProvider, builders, assertions, and the Cortex agent conformance testkit (`./conformance` subpath, S8/PRD-065).",
-  "type": "module",
-  "main": "dist/index.js",
-  "exports": {
-    ".": "./dist/index.js",
-    "./conformance": "./dist/conformance/index.js",
-    "./conformance/fixtures": "./dist/conformance/fixtures/index.js"
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/pacta-testkit"
   },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./conformance": {
+      "types": "./dist/conformance/index.d.ts",
+      "default": "./dist/conformance/index.js"
+    },
+    "./conformance/fixtures": {
+      "types": "./dist/conformance/fixtures/index.d.ts",
+      "default": "./dist/conformance/fixtures/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -b",
     "test": "tsx --test \"src/**/*.test.ts\" \"src/conformance/__tests__/*.test.ts\"",
     "test-conformance": "tsx --test \"src/conformance/**/*.test.ts\" \"src/conformance/__tests__/*.test.ts\""
   },
   "dependencies": {
-    "@method/pacta": "*"
+    "@methodts/pacta": "*"
   },
   "peerDependencies": {
-    "@method/agent-runtime": "^0.1.0"
-  },
-  "peerDependenciesMeta": {
-    "@method/agent-runtime": {
-      "optional": true
-    }
+    "@methodts/agent-runtime": "^0.1.0"
   },
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module",
+  "peerDependenciesMeta": {
+    "@methodts/agent-runtime": {
+      "optional": true
+    }
   }
 }

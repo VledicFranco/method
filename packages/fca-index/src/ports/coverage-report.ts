@@ -1,15 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CoverageReportPort — Port for retrieving FCA documentation coverage analysis.
  *
- * Owned by @method/fca-index. Consumed by two surfaces:
+ * Owned by @methodts/fca-index. Consumed by two surfaces:
  *   1. CLI (`method-ctl` or `fca-index` binary) — renders human-readable tables
- *   2. @method/mcp (coverage_check tool) — returns structured data to agents
+ *   2. @methodts/mcp (coverage_check tool) — returns structured data to agents
  *
  * The port returns a single CoverageReport. Both consumers receive the same data.
  * Presentation (table rendering vs. JSON formatting) is a consumer-side concern.
  *
- * Owner:     @method/fca-index
- * Consumers: CLI, @method/mcp
+ * Owner:     @methodts/fca-index
+ * Consumers: CLI, @methodts/mcp
  * Direction: fca-index → CLI, fca-index → mcp (unidirectional to both)
  * Co-designed: 2026-04-08
  * Status:    frozen

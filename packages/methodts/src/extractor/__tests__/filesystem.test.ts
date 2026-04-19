@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * FileSystemService tests.
  *
@@ -190,7 +191,7 @@ describe("FileSystemServiceLive — readFile", () => {
 
     const result = await Effect.runPromise(program);
     expect(result).toContain('"name"');
-    expect(result).toContain("@method/methodts");
+    expect(result).toContain("@methodts/methodts");
   });
 
   it("fails for a non-existent file", async () => {

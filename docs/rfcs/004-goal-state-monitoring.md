@@ -4,7 +4,7 @@
 **Author:** PO + Lysica
 **Date:** 2026-04-03
 **Extends:** RFC 001 (Calculus of Cognitive Composition)
-**Applies to:** `@method/pacta` cognitive algebra, experiment cycle orchestrators
+**Applies to:** `@methodts/pacta` cognitive algebra, experiment cycle orchestrators
 **Organization:** Vidtecci
 
 ## Motivation

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * TLA+ compilation — transforms Methodology<S> into TLA+ specification modules.
  *

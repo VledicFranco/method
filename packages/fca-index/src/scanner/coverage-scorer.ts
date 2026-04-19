@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CoverageScorer — Computes the coverage score for a scanned component.
  *

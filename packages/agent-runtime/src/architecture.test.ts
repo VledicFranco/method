@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Architecture gates — source-scan tests for PRD-058 §6.6.
  *
  *   - G-BOUNDARY-NO-CORTEX-VALUE-IMPORT — forbid runtime imports from
  *     `@cortex/*` or `@t1/cortex-sdk`; only `import type` is allowed.
- *   - G-LAYER — agent-runtime is L3; forbid imports from `@method/bridge` (L4).
+ *   - G-LAYER — agent-runtime is L3; forbid imports from `@methodts/bridge` (L4).
  */
 
 import { describe, it } from 'node:test';
@@ -50,7 +51,7 @@ describe('G-BOUNDARY-NO-CORTEX-VALUE-IMPORT', () => {
 // ── PRD-064 / S7 §11 architecture gates ─────────────────────────────
 
 describe('G-CORTEX-NO-SDK-LEAK (S7 §11)', () => {
-  it('@method/runtime/src does not leak ctx.storage / ctx.events / @t1 SDK', () => {
+  it('@methodts/runtime/src does not leak ctx.storage / ctx.events / @t1 SDK', () => {
     const runtimeSrc = path.resolve(SRC_ROOT, '../../runtime/src');
     const files = walkTs(runtimeSrc);
     const forbidden = ['@t1/cortex-sdk', 'ctx.storage', 'ctx.events'];
@@ -124,22 +125,22 @@ describe('G-RUNTIME-NO-ADMIN-IMPORT (PRD-064 §13.2)', () => {
 });
 
 describe('G-LAYER: agent-runtime does not reach upward to L4 packages', () => {
-  it('no import from @method/bridge in agent-runtime src', () => {
+  it('no import from @methodts/bridge in agent-runtime src', () => {
     const files = walkTs(SRC_ROOT);
     const violations: string[] = [];
     for (const file of files) {
       const content = readFileSync(file, 'utf-8');
-      if (/from\s+['"]@method\/bridge/.test(content)) violations.push(file);
+      if (/from\s+['"]@methodts\/bridge/.test(content)) violations.push(file);
     }
     assert.deepStrictEqual(violations, []);
   });
 
-  it('no import from @method/cluster in agent-runtime src', () => {
+  it('no import from @methodts/cluster in agent-runtime src', () => {
     const files = walkTs(SRC_ROOT);
     const violations: string[] = [];
     for (const file of files) {
       const content = readFileSync(file, 'utf-8');
-      if (/from\s+['"]@method\/cluster/.test(content)) violations.push(file);
+      if (/from\s+['"]@methodts\/cluster/.test(content)) violations.push(file);
     }
     assert.deepStrictEqual(violations, []);
   });

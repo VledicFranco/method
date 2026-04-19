@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cluster Domain HTTP Routes — peer coordination, state queries, federation.
  *
@@ -18,8 +19,8 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { ClusterDomain } from './core.js';
-import type { ClusterNode, FederatedEvent, WorkRequest } from '@method/cluster';
-import type { CapacityWeightedRouter } from '@method/cluster';
+import type { ClusterNode, FederatedEvent, WorkRequest } from '@methodts/cluster';
+import type { CapacityWeightedRouter } from '@methodts/cluster';
 
 // ── Route Deps ────────────────────────────────────────────────────
 
@@ -167,7 +168,7 @@ export function registerClusterRoutes(app: FastifyInstance, deps: ClusterRouteDe
   // ── POST /cluster/state-sync — receive full state broadcast from peer ──
 
   app.post<{
-    Body: { from: string; nodes: import('@method/cluster').ClusterNode[] };
+    Body: { from: string; nodes: import('@methodts/cluster').ClusterNode[] };
   }>('/cluster/state-sync', async (request, reply) => {
     if (!domain.isEnabled()) return clusterDisabledReply(reply);
 

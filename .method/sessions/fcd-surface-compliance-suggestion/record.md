@@ -59,7 +59,7 @@ stays in the fca-index compliance domain, not in the CLI.
  * determines which FCA parts are missing, and returns stub content for each.
  * No embedding calls — pure SQLite lookup + template generation.
  *
- * Owner:     @method/fca-index (compliance domain)
+ * Owner:     @methodts/fca-index (compliance domain)
  * Consumer:  CLI (fca-index suggest command)
  * Direction: fca-index → cli (unidirectional)
  * Co-designed: 2026-04-09
@@ -133,13 +133,13 @@ export class ComplianceSuggestionError extends Error {
 
 ```typescript
 // G-BOUNDARY-COMPLIANCE: compliance-engine does not import cli/ or mcp/ directly
-it('compliance/ does not import cli/ or @method/mcp', () => {
+it('compliance/ does not import cli/ or @methodts/mcp', () => {
   const files = readSourceFiles(`${SRC}/compliance`);
   const violations = files.filter(
     (content) =>
       /from ['"]\.\.\/cli\//.test(content) || /@method\/mcp/.test(content),
   );
-  expect(violations, 'compliance/ imports cli/ or @method/mcp').toHaveLength(0);
+  expect(violations, 'compliance/ imports cli/ or @methodts/mcp').toHaveLength(0);
 });
 ```
 

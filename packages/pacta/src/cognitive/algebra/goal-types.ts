@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Goal-State Types — persistent goal representation and discrepancy signals.
  *

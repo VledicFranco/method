@@ -1,5 +1,5 @@
 {
-  "name": "@method/smoke-test",
+  "name": "@methodts/smoke-test",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,10 +11,10 @@
     "serve": "tsx src/server.ts"
   },
   "dependencies": {
-    "@method/methodts": "*",
-    "@method/pacta": "*",
-    "@method/pacta-testkit": "*",
-    "@method/pacta-provider-anthropic": "*",
+    "@methodts/methodts": "*",
+    "@methodts/pacta": "*",
+    "@methodts/pacta-testkit": "*",
+    "@methodts/pacta-provider-anthropic": "*",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
@@ -22,5 +22,7 @@
     "typescript": "~5.7.0",
     "vitest": "^2.1.0",
     "tsx": "^4.0.0"
-  }
+  },
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo"
 }

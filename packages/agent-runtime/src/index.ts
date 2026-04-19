@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * `@method/agent-runtime` — Cortex-targeted public API (PRD-058 / S1).
+ * `@methodts/agent-runtime` — Cortex-targeted public API (PRD-058 / S1).
  *
  * Public surface is frozen by co-design record S1 (MethodAgentPort):
  *   - `createMethodAgent<T>(options)` — sync factory producing a `MethodAgent<T>`
@@ -11,7 +12,7 @@
  *   - Errors: `ConfigurationError`, `MissingCtxError`, `UnknownSessionError`,
  *     `IllegalStateError`
  *   - Re-exported pacta types + error taxonomy (so tenant apps never import
- *     from `@method/pacta` directly)
+ *     from `@methodts/pacta` directly)
  *
  * The internal `ResumptionPayload` is intentionally NOT exported — tenant
  * apps MUST treat `Resumption.opaque` as a black box (S1 Q5).
@@ -154,17 +155,17 @@ export type {
   CostReport,
   RecoveryIntent,
   AgentProvider,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // ── PRD-062 / S5 re-exports — JobBackedExecutor + ScheduledPact ──
-// Tenant apps consume these symbols from @method/agent-runtime rather
-// than deep-importing @method/runtime/* (S5 §7 consumer-facing surface).
-export { ScheduledPact, isScheduledPactPayload } from '@method/runtime/scheduling';
+// Tenant apps consume these symbols from @methodts/agent-runtime rather
+// than deep-importing @methodts/runtime/* (S5 §7 consumer-facing surface).
+export { ScheduledPact, isScheduledPactPayload } from '@methodts/runtime/scheduling';
 export type {
   ScheduleOptions,
   ScheduledPactPayload,
   ScheduleBindOptions,
-} from '@method/runtime/scheduling';
+} from '@methodts/runtime/scheduling';
 export type {
   JobBackedExecutor,
   JobClient,
@@ -180,7 +181,7 @@ export type {
   DlqObserver,
   DlqRecord,
   ScheduleClient,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 export {
   EnvelopeVersionError,
   BudgetExpiredError,
@@ -189,8 +190,8 @@ export {
   DuplicateAttachError,
   PactRegistrationError,
   BudgetStrategyNotImplemented,
-} from '@method/runtime/ports';
-export type { PactDeadLetterEvent } from '@method/pacta';
+} from '@methodts/runtime/ports';
+export type { PactDeadLetterEvent } from '@methodts/pacta';
 
 // ── Re-exported pacta error taxonomy (S1 §4.6) ───────────────────
 export {
@@ -210,4 +211,4 @@ export {
   isProviderError,
   isTransientError,
   isPermanentError,
-} from '@method/pacta';
+} from '@methodts/pacta';

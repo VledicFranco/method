@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 020 Wave 2: Project Routes — Read-Only APIs with Isolation
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── method-ctl nodes — Tests ────────────────────────────────────
 
 import { describe, it, afterEach } from 'node:test';

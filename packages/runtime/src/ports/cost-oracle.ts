@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CostOracle — Port interface (PRD 051 S1).
  *
@@ -5,7 +6,7 @@
  * Implemented by cost-governor domain.
  */
 
-import type { InvocationSignature, CostBand } from '@method/types';
+import type { InvocationSignature, CostBand } from '@methodts/types';
 
 // ── Estimate types ──────────────────────────────────────────────
 

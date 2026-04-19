@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ProjectCard — Static instantiation record for binding a method to a project.
  *

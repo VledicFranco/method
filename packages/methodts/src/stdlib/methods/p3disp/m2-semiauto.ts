@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M2_SEMIAUTO — Selective Escalation Dispatch Method (M2-SEMIAUTO v1.0).
  *

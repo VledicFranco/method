@@ -2,9 +2,9 @@
 type: co-design-record
 surface: "ContextLoadExecutor"
 date: "2026-04-09"
-owner: "@method/methodts"
-producer: "@method/bridge (strategies domain)"
-consumer: "@method/methodts (DagStrategyExecutor)"
+owner: "@methodts/methodts"
+producer: "@methodts/bridge (strategies domain)"
+consumer: "@methodts/methodts (DagStrategyExecutor)"
 direction: "bridge → methodts (unidirectional, pull)"
 status: frozen
 mode: "new"
@@ -22,7 +22,7 @@ components from fca-index before downstream methodology nodes execute.
 The retrieved components are stored in ArtifactStore and become available
 to subsequent nodes via their declared inputs for prompt injection.
 
-**Layer constraint:** `@method/methodts` (L2) cannot import `@method/fca-index` (L3).
+**Layer constraint:** `@methodts/methodts` (L2) cannot import `@methodts/fca-index` (L3).
 This port is the boundary. The bridge adapter maps `ComponentContext → RetrievedComponent`.
 
 ## Decisions Made
@@ -50,8 +50,8 @@ This port is the boundary. The bridge adapter maps `ComponentContext → Retriev
 /**
  * ContextLoadExecutor — Port for executing context-load DAG nodes.
  *
- * Owner:    @method/methodts (defines contract)
- * Producer: bridge (ContextLoadExecutorImpl — imports @method/fca-index)
+ * Owner:    @methodts/methodts (defines contract)
+ * Producer: bridge (ContextLoadExecutorImpl — imports @methodts/fca-index)
  * Consumer: DagStrategyExecutor (calls it for context-load nodes)
  * Direction: bridge → methodts (unidirectional, pull)
  * Co-designed: 2026-04-09
@@ -108,7 +108,7 @@ export interface ContextLoadNodeConfig {
 
 ## Producer
 
-- **Domain:** `@method/bridge` — strategies domain
+- **Domain:** `@methodts/bridge` — strategies domain
 - **Implementation:** `packages/bridge/src/domains/strategies/context-load-executor.ts`
 - **Class:** `ContextLoadExecutorImpl`
 - **Wiring:** Constructed in `StrategyExecutor` constructor (or `server-entry.ts`) with
@@ -119,7 +119,7 @@ export interface ContextLoadNodeConfig {
 
 ## Consumer
 
-- **Domain:** `@method/methodts` — strategy domain
+- **Domain:** `@methodts/methodts` — strategy domain
 - **Usage:** `packages/methodts/src/strategy/dag-executor.ts` — `DagStrategyExecutor`
 - **Injection:** New optional parameter in `DagStrategyExecutor` constructor:
   `contextLoadExecutor?: ContextLoadExecutor | null`
@@ -133,8 +133,8 @@ export interface ContextLoadNodeConfig {
 // Add to packages/methodts/src/strategy/strategy.test.ts or a new
 // packages/methodts/src/architecture.test.ts
 
-// G-LAYER-CONTEXT-LOAD: strategy/ does not import @method/fca-index directly
-it('methodts/strategy does not import @method/fca-index', () => {
+// G-LAYER-CONTEXT-LOAD: strategy/ does not import @methodts/fca-index directly
+it('methodts/strategy does not import @methodts/fca-index', () => {
   const strategyFiles = collectTsFiles(`${SRC}/strategy`);
   const violations = strategyFiles.filter(content =>
     /@method\/fca-index/.test(content)

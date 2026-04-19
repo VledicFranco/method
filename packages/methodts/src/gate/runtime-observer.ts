@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RuntimeObserver — Lightweight observation hook for runtime events.
  *

@@ -1,6 +1,6 @@
 # testkit/ — Methodology Testing Framework
 
-Testing utilities for `@method/methodts`. Provides builders, assertions, runners, and diagnostics for writing unit and integration tests against methodology definitions.
+Testing utilities for `@methodts/methodts`. Provides builders, assertions, runners, and diagnostics for writing unit and integration tests against methodology definitions.
 
 ## Subdirectories
 
@@ -15,7 +15,7 @@ Testing utilities for `@method/methodts`. Provides builders, assertions, runners
 ## Usage
 
 ```typescript
-import { buildMethod, runMethodologyInTest, assertGatePassed } from '@method/methodts/testkit';
+import { buildMethod, runMethodologyInTest, assertGatePassed } from '@methodts/methodts/testkit';
 
 const method = buildMethod({ name: 'test', steps: [...] });
 const result = await runMethodologyInTest(method, { worldState: { ... } });

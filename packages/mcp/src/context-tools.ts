@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Context tools — MCP wrappers over @method/fca-index ports.
+ * Context tools — MCP wrappers over @methodts/fca-index ports.
  *
  * DR-04 compliance: parse input → call port → format output. No business logic.
  * Both handlers follow the same structure as bridge-tools.ts and experiment-tools.ts.
@@ -10,8 +11,8 @@ import type {
   ComponentDetailPort,
   FcaPart,
   FcaLevel,
-} from '@method/fca-index';
-import { ComponentDetailError } from '@method/fca-index';
+} from '@methodts/fca-index';
+import { ComponentDetailError } from '@methodts/fca-index';
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
 
@@ -220,7 +221,7 @@ const REST_EXCERPT_RENDER_LIMIT = 120;
  * formatter. Not part of the stable public surface; treat as @internal.
  */
 export function formatContextQueryResult(
-  result: import('@method/fca-index').ContextQueryResult,
+  result: import('@methodts/fca-index').ContextQueryResult,
   query: string,
 ): string {
   const lines: string[] = [
@@ -263,7 +264,7 @@ export function formatContextQueryResult(
 }
 
 function formatCoverageReport(
-  report: import('@method/fca-index').CoverageReport,
+  report: import('@methodts/fca-index').CoverageReport,
 ): string {
   const { summary } = report;
   const bar = (v: number) => '█'.repeat(Math.round(v * 20)).padEnd(20, '░');
@@ -275,7 +276,7 @@ function formatCoverageReport(
     'By part:',
   ];
 
-  const PARTS: Array<import('@method/fca-index').FcaPart> = [
+  const PARTS: Array<import('@methodts/fca-index').FcaPart> = [
     'documentation', 'interface', 'port', 'verification',
     'observability', 'architecture', 'domain', 'boundary',
   ];
@@ -293,7 +294,7 @@ function formatCoverageReport(
 }
 
 function formatComponentDetail(
-  detail: import('@method/fca-index').ComponentDetail,
+  detail: import('@methodts/fca-index').ComponentDetail,
 ): string {
   const lines: string[] = [
     `path: ${detail.path}`,

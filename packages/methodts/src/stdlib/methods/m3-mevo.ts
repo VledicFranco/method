@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M3_MEVO — Method Evolution from Execution Evidence (F1-FTH Definition 8.2).
  *

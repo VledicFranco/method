@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * DomainTheory<S> — Typed representation of F1-FTH Definition 1.1.
  *

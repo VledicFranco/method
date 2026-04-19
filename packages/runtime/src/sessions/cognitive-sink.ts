@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CognitiveEventBusSink — bridges the pacta cognitive algebra (CognitiveEvent)
  * to the Universal Event Bus (RuntimeEvent, PRD 026).
  *
  * PRD-057 / S2 §14 Q6 / C5: the class is named `CognitiveEventBusSink` to
- * disambiguate from `@method/pacta`'s `CognitiveEvent` producer concept. The
+ * disambiguate from `@methodts/pacta`'s `CognitiveEvent` producer concept. The
  * shorter legacy name `CognitiveSink` is aliased for back-compat in
- * `@method/bridge/domains/sessions/cognitive-sink.ts` until C7 cleanup.
+ * `@methodts/bridge/domains/sessions/cognitive-sink.ts` until C7 cleanup.
  *
  * The sink has two responsibilities:
  *   1. Expose a handle(event: CognitiveEvent) method that cognitive-provider.ts
@@ -28,7 +29,7 @@
  */
 
 import type { RuntimeEvent, RuntimeEventInput, EventBus, EventSink } from '../ports/event-bus.js';
-import type { CognitiveEvent } from '@method/pacta';
+import type { CognitiveEvent } from '@methodts/pacta';
 
 // ── Context fields forwarded per-event (optional) ───────────────
 

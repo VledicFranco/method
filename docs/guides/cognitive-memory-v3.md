@@ -5,9 +5,9 @@ CLS dual-store memory with ACT-R activation-based retrieval for cognitive agents
 ## Quick Start
 
 ```typescript
-import { createMemoryPreset } from '@method/pacta/cognitive/modules/memory-preset.js';
-import { triggerSleep } from '@method/pacta/cognitive/modules/sleep-api.js';
-import { defaultActivationConfig } from '@method/pacta/cognitive/modules/activation.js';
+import { createMemoryPreset } from '@methodts/pacta/cognitive/modules/memory-preset.js';
+import { triggerSleep } from '@methodts/pacta/cognitive/modules/sleep-api.js';
+import { defaultActivationConfig } from '@methodts/pacta/cognitive/modules/activation.js';
 
 const { memory, consolidator, store } = createMemoryPreset({
   dualStore: {
@@ -89,7 +89,7 @@ total = baseLevelActivation + spreadingActivation + partialMatchPenalty + noise
 The Sleep API triggers offline consolidation between sessions:
 
 ```typescript
-import { triggerSleep } from '@method/pacta/cognitive/modules/sleep-api.js';
+import { triggerSleep } from '@methodts/pacta/cognitive/modules/sleep-api.js';
 
 const result = await triggerSleep(store, {
   replayCount: 20,         // Episodes to replay (default: 20)

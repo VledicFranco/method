@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Backpressure Queue — async FIFO queue with abort support.
  *

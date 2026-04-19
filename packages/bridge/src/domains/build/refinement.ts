@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Refinement Engine — Per-build and cross-build analysis for the Build Orchestrator.
  *

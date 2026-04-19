@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ACT-R Activation Computation — foundation for activation-based retrieval.
  *

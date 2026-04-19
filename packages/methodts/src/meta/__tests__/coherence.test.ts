@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
 import { checkCoherence } from "../coherence.js";
 import type { Methodology, Arm } from "../../methodology/methodology.js";

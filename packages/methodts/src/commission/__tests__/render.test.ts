@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for commission render helpers — bulletList, numberedList, section, joinSections.
  *

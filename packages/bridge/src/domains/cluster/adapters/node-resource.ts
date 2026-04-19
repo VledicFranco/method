@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Node Resource Adapter ───────────────────────────────────────
 //
 // ResourceProvider implementation that reports the local machine's
@@ -7,7 +8,7 @@
 // injected via callbacks to avoid coupling to other domains.
 
 import { cpus, totalmem, freemem } from 'node:os';
-import type { ResourceProvider, ResourceSnapshot } from '@method/cluster';
+import type { ResourceProvider, ResourceSnapshot } from '@methodts/cluster';
 
 // ── Types ─────────────────────────────────────────────────────
 

@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/event-bus — EventBus + sinks + connectors (PRD-057 / S2 §3.4).
+ * @methodts/runtime/event-bus — EventBus + sinks + connectors (PRD-057 / S2 §3.4).
  *
  * Public surface frozen by S2 §3.4. The bus and all transport-free sinks live
- * here. `WebSocketSink` stays in @method/bridge per S2 §5.1 (it depends on
+ * here. `WebSocketSink` stays in @methodts/bridge per S2 §5.1 (it depends on
  * @fastify/websocket, which runtime cannot carry).
  */
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Experiment v2: Flat vs Recursive Explore — Validated Design
  *

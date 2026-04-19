@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD-057 SC-6 / C7 — Event-type snapshot gate (G-EVENT-TYPE-SNAPSHOT).
  *
  * Asserts that the union of **literal** RuntimeEvent `type` strings
- * emitted by `@method/runtime` source code matches a committed manifest.
+ * emitted by `@methodts/runtime` source code matches a committed manifest.
  * Any accidental removal, rename, or addition of an event type flips
  * this test red. Intentional changes update both the emission site and
  * the manifest in the same PR.
@@ -36,7 +37,7 @@ const RUNTIME_SRC = resolve(__dirname, '..');
 
 /**
  * Committed snapshot of the literal event `type` strings produced by
- * `@method/runtime`. Sorted alphabetically. Changing this list requires
+ * `@methodts/runtime`. Sorted alphabetically. Changing this list requires
  * an intentional edit reviewed alongside the emission site change.
  *
  * PRD-057 / S2 §4 / SC-6: this is the stable wire format contract.
@@ -59,6 +60,8 @@ const EVENT_TYPE_MANIFEST: readonly string[] = [
   // Gate / approval (strategy domain)
   'gate.approval_response',
   'gate.awaiting_approval',
+  // Pact lifecycle (cortex-job-backed-executor)
+  'pact.dead_letter',
   // Session lifecycle
   'session.dead',
   'session.killed',
@@ -139,7 +142,7 @@ function extractEventTypesFromSetFile(source: string): string[] {
   return types;
 }
 
-describe('@method/runtime — event-type snapshot (PRD-057 SC-6 / G-EVENT-TYPE-SNAPSHOT)', () => {
+describe('@methodts/runtime — event-type snapshot (PRD-057 SC-6 / G-EVENT-TYPE-SNAPSHOT)', () => {
   it('union of literal RuntimeEvent type strings matches the committed manifest', () => {
     const files = walkTsFiles(RUNTIME_SRC);
     const seen = new Set<string>();

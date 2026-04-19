@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Partition System — aggregate of all partitions with routing, context
  * building, and monitor execution.

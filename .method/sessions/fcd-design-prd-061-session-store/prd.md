@@ -9,30 +9,30 @@ index: 61
 author: "Lysica (FCD design session)"
 summary: >
   Ship the `SessionStore` port + `CheckpointSink` adapter frozen by S4, plus
-  two concrete implementations (FS-backed for `@method/bridge`, ctx.storage-
-  backed for `@method/agent-runtime`), and the resume algorithm that survives
+  two concrete implementations (FS-backed for `@methodts/bridge`, ctx.storage-
+  backed for `@methodts/agent-runtime`), and the resume algorithm that survives
   container restarts mid-pact. Idempotent under at-least-once delivery via
   lease + fencing tokens. Per-turn checkpoint default, per-event opt-in.
 audience: [method-team, cortex-team, agent-runtime-authors]
 domains:
-  - "@method/runtime/ports (new port file)"
-  - "@method/runtime (CheckpointSink impl)"
-  - "@method/bridge/domains/sessions (FS adapter)"
-  - "@method/agent-runtime/adapters (Cortex adapter)"
-  - "@method/pacta (consumer — ResumableMode wiring)"
-  - "@method/methodts (consumer — strategy executor checkpointing)"
+  - "@methodts/runtime/ports (new port file)"
+  - "@methodts/runtime (CheckpointSink impl)"
+  - "@methodts/bridge/domains/sessions (FS adapter)"
+  - "@methodts/agent-runtime/adapters (Cortex adapter)"
+  - "@methodts/pacta (consumer — ResumableMode wiring)"
+  - "@methodts/methodts (consumer — strategy executor checkpointing)"
 consumed_surfaces:
   - ".method/sessions/fcd-surface-session-store/decision.md (S4 — PRIMARY, frozen)"
-  - ".method/sessions/fcd-surface-runtime-package-boundary/decision.md (S2 — port lives in @method/runtime)"
+  - ".method/sessions/fcd-surface-runtime-package-boundary/decision.md (S2 — port lives in @methodts/runtime)"
   - ".method/sessions/fcd-surface-cortex-service-adapters/decision.md (S3 — BudgetReservation issuer = ctx.llm)"
   - ".method/sessions/fcd-surface-conformance-testkit/decision.md (S8 — resume conformance fixture)"
 produced_surfaces:
-  - "SessionStore port (owned by @method/runtime, defined in S4)"
-  - "CheckpointSink port (owned by @method/runtime, defined in S4)"
+  - "SessionStore port (owned by @methodts/runtime, defined in S4)"
+  - "CheckpointSink port (owned by @methodts/runtime, defined in S4)"
   - "Two adapter implementations: FsSessionStore, CortexSessionStore"
 related_prds:
-  - "PRD-057 (@method/runtime extraction — MUST land first so ports have a home)"
-  - "PRD-058 (@method/agent-runtime — consumes CortexSessionStore)"
+  - "PRD-057 (@methodts/runtime extraction — MUST land first so ports have a home)"
+  - "PRD-058 (@methodts/agent-runtime — consumes CortexSessionStore)"
   - "PRD-059 (CortexLLMProvider — issues BudgetReservation handles)"
   - "PRD-062 (JobBackedExecutor — writes continuation envelope into checkpoint)"
   - "PRD-064 (CortexMethodologySource — shares ctx.storage per-app DB)"
@@ -40,7 +40,7 @@ related_prds:
   - "t1-cortex-1 PRD-064 (App Storage Service — ctx.storage backend)"
 gates:
   - "G-SESSIONSTORE-PORT-PURITY (no backend types leak through port signatures)"
-  - "G-SESSIONSTORE-BOUNDARY (consumers import only from @method/runtime/ports)"
+  - "G-SESSIONSTORE-BOUNDARY (consumers import only from @methodts/runtime/ports)"
   - "G-CHECKPOINTSINK-SINGLE-CONSTRUCTOR (only composition root instantiates)"
   - "G-RESUME-IDEMPOTENT (testkit conformance: duplicate resume returns same fencingToken)"
   - "G-SCHEMA-VERSION-GATED (adapter rejects unknown schemaVersion with typed error)"
@@ -54,18 +54,18 @@ gates:
 Implements the **S4 surface** (SessionStore + CheckpointSink) frozen on
 2026-04-14. Delivers:
 
-1. **The port files** in `@method/runtime/ports/` — `session-store.ts`,
+1. **The port files** in `@methodts/runtime/ports/` — `session-store.ts`,
    `checkpoint-sink.ts`, `session-store-types.ts`, `session-store-errors.ts`.
    (Port grammar copied verbatim from S4 §4.)
-2. **`CheckpointSink` default implementation** in `@method/runtime/sinks/` —
+2. **`CheckpointSink` default implementation** in `@methodts/runtime/sinks/` —
    the debounced event-bus adapter that writes checkpoints on session
    lifecycle events.
 3. **`FsSessionStore`** — the JSONL+lockfile adapter living in
-   `@method/bridge/domains/sessions/fs-session-store.ts`. Supersedes the
+   `@methodts/bridge/domains/sessions/fs-session-store.ts`. Supersedes the
    existing `SessionCheckpointSink` writes; coexists with
    `SessionPersistenceStore` for the session index during migration.
 4. **`CortexSessionStore`** — the MongoDB-via-`ctx.storage` adapter living
-   in `@method/agent-runtime/adapters/cortex-session-store.ts`. Two
+   in `@methodts/agent-runtime/adapters/cortex-session-store.ts`. Two
    collections per app (`method_session_snapshots`,
    `method_session_checkpoints`).
 5. **The resume algorithm** described in S4 §6 — atomic load+lease,
@@ -73,7 +73,7 @@ Implements the **S4 surface** (SessionStore + CheckpointSink) frozen on
    `CortexLLMProvider.rehydrate()`, event replay to consumers (not to the
    agent), lease heartbeat.
 6. **Conformance fixtures** — three resume scenarios shipped via
-   `@method/pacta-testkit/conformance` (S8): mid-turn restart, stale-lease
+   `@methodts/pacta-testkit/conformance` (S8): mid-turn restart, stale-lease
    theft attempt, schema-version rejection.
 
 PRD-061 does **not** ship the `JobBackedExecutor` (PRD-062), the per-AppId
@@ -133,9 +133,9 @@ From S4 and its sibling surfaces — non-negotiable:
   `listCheckpoints`, `finalize`, `destroy`. Any addition requires a new
   `/fcd-surface` session. (Implementation counted 11; `destroy` is
   treated as part of `finalize`'s terminal-cleanup pair.)
-- **C-2. Port lives in `@method/runtime`.** Per S2 §3.1, ports ship at
+- **C-2. Port lives in `@methodts/runtime`.** Per S2 §3.1, ports ship at
   `packages/runtime/src/ports/` and are re-exported from
-  `@method/runtime/ports`. PRD-061 depends on PRD-057 completing the
+  `@methodts/runtime/ports`. PRD-061 depends on PRD-057 completing the
   extraction; if PRD-057 is in-flight, port files can land under a compat
   shim in bridge temporarily.
 - **C-3. Lease + fencing token is the only idempotency mechanism.** Default
@@ -165,7 +165,7 @@ From S4 and its sibling surfaces — non-negotiable:
 
 From delivery rules:
 
-- **DR-03.** `@method/runtime` packages have zero transport dependencies.
+- **DR-03.** `@methodts/runtime` packages have zero transport dependencies.
 - **DR-04.** Thin wrappers, no business logic in adapters beyond persistence
   protocol.
 - **DR-05.** YAML parsing (if any, none expected here) via `js-yaml`.
@@ -190,7 +190,7 @@ From Cortex PRD-064 (app-storage):
 Binary outcomes the Cortex team (and the conformance testkit) verify:
 
 1. **Container-restart resume.** Start an agent under
-   `@method/agent-runtime`; while the agent is mid-turn (between
+   `@methodts/agent-runtime`; while the agent is mid-turn (between
    `agent.step()` boundaries), kill the container; cold-start a new worker
    on the same `sessionId`; the worker resumes from the last checkpoint,
    rehydrates (or re-reserves) the budget, replays post-checkpoint events
@@ -219,7 +219,7 @@ Binary outcomes the Cortex team (and the conformance testkit) verify:
 6. **Gate assertions green** — G-SESSIONSTORE-PORT-PURITY,
    G-SESSIONSTORE-BOUNDARY, G-CHECKPOINTSINK-SINGLE-CONSTRUCTOR,
    G-RESUME-IDEMPOTENT, G-SCHEMA-VERSION-GATED, G-LEASE-FENCING — all pass
-   in CI for both `@method/bridge` and `@method/agent-runtime` test runs.
+   in CI for both `@methodts/bridge` and `@methodts/agent-runtime` test runs.
 7. **Bridge behavior unchanged at the user-visible level.** Existing bridge
    sessions continue to appear in the sessions dashboard; session index
    endpoints (`GET /api/sessions`) return the same shape. Checkpointing is
@@ -249,7 +249,7 @@ Binary outcomes the Cortex team (and the conformance testkit) verify:
     (200 ms) implementation with pluggable `captureSnapshot`, event-type
     filter, `checkpointOnEvent(filter)` override, `flush()` for shutdown,
     `dispose()` for teardown.
-- FS adapter (`@method/bridge`):
+- FS adapter (`@methodts/bridge`):
   - `packages/bridge/src/domains/sessions/fs-session-store.ts` —
     `createFsSessionStore(opts)` returning `SessionStore`. Layout per S4
     §9.2 (`.method/sessions/<sessionId>/snapshot.json`,
@@ -259,7 +259,7 @@ Binary outcomes the Cortex team (and the conformance testkit) verify:
     `save(PersistedSession)` surface and is *fed* by `FsSessionStore`
     projecting the snapshot into the legacy shape, so the session
     dashboard keeps working. Removed in PRD-061+1 cleanup.
-- Cortex adapter (`@method/agent-runtime`):
+- Cortex adapter (`@methodts/agent-runtime`):
   - `packages/agent-runtime/src/adapters/cortex-session-store.ts` —
     `createCortexSessionStore(opts)` returning `SessionStore`.
   - Uses `ctx.storage.collection('method_session_snapshots')` and
@@ -315,7 +315,7 @@ Binary outcomes the Cortex team (and the conformance testkit) verify:
 Per S2 (RuntimePackageBoundary) §1, §3.1, §9, §10:
 
 ```
-L3   @method/runtime
+L3   @methodts/runtime
        src/ports/session-store.ts          ← NEW (port, stable tier)
        src/ports/checkpoint-sink.ts        ← NEW
        src/ports/session-store-types.ts    ← NEW
@@ -323,23 +323,23 @@ L3   @method/runtime
        src/sinks/checkpoint-sink-impl.ts   ← NEW (default impl)
        src/sessions/resume.ts              ← NEW (adapter-agnostic algo)
 
-L4   @method/bridge
+L4   @methodts/bridge
        src/domains/sessions/fs-session-store.ts      ← NEW (FS adapter)
 
-L3   @method/agent-runtime (PRD-058)
+L3   @methodts/agent-runtime (PRD-058)
        src/adapters/cortex-session-store.ts          ← NEW (ctx.storage adapter)
 ```
 
-**Port ownership:** `@method/runtime`. Both concrete adapters live in
+**Port ownership:** `@methodts/runtime`. Both concrete adapters live in
 their respective consumer packages, not in runtime. This follows the
 "adapter = outbound concretization" idiom from S3.
 
-**Why not put `CortexSessionStore` in `@method/runtime`?** Because
-`@method/runtime` has zero Cortex-platform knowledge (§9 of S2). The
+**Why not put `CortexSessionStore` in `@methodts/runtime`?** Because
+`@methodts/runtime` has zero Cortex-platform knowledge (§9 of S2). The
 Cortex adapter imports `@t1/cortex-sdk` types, which are Cortex-platform
-bindings. Those must stay in `@method/agent-runtime`.
+bindings. Those must stay in `@methodts/agent-runtime`.
 
-**Why not put `FsSessionStore` in `@method/runtime`?** Because it needs
+**Why not put `FsSessionStore` in `@methodts/runtime`?** Because it needs
 `NodeFileSystemProvider`, which stays in bridge (S2 §5.3). The port is
 neutral; the FS adapter is a Node impl. If a non-bridge consumer ever
 needs an FS adapter, we extract it. Today there's exactly one consumer.
@@ -350,7 +350,7 @@ needs an FS adapter, we extract it. Today there's exactly one consumer.
 
 ```ts
 import { createFsSessionStore } from './domains/sessions/fs-session-store.js';
-import { createCheckpointSink } from '@method/runtime/sinks';
+import { createCheckpointSink } from '@methodts/runtime/sinks';
 
 const sessionStore = createFsSessionStore({
   baseDir: projectRoot,
@@ -382,7 +382,7 @@ eventBus.registerSink(checkpointSink);
 
 ```ts
 import { createCortexSessionStore } from './adapters/cortex-session-store.js';
-import { createCheckpointSink } from '@method/runtime/sinks';
+import { createCheckpointSink } from '@methodts/runtime/sinks';
 
 export function createMethodAgent({ ctx, pact, sessionStore: inject }: Opts) {
   const store = inject ?? createCortexSessionStore({
@@ -634,7 +634,7 @@ each adapter.
 - Blob-ref write to `blobs/<hash>.bin`; hash verification on read.
 
 **`CortexSessionStore`** (`packages/agent-runtime/src/adapters/cortex-session-store.test.ts`):
-- Uses `@method/agent-runtime/testing/ctx-storage-fixture` (a
+- Uses `@methodts/agent-runtime/testing/ctx-storage-fixture` (a
   Mongo-memory-server or testcontainers harness — see §11).
 - Lease CAS contention: 10 concurrent `resume(sessionId, workerId_i)` —
   exactly one succeeds, 9 receive `FENCED`.
@@ -643,7 +643,7 @@ each adapter.
 - Quota-exceeded path: fixture with a 1 MB quota, write > 1 MB, expect
   `QUOTA_EXCEEDED`.
 
-### 8.2 Shared Conformance (`@method/pacta-testkit/conformance`)
+### 8.2 Shared Conformance (`@methodts/pacta-testkit/conformance`)
 
 Fixtures runnable by any `SessionStore` impl — the Cortex adapter and the
 FS adapter both run them in CI. Fixture format follows S8's
@@ -752,7 +752,7 @@ if bus lacks seek, we skip replay and document the caveat.
 bridge is deployed across multiple hosts (cluster federation), two hosts
 could both attempt to lease the same session via different filesystems.
 Documented as single-host limitation; cluster federation pins sessions
-to a host via `@method/cluster` routing.
+to a host via `@methodts/cluster` routing.
 
 **R-7. Blob-ref backend missing.** `CortexSessionStore` accepts
 `blobRefWriter` but no blob service is frozen. v1 ships without blobs
@@ -792,7 +792,7 @@ PRD-061 is complete when:
    in the agent-runtime end-to-end test — one `ctx.llm.complete` call
    per turn, total budget reserved == total budget settled, audit log
    contains exactly one turn-completion entry per logical turn.
-8. **Conformance testkit published** at `@method/pacta-testkit/conformance/session-store/`
+8. **Conformance testkit published** at `@methodts/pacta-testkit/conformance/session-store/`
    and documented in the S8 conformance README.
 9. **PRD-057 dependency acknowledged** — either PRD-057 lands first
    (port files in `packages/runtime/src/ports/`) or PRD-061 lands with
@@ -839,10 +839,10 @@ PRD-061 is complete when:
 | S4 §7 | same | Idempotency & lease mechanism |
 | S4 §9.1/9.2 | same | Adapter sketches (Cortex + FS) |
 | S4 §12 | same | Gate assertion template |
-| S2 §3.1 | `fcd-surface-runtime-package-boundary/decision.md` | Port exports under `@method/runtime/ports` |
+| S2 §3.1 | `fcd-surface-runtime-package-boundary/decision.md` | Port exports under `@methodts/runtime/ports` |
 | S2 §5 | same | What stays in bridge (FS adapter lives there) |
 | S3 §2.1 | `fcd-surface-cortex-service-adapters/decision.md` | `BudgetReservation.issuer = 'ctx.llm'` |
-| S8 | `fcd-surface-conformance-testkit/decision.md` | Fixture format + subpath `@method/pacta-testkit/conformance` |
+| S8 | `fcd-surface-conformance-testkit/decision.md` | Fixture format + subpath `@methodts/pacta-testkit/conformance` |
 | Cortex PRD-064 | `t1-cortex-1/docs/prds/064-app-storage-service.md` | `ctx.storage` API, forbidden ops, quota, index manifest |
 
 ---

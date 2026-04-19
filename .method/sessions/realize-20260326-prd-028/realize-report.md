@@ -16,12 +16,12 @@
 
 | Commission | Domain/Package | Owned Files |
 |-----------|---------------|-------------|
-| C-1 | `@method/pacta-provider-claude-cli` | `cli-executor.ts`, `claude-cli-provider.ts`, `claude-cli-provider.test.ts` |
-| C-2 | `@method/bridge/sessions` (pool + routes) | `pool.ts`, `routes.ts` (deprecation warnings, resize → 410) |
-| C-3 | `@method/bridge/sessions` (print-session) | `print-session.ts`, `print-session.test.ts`; deleted `pacta-session.ts` spike |
-| C-4 | `@method/bridge/sessions` (PTY backend) | Deleted 8 files; simplified `pool.ts`, `routes.ts` |
-| C-5 | `@method/bridge/strategies` | `strategy-executor.ts`, `strategy-routes.ts`; deleted `claude-code-provider.ts`, `llm-provider.ts` |
-| C-6 | `@method/bridge/frontend` | `Sessions.tsx`, `SpawnSessionModal.tsx`, `frontend/package.json` |
+| C-1 | `@methodts/pacta-provider-claude-cli` | `cli-executor.ts`, `claude-cli-provider.ts`, `claude-cli-provider.test.ts` |
+| C-2 | `@methodts/bridge/sessions` (pool + routes) | `pool.ts`, `routes.ts` (deprecation warnings, resize → 410) |
+| C-3 | `@methodts/bridge/sessions` (print-session) | `print-session.ts`, `print-session.test.ts`; deleted `pacta-session.ts` spike |
+| C-4 | `@methodts/bridge/sessions` (PTY backend) | Deleted 8 files; simplified `pool.ts`, `routes.ts` |
+| C-5 | `@methodts/bridge/strategies` | `strategy-executor.ts`, `strategy-routes.ts`; deleted `claude-code-provider.ts`, `llm-provider.ts` |
+| C-6 | `@methodts/bridge/frontend` | `Sessions.tsx`, `SpawnSessionModal.tsx`, `frontend/package.json` |
 
 Shared surfaces owned by orchestrator:
 - Pre-wave-1: `packages/pacta/src/pact.ts` — added `abortSignal` + `clearHistory` to `AgentRequest`
@@ -54,12 +54,12 @@ Shared surfaces owned by orchestrator:
 
 | ID | Domain | Branch | PR | Status | Fix Cycles |
 |----|--------|--------|----|--------|------------|
-| C-1 | `@method/pacta-provider-claude-cli` | `feat/prd-028-c1-cli-provider` | #70 | done | 0 |
-| C-2 | `@method/bridge/sessions` | `feat/prd-028-c2-pty-deprecation` | #69 | done | 0 |
-| C-3 | `@method/bridge/sessions` | `feat/prd-028-c3-print-session-migration` | #71 | done | 0 |
-| C-4 | `@method/bridge/sessions` | `feat/prd-028-c4-pty-backend-removal` | #72 | done | 0 |
-| C-5 | `@method/bridge/strategies` | `feat/prd-028-c5-llmprovider-cleanup` | #73 | done | 0 |
-| C-6 | `@method/bridge/frontend` | `feat/prd-028-c6-frontend-cleanup` | #75 | done | 0 |
+| C-1 | `@methodts/pacta-provider-claude-cli` | `feat/prd-028-c1-cli-provider` | #70 | done | 0 |
+| C-2 | `@methodts/bridge/sessions` | `feat/prd-028-c2-pty-deprecation` | #69 | done | 0 |
+| C-3 | `@methodts/bridge/sessions` | `feat/prd-028-c3-print-session-migration` | #71 | done | 0 |
+| C-4 | `@methodts/bridge/sessions` | `feat/prd-028-c4-pty-backend-removal` | #72 | done | 0 |
+| C-5 | `@methodts/bridge/strategies` | `feat/prd-028-c5-llmprovider-cleanup` | #73 | done | 0 |
+| C-6 | `@methodts/bridge/frontend` | `feat/prd-028-c6-frontend-cleanup` | #75 | done | 0 |
 
 Orchestrator PRs:
 - PR #68: pre-wave-1 — `pact.ts` AgentRequest fields

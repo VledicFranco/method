@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for agentSteeredController — agent-driven strategy decisions.
  *

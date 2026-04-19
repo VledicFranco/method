@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Playwright smoke tests — automated browser verification of all test cases.
  *

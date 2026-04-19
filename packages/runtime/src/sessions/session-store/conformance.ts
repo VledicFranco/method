@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SessionStore conformance fixtures — PRD-061 §8.2.
  *
@@ -16,9 +17,9 @@
  *   3. `schema-version-rejection`   — a v2 snapshot is rejected with
  *                                     SCHEMA_INCOMPATIBLE + retryable=false.
  *
- * The fixtures are published here (in `@method/runtime`) to keep the
+ * The fixtures are published here (in `@methodts/runtime`) to keep the
  * PRD-061 deliverable self-contained. They will be re-exported from
- * `@method/pacta-testkit/conformance/session-store` once PRD-065's
+ * `@methodts/pacta-testkit/conformance/session-store` once PRD-065's
  * conformance subpath settles (follow-up noted in the PRD).
  */
 

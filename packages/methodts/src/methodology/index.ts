@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * methodology/ — Top-level formal execution unit (F1-FTH).
  *

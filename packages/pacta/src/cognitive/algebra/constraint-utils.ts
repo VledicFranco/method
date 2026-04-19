@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Constraint Utilities — pure functions for constraint violation detection.
  *

@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cluster Domain — Core lifecycle tests.
  *
- * Uses FakeDiscovery, FakeNetwork, FakeResources from @method/cluster
+ * Uses FakeDiscovery, FakeNetwork, FakeResources from @methodts/cluster
  * to verify domain behavior without real network calls.
  */
 
@@ -12,7 +13,7 @@ import {
   FakeNetwork,
   FakeResources,
   type ClusterNode,
-} from '@method/cluster';
+} from '@methodts/cluster';
 import { ClusterDomain, type ClusterLogger } from './core.js';
 import type { ClusterConfig } from './config.js';
 

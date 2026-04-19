@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Retraction<P, C> — Domain retraction pairs.
  *

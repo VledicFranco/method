@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Context Middleware — wraps agent provider invocations with context management.
  *

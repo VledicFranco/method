@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * StructuredAgentProvider — Typed LLM output via JSON schema.
  *

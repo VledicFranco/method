@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Built-in conformance plugins. `DEFAULT_PLUGINS` is the default value for
  * `opts.plugins`; callers extending the set should do

@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * gate-runner — Re-exports from @method/methodts/gate/algorithmic-checks.
+ * gate-runner — Re-exports from @methodts/methodts/gate/algorithmic-checks.
  *
  * PRD 046 Wave 0: Algorithmic checks moved to gate/ as shared infrastructure.
  * This file re-exports for backward compatibility + adds the Truth-aware

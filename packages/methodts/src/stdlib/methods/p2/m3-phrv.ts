@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M3_PHRV — Phase Review Method (M3-PHRV v1.1).
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * GenesisSink — PRD 026 Phase 4.
  *

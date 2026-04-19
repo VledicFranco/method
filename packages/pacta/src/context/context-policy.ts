@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Context Policy — declarative configuration for context window management.
  *

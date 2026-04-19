@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Mock executor — wires testkit mock DagNodeExecutor into DagStrategyExecutor.
  *
@@ -11,8 +12,8 @@ import {
   type DagNodeExecutor,
   type ContextLoadExecutor,
   type ContextLoadResult,
-} from '@method/methodts/strategy/dag-executor.js';
-import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
+} from '@methodts/methodts/strategy/dag-executor.js';
+import { parseStrategyYaml } from '@methodts/methodts/strategy/dag-parser.js';
 import type {
   StrategyDAG,
   StrategyNode,
@@ -28,7 +29,7 @@ import type {
   DagGateResult,
   DagGateType,
   OversightEvent,
-} from '@method/methodts/strategy/dag-types.js';
+} from '@methodts/methodts/strategy/dag-types.js';
 import { readFileSync } from 'node:fs';
 import type { RunFlow } from './run-flow.js';
 

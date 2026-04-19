@@ -2,9 +2,9 @@
 type: co-design-record
 surface: ManifestReaderPort
 date: "2026-04-08"
-owner: "@method/fca-index"
+owner: "@methodts/fca-index"
 producer: "consuming project (filesystem / .fca-index.yaml)"
-consumer: "@method/fca-index scanner domain (internal)"
+consumer: "@methodts/fca-index scanner domain (internal)"
 direction: "filesystem → fca-index scanner (unidirectional)"
 status: frozen
 mode: new
@@ -67,7 +67,7 @@ export interface ProjectScanConfig {
 
 ## Consumer
 
-- **Package:** `@method/fca-index` scanner domain
+- **Package:** `@methodts/fca-index` scanner domain
 - **Usage:** `packages/fca-index/src/scanner/project-scanner.ts` (planned)
 - **Injection:** Default implementation (`FileSystemManifestReader`) injected at the library's
   composition root. Tests inject a stub implementation.

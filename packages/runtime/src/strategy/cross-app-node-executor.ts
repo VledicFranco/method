@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CrossAppNodeExecutorImpl — bridges the methodts `CrossAppNodeExecutor`
  * port to the runtime's `CrossAppInvoker` port.
  *
- * PRD-067 §7.3: methodts cannot depend on `@method/runtime` (lower FCA layer
+ * PRD-067 §7.3: methodts cannot depend on `@methodts/runtime` (lower FCA layer
  * can't see upper), so methodts defines `CrossAppNodeExecutor` as an
  * injection port. This class is the runtime-side adapter — it projects the
  * DAG bundle into the operation input per `input_projection`, dispatches
@@ -10,19 +11,19 @@
  * translates typed errors from the invoker into failures the methodts gate
  * machinery resolves as node failures (G-FAILURE-ISOLATION).
  *
- * Owner:    @method/runtime/strategy
+ * Owner:    @methodts/runtime/strategy
  * Producer: composition root wires `new CrossAppNodeExecutorImpl(invoker)`
  * Consumer: methodts DagStrategyExecutor via the `CrossAppNodeExecutor` port
  */
 
 import type {
   CrossAppNodeExecutor,
-} from '@method/methodts/strategy/dag-executor.js';
+} from '@methodts/methodts/strategy/dag-executor.js';
 import type {
   StrategyDAG,
   StrategyNode,
   CrossAppInvokeNodeConfig,
-} from '@method/methodts/strategy/dag-types.js';
+} from '@methodts/methodts/strategy/dag-types.js';
 import {
   type CrossAppInvoker,
   type CrossAppInvokeRequest,
@@ -38,7 +39,7 @@ export interface CrossAppNodeExecutorOptions {
    *
    * In the simulator this can be a static function returning a fake
    * `DelegationCarry`; in production the composition root wires the real
-   * pact context from `@method/agent-runtime`.
+   * pact context from `@methodts/agent-runtime`.
    */
   readonly delegationSupplier: (args: {
     readonly sessionId: string;

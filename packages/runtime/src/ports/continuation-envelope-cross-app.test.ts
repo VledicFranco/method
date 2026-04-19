@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Continuation envelope — PRD-067 cross-app extension tests.
  *

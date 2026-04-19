@@ -88,13 +88,13 @@ retro:
     - hash: d4e123e
       message: "chore: add bridge→core dependency for strategy refactor"
     - hash: 6bf227a
-      message: "refactor(core): move llm-provider and artifact-store to @method/core (Phase 1)"
+      message: "refactor(core): move llm-provider and artifact-store to @methodts/core (Phase 1)"
     - hash: d54d48e
-      message: "refactor(core): move gates to @method/core (Phase 2)"
+      message: "refactor(core): move gates to @methodts/core (Phase 2)"
     - hash: 32b1789
-      message: "refactor(core): move strategy-parser to @method/core (Phase 3)"
+      message: "refactor(core): move strategy-parser to @methodts/core (Phase 3)"
     - hash: 5a1923b
-      message: "refactor(core): move strategy-executor to @method/core (Phase 4)"
+      message: "refactor(core): move strategy-executor to @methodts/core (Phase 4)"
     - hash: 7dfa5c9
       message: "refactor(core): split retro-generator (Phase 5)"
     - hash: 42fa4b0

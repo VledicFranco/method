@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * AgentEvent-to-BridgeEvent Adapter — PRD 029 Phase C-2.
  *
@@ -9,7 +10,7 @@
  * and trigger events.
  */
 
-import type { AgentEvent } from '@method/pacta';
+import type { AgentEvent } from '@methodts/pacta';
 import type { EventBus, RuntimeEventInput, EventSeverity } from '../ports/event-bus.js';
 
 // ── Severity mapping ─────────────────────────────────────────────

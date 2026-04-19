@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexCrossAppInvoker — live Cortex adapter for the CrossAppInvoker port.
  *
@@ -22,8 +23,8 @@
  * DO NOT call `new CortexCrossAppInvoker()` in production pacts. For tests
  * and single-process demos use `InProcessCrossAppInvoker` instead.
  *
- * The eventual real home for the live adapter is `@method/agent-runtime/cortex/`
- * (PRD-067 §7.2) — the stub lives in `@method/runtime/strategy/` for now so
+ * The eventual real home for the live adapter is `@methodts/agent-runtime/cortex/`
+ * (PRD-067 §7.2) — the stub lives in `@methodts/runtime/strategy/` for now so
  * that the adapter class name is discoverable alongside the port it
  * implements and the simulator it will replace.
  */
@@ -43,7 +44,7 @@ export class CortexCrossAppInvokerNotImplementedError extends Error {
   constructor(methodName: string) {
     super(
       `CortexCrossAppInvoker.${methodName}() — NotImplemented: Blocked on Cortex PRD-080 (App-to-App Dependencies, \`🔜 deferred\` in Wave 5). ` +
-        `For tests + single-process demos, use InProcessCrossAppInvoker from @method/runtime/strategy. ` +
+        `For tests + single-process demos, use InProcessCrossAppInvoker from @methodts/runtime/strategy. ` +
         `The real adapter ships when PRD-080 thaws and Cortex exposes ctx.apps.invoke (PRD-080 §5.7).`,
     );
     this.name = 'CortexCrossAppInvokerNotImplementedError';
@@ -58,8 +59,8 @@ export class CortexCrossAppInvokerNotImplementedError extends Error {
 export interface CortexCrossAppInvokerOptions {
   /** Cortex SDK `ctx.apps` handle (PRD-080 §5.7). The stub takes `unknown`
    *  because the real `CortexCtxApps` type lives in `@cortex/sdk` — that
-   *  import is forbidden from `@method/runtime` (G-BOUNDARY). The live
-   *  adapter in `@method/agent-runtime/cortex/` will type this properly. */
+   *  import is forbidden from `@methodts/runtime` (G-BOUNDARY). The live
+   *  adapter in `@methodts/agent-runtime/cortex/` will type this properly. */
   readonly ctxApps: unknown;
 
   /** App ids from the tenant's `requires.apps[]` manifest block — seeds

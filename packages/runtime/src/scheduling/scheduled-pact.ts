@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ScheduledPact — binds a Cortex-app `schedules[]` entry to a pact factory.
  *

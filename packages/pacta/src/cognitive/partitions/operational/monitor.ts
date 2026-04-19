@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Operational Partition Monitor — stagnation detection.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Checkpoint adapter tests — save/load roundtrip, serialization fidelity.
  *

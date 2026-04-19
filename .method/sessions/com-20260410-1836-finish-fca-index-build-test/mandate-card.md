@@ -6,7 +6,7 @@ completeness_rule: |
   Every function must be fully implemented. No stubs, no TODOs, no placeholders.
 
 objective: |
-  Get @method/fca-index and its MCP integration to compile and pass tests.
+  Get @methodts/fca-index and its MCP integration to compile and pass tests.
   All source code exists (Feature Sets A, B, C). This is dependency installation,
   test harness wiring, and mandate reconciliation — not feature work.
 

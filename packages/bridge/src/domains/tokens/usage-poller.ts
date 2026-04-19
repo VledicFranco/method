@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 export type UsageBucket = {
   utilization: number;      // 0-100
   resets_at: string | null; // ISO timestamp

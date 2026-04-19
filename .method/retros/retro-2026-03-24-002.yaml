@@ -9,7 +9,7 @@ retro:
 
   hardest_decision: >
     Whether to inline lookupTheory into MCP or keep it as a documented
-    exception in @method/core. SC-1 required "zero imports from @method/core"
+    exception in @methodts/core. SC-1 required "zero imports from @methodts/core"
     while the commission text allowed "lookupTheory may stay in core temporarily."
     Chose to inline — eliminates the dependency entirely, avoids creating a
     documented exception that could become permanent technical debt. The function
@@ -18,8 +18,8 @@ retro:
   observations:
     - >
       The migration was simpler than expected because MethodologySessionStore
-      had already been refactored away from @method/core in a prior session.
-      The store was using @method/methodts/stdlib directly — the port pattern
+      had already been refactored away from @methodts/core in a prior session.
+      The store was using @methodts/methodts/stdlib directly — the port pattern
       was essentially formalizing an interface that already existed implicitly.
       This validates the incremental migration approach: each session moved
       one piece, and by the time WS-1 arrived, the hard work was done.
@@ -56,7 +56,7 @@ retro:
     - id: D-WS1-001
       type: cleanup
       description: >
-        Remove @method/core package entirely once all core tests are migrated
+        Remove @methodts/core package entirely once all core tests are migrated
         or confirmed redundant. The package is deprecated but still built.
     - id: D-WS1-002
       type: bugfix

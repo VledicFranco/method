@@ -25,7 +25,7 @@ After retrieval, `QueryEngine` calls `store.getCoverageStats(projectRoot)` to ob
 - `weightedAverage >= coverageThreshold` → mode is `'production'` (index is trustworthy)
 - `weightedAverage < coverageThreshold` → mode is `'discovery'` (index is incomplete; results carry less confidence)
 
-Consumers (e.g., `@method/mcp`) may surface discovery-mode warnings to the agent so it knows to treat results with appropriate caution.
+Consumers (e.g., `@methodts/mcp`) may surface discovery-mode warnings to the agent so it knows to treat results with appropriate caution.
 
 ## Constructor injection
 

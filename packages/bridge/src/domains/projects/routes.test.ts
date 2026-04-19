@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Test suite for Project Routes
  * Covers: isolation, HTTP codes, event cursor, error scenarios

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Membership Configuration ────────────────────────────────────
 //
 // Zod-validated config for the membership state machine. Defaults

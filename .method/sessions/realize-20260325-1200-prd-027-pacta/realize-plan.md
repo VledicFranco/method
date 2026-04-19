@@ -4,7 +4,7 @@
 
 ```
 Packages (independent — can be commissioned separately):
-  @method/pacta              → existing L3 library: types, engine, middleware, strategies
+  @methodts/pacta              → existing L3 library: types, engine, middleware, strategies
     src/budget/              → budget contract types (exists)
     src/modes/               → execution mode types (exists)
     src/output/              → output contract types (exists)
@@ -12,11 +12,11 @@ Packages (independent — can be commissioned separately):
     src/reasoning/           → reasoning strategy factories (NEW — Phase 3a)
     src/context/             → context management ports + impls (NEW — Phase 3b)
     src/agents/              → pre-assembled reference agents (NEW — Phase 4)
-  @method/pacta-testkit      → NEW L3: RecordingProvider, builders, assertions
-  @method/pacta-provider-claude-cli → NEW L3: Claude CLI AgentProvider impl
-  @method/pacta-playground   → NEW L3: simulated eval environment
-  @method/pacta-provider-anthropic  → NEW L3: Anthropic API AgentProvider impl
-  @method/bridge             → existing L4: integration target (Phase 5)
+  @methodts/pacta-testkit      → NEW L3: RecordingProvider, builders, assertions
+  @methodts/pacta-provider-claude-cli → NEW L3: Claude CLI AgentProvider impl
+  @methodts/pacta-playground   → NEW L3: simulated eval environment
+  @methodts/pacta-provider-anthropic  → NEW L3: Anthropic API AgentProvider impl
+  @methodts/bridge             → existing L4: integration target (Phase 5)
 
 Shared surfaces (orchestrator-owned — never modified by sub-agents):
   packages/pacta/src/index.ts           → barrel exports
@@ -41,7 +41,7 @@ a package. Cross-package communication is through published types (barrel export
 orchestrator manages. No domain imports another domain.
 
 **Note on intra-package parallelism (Wave 2):** C-5 (`src/reasoning/`) and C-6 (`src/context/`)
-are both within `@method/pacta` but touch strictly disjoint file sets. Neither imports the other.
+are both within `@methodts/pacta` but touch strictly disjoint file sets. Neither imports the other.
 The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to parallelize.
 
 ---
@@ -50,15 +50,15 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 
 | ID | Phase | Domain/Package | Title | Depends On | Status |
 |----|-------|---------------|-------|------------|--------|
-| C-1 | 1 | @method/pacta core | Types + createAgent engine + middleware + gate tests | — | pending |
-| C-2 | 1 | @method/pacta-testkit | RecordingProvider, builders, assertions | C-1 | pending |
-| C-3 | 1 | @method/pacta-provider-claude-cli | Claude CLI provider + simpleCodeAgent | C-1 | pending |
-| C-4 | 2 | @method/pacta-playground | Scenario runner, virtual FS, eval reports | C-1, C-2 | pending |
-| C-5 | 3a | @method/pacta src/reasoning/ | Reasoning strategy factories | C-1 | pending |
-| C-6 | 3b | @method/pacta src/context/ | Context management implementations | C-1 | pending |
-| C-7 | 4 | @method/pacta-provider-anthropic | Anthropic Messages API provider | C-1 | pending |
-| C-8 | 4 | @method/pacta src/agents/ | Reference agents + .with() pattern | C-5, C-6, C-3 | pending |
-| C-9 | 5 | @method/bridge | Bridge integration spike | C-8 | pending |
+| C-1 | 1 | @methodts/pacta core | Types + createAgent engine + middleware + gate tests | — | pending |
+| C-2 | 1 | @methodts/pacta-testkit | RecordingProvider, builders, assertions | C-1 | pending |
+| C-3 | 1 | @methodts/pacta-provider-claude-cli | Claude CLI provider + simpleCodeAgent | C-1 | pending |
+| C-4 | 2 | @methodts/pacta-playground | Scenario runner, virtual FS, eval reports | C-1, C-2 | pending |
+| C-5 | 3a | @methodts/pacta src/reasoning/ | Reasoning strategy factories | C-1 | pending |
+| C-6 | 3b | @methodts/pacta src/context/ | Context management implementations | C-1 | pending |
+| C-7 | 4 | @methodts/pacta-provider-anthropic | Anthropic Messages API provider | C-1 | pending |
+| C-8 | 4 | @methodts/pacta src/agents/ | Reference agents + .with() pattern | C-5, C-6, C-3 | pending |
+| C-9 | 5 | @methodts/bridge | Bridge integration spike | C-8 | pending |
 
 ---
 
@@ -68,7 +68,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-1
   phase: 1
   title: "Pacta core — complete type surface + createAgent engine + middleware"
-  domain: "@method/pacta (packages/pacta/)"
+  domain: "@methodts/pacta (packages/pacta/)"
   scope:
     allowed_paths:
       - "packages/pacta/src/pact.ts"
@@ -116,7 +116,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-2
   phase: 1
   title: "Pacta testkit — RecordingProvider, builders, assertions"
-  domain: "@method/pacta-testkit (packages/pacta-testkit/) — NEW PACKAGE"
+  domain: "@methodts/pacta-testkit (packages/pacta-testkit/) — NEW PACKAGE"
   scope:
     allowed_paths:
       - "packages/pacta-testkit/src/**"
@@ -147,7 +147,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-3
   phase: 1
   title: "Claude CLI provider — AgentProvider for Claude Code CLI"
-  domain: "@method/pacta-provider-claude-cli (packages/pacta-provider-claude-cli/) — NEW PACKAGE"
+  domain: "@methodts/pacta-provider-claude-cli (packages/pacta-provider-claude-cli/) — NEW PACKAGE"
   scope:
     allowed_paths:
       - "packages/pacta-provider-claude-cli/src/**"
@@ -177,7 +177,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-4
   phase: 2
   title: "Pacta playground — simulated agent evaluation environment"
-  domain: "@method/pacta-playground (packages/pacta-playground/) — NEW PACKAGE"
+  domain: "@methodts/pacta-playground (packages/pacta-playground/) — NEW PACKAGE"
   scope:
     allowed_paths:
       - "packages/pacta-playground/src/**"
@@ -210,7 +210,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-5
   phase: 3a
   title: "Reasoning strategy factories"
-  domain: "@method/pacta src/reasoning/ (sub-directory)"
+  domain: "@methodts/pacta src/reasoning/ (sub-directory)"
   scope:
     allowed_paths:
       - "packages/pacta/src/reasoning/**"
@@ -243,7 +243,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-6
   phase: 3b
   title: "Context management implementations"
-  domain: "@method/pacta src/context/ (sub-directory)"
+  domain: "@methodts/pacta src/context/ (sub-directory)"
   scope:
     allowed_paths:
       - "packages/pacta/src/context/**"
@@ -274,7 +274,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-7
   phase: 4
   title: "Anthropic API provider"
-  domain: "@method/pacta-provider-anthropic (packages/pacta-provider-anthropic/) — NEW PACKAGE"
+  domain: "@methodts/pacta-provider-anthropic (packages/pacta-provider-anthropic/) — NEW PACKAGE"
   scope:
     allowed_paths:
       - "packages/pacta-provider-anthropic/src/**"
@@ -304,7 +304,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-8
   phase: 4
   title: "Reference agents + .with() customization"
-  domain: "@method/pacta src/agents/ (sub-directory)"
+  domain: "@methodts/pacta src/agents/ (sub-directory)"
   scope:
     allowed_paths:
       - "packages/pacta/src/agents/**"
@@ -334,7 +334,7 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 - id: C-9
   phase: 5
   title: "Bridge integration spike"
-  domain: "@method/bridge (packages/bridge/)"
+  domain: "@methodts/bridge (packages/bridge/)"
   scope:
     allowed_paths:
       - "packages/bridge/src/domains/sessions/**"
@@ -368,10 +368,10 @@ The only shared file (`src/index.ts`) is orchestrator-owned. This is safe to par
 | Wave | File | Change | Reason |
 |------|------|--------|--------|
 | pre-2 | `packages/pacta/src/index.ts` | Re-export new types from C-1 (ContextPolicy, ReasoningPolicy, ToolProvider, MemoryPort, createAgent, middleware) | Wave 2 commissions consume these types |
-| pre-2 | `packages/pacta-testkit/package.json` | Scaffold new package with @method/pacta dependency | C-2 needs package shell |
+| pre-2 | `packages/pacta-testkit/package.json` | Scaffold new package with @methodts/pacta dependency | C-2 needs package shell |
 | pre-2 | `packages/pacta-testkit/tsconfig.json` | TypeScript config with project reference to pacta | C-2 needs build config |
 | pre-2 | `packages/pacta-testkit/src/index.ts` | Empty barrel export | C-2 fills this in |
-| pre-2 | `packages/pacta-provider-claude-cli/package.json` | Scaffold new package with @method/pacta dependency | C-3 needs package shell |
+| pre-2 | `packages/pacta-provider-claude-cli/package.json` | Scaffold new package with @methodts/pacta dependency | C-3 needs package shell |
 | pre-2 | `packages/pacta-provider-claude-cli/tsconfig.json` | TypeScript config with project reference to pacta | C-3 needs build config |
 | pre-2 | `packages/pacta-provider-claude-cli/src/index.ts` | Empty barrel export | C-3 fills this in |
 | pre-2 | `tsconfig.json` (root) | Add project references for new packages | Build system needs references |
@@ -434,7 +434,7 @@ Wave 4: C-9 (bridge integration)
 | 8 | All events typed through single vocabulary | AgentEvent union type covers all lifecycle events | C-1 | pending |
 | 9 | Zero transport deps in core | G-PORT gate test: pacta package.json has no runtime deps | C-1 | pending |
 | 10 | FCA gates pass | G-PORT + G-BOUNDARY + G-LAYER all green | C-1 | pending |
-| 11 | Testkit ships with Phase 1 | RecordingProvider, builders, assertions importable from @method/pacta-testkit | C-2 | pending |
+| 11 | Testkit ships with Phase 1 | RecordingProvider, builders, assertions importable from @methodts/pacta-testkit | C-2 | pending |
 | 12 | Playground scenarios run against virtual FS | Scenario + VirtualToolProvider produces EvalReport | C-4 | pending |
 
 ---

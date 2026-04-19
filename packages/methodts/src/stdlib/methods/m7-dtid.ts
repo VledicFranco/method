@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M7_DTID — Domain Theory to Implementation Derivation (M7-DTID v1.1).
  *

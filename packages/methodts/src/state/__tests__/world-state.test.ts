@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for WorldState, Snapshot, StateTrace, Witness type construction
  * and the diff() function.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Opaque `Resumption` descriptor codec (PRD-058 §5 / §6.4 D4).
  *

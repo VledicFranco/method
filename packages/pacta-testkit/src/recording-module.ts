@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RecordingModule — a CognitiveModule that captures all step invocations
  * and plays back scripted responses.
@@ -12,7 +13,7 @@ import type {
   MonitoringSignal,
   ControlDirective,
   StepResult,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // ── Recorded invocation ─────────────────────────────────────────
 

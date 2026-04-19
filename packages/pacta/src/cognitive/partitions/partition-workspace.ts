@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Partition Workspace — generic workspace backing a single partition.
  *

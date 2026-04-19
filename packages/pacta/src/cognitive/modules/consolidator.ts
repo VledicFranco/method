@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Consolidator — online LEARN-phase cognitive module for episode storage
  * and shallow lesson extraction.

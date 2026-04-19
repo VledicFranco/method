@@ -14,7 +14,7 @@ PRD 055. See docs/prds/055-smoke-test-suite.md for the full specification.
 
 ## Summary
 
-New `@method/smoke-test` package (L4) — a web app + Playwright test suite that validates every feature of the strategy, methodology, and method abstractions through 35 end-to-end smoke test cases.
+New `@methodts/smoke-test` package (L4) — a web app + Playwright test suite that validates every feature of the strategy, methodology, and method abstractions through 35 end-to-end smoke test cases.
 
 ## Key Decisions
 

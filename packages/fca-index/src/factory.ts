@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * createFcaIndex() — Public factory for the FCA index library.
  *
  * Wires all internal domains (scanner, query, coverage) together and returns
- * a typed FcaIndex facade. Consumers (e.g. @method/mcp) call this instead
+ * a typed FcaIndex facade. Consumers (e.g. @methodts/mcp) call this instead
  * of constructing each class manually.
  *
  * The factory is store-agnostic — callers provide the store via ports.store.

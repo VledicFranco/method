@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Affect & Explore Presets — compositions with affect and curiosity modules (PRD 037).
  *

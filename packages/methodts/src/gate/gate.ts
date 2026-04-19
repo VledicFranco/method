@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Gate framework — quality gates with Effect-based evaluation.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cognitive Scenario — declarative scenario builder for cognitive agents.
  *
@@ -25,12 +26,12 @@ import type {
   CycleConfig,
   CycleResult,
   CognitiveEvent,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import {
   moduleId,
   createCognitiveAgent,
   InMemoryTraceSink,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // ── Recording Module ──────────────────────────────────────────────
 

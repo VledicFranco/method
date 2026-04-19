@@ -1,5 +1,5 @@
 /**
- * Local type aliases mirroring @method/pacta cognitive algebra types.
+ * Local type aliases mirroring @methodts/pacta cognitive algebra types.
  *
  * Duplicated here because the experiment lives outside monorepo workspaces.
  * These are intentionally minimal and match the shapes consumed/produced

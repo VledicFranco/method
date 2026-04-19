@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Evaluator — meta-level cognitive module for progress estimation and value assessment.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for design and review SPL algorithms.
  *
@@ -175,7 +176,7 @@ Clean component. All external dependencies accessed through ports. Types are wel
   it("escalates port findings from medium to high", async () => {
     const { layer } = SequenceProvider([{
       raw: `FINDINGS:
-F-1 | medium | port | Shared type redefined locally instead of importing from canonical package | Import from @method/types
+F-1 | medium | port | Shared type redefined locally instead of importing from canonical package | Import from @methodts/types
 
 FLAGGED_CHILDREN: (none)
 
@@ -189,7 +190,7 @@ Entity drift detected — local type definition shadows canonical package type.`
         path: "/packages/bridge/src/domains/strategies",
         level: 2,
         content: "interface StrategyNode { id: string; type: string; }",
-        portContext: "Canonical: @method/types defines StrategyNode",
+        portContext: "Canonical: @methodts/types defines StrategyNode",
         children: [],
       }).pipe(Effect.provide(layer)),
     );

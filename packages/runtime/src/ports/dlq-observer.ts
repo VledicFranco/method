@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * DLQ observability port — PRD-062 / S5 §2.4.
  *
@@ -17,7 +18,7 @@
  */
 
 import type { ContinuationEnvelope } from './continuation-envelope.js';
-import type { PactDeadLetterEvent } from '@method/pacta';
+import type { PactDeadLetterEvent } from '@methodts/pacta';
 
 export interface DlqObserver {
   /**
@@ -43,4 +44,4 @@ export interface DlqRecord {
 }
 
 /** Re-export for convenient import from the ports barrel. */
-export type { PactDeadLetterEvent } from '@method/pacta';
+export type { PactDeadLetterEvent } from '@methodts/pacta';

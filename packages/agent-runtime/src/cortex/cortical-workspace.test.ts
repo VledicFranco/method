@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for cortical-workspace helpers — PRD-068 §5 (S10 + S11).
  *

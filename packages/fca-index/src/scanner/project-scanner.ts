@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ProjectScanner — Walks a project and scans every component, producing ScannedComponent[].
  *

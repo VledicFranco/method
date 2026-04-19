@@ -2,8 +2,8 @@
 type: co-design-record
 surface: "CortexServiceAdapters (S3)"
 date: "2026-04-14"
-owner: "@method/agent-runtime"
-producer: "@method/agent-runtime (adapters) — implemented against Cortex ctx.* (consumer-of-platform)"
+owner: "@methodts/agent-runtime"
+producer: "@methodts/agent-runtime (adapters) — implemented against Cortex ctx.* (consumer-of-platform)"
 consumer: "Cortex tenant app composition root (ctx.* host)"
 direction: "method → Cortex ctx.* (outbound calls); Cortex → method (event handlers register at compose-time)"
 status: frozen
@@ -22,7 +22,7 @@ supersedes: "—"
 
 # Co-Design Record — CortexServiceAdapters (S3)
 
-> *The adapter pattern that maps `@method/pacta` ports to Cortex `ctx.*` services.*
+> *The adapter pattern that maps `@methodts/pacta` ports to Cortex `ctx.*` services.*
 > *Shipping as the first three concrete instantiations: LLM, Audit, Auth
 > (token exchange). Future adapters (storage S4, jobs S5, events S6) follow
 > the same shape.*
@@ -33,7 +33,7 @@ supersedes: "—"
 
 This surface freezes:
 
-1. **Three concrete TypeScript surfaces** shipped in `@method/agent-runtime/src/cortex/`:
+1. **Three concrete TypeScript surfaces** shipped in `@methodts/agent-runtime/src/cortex/`:
    - `CortexLLMProvider` — implements pacta `AgentProvider` over `ctx.llm`
    - `CortexAuditMiddleware` — translates pacta `AgentEvent` to `ctx.audit`
    - `CortexTokenExchangeMiddleware` — RFC 8693 token exchange per call chain
@@ -48,7 +48,7 @@ This surface freezes:
 
 **Out of scope (other surfaces):**
 - S1 `MethodAgentPort` (PRD-060) — the outermost public API on
-  `@method/agent-runtime`.
+  `@methodts/agent-runtime`.
 - S2 `CortexCtxPort` — the shape of `ctx.*` that method consumes (frozen
   separately, owned by Cortex RFC-005).
 - S4 `CortexSessionStore` (PRD-061), S5 `JobBackedExecutor` (PRD-062),
@@ -58,7 +58,7 @@ This surface freezes:
 
 ## 1. The Shared Adapter Pattern
 
-All Cortex adapters in `@method/agent-runtime` satisfy this shape:
+All Cortex adapters in `@methodts/agent-runtime` satisfy this shape:
 
 ```typescript
 // packages/agent-runtime/src/cortex/adapter.ts
@@ -175,10 +175,10 @@ SDK imports in the agent runtime.
 // packages/agent-runtime/src/cortex/llm-provider.ts
 import type {
   AgentProvider, Streamable, ProviderCapabilities
-} from '@method/pacta/ports/agent-provider';
+} from '@methodts/pacta/ports/agent-provider';
 import type {
   Pact, AgentRequest, AgentResult
-} from '@method/pacta';
+} from '@methodts/pacta';
 import type {
   CortexLlmCtx, LlmTier, LlmBudgetHandlers, BudgetStatus,
   CompletionResult, StructuredResult, EmbeddingResult
@@ -363,8 +363,8 @@ no direct writes to any other audit sink.
 
 ```typescript
 // packages/agent-runtime/src/cortex/audit-middleware.ts
-import type { AgentEvent } from '@method/pacta';
-import type { Pact, AgentRequest, AgentResult } from '@method/pacta';
+import type { AgentEvent } from '@methodts/pacta';
+import type { Pact, AgentRequest, AgentResult } from '@methodts/pacta';
 import type { CortexAuditCtx } from './ctx-types.js';
 import type {
   CortexServiceAdapter, ComposedAdapter
@@ -544,7 +544,7 @@ sub-agent is spawned. Depth MUST NOT exceed 2.
 
 ```typescript
 // packages/agent-runtime/src/cortex/token-exchange-middleware.ts
-import type { Pact, AgentRequest, AgentResult } from '@method/pacta';
+import type { Pact, AgentRequest, AgentResult } from '@methodts/pacta';
 import type { CortexAuthCtx, ScopedToken } from './ctx-types.js';
 import type {
   CortexServiceAdapter, ComposedAdapter
@@ -726,8 +726,8 @@ ctx.audit.event({
 | `CortexTokenExchangeMiddleware` | `packages/agent-runtime/src/cortex/token-exchange-middleware.ts` (NEW) | Same factory | Outermost of the Cortex-layer middlewares |
 | `budgetEnforcerOptions.mode` extension | `packages/pacta/src/middleware/budget-enforcer.ts` (EXTEND) | `createMethodAgent` + any consumer of the enforcer | New optional `options.mode` on the factory |
 
-**Package layering:** adapters live in `@method/agent-runtime` (L3),
-**not** in `@method/pacta` (L2). Pacta must not depend on Cortex types.
+**Package layering:** adapters live in `@methodts/agent-runtime` (L3),
+**not** in `@methodts/pacta` (L2). Pacta must not depend on Cortex types.
 The pacta-level change (predictive mode on `budgetEnforcer`) is pure —
 no Cortex imports; it adds a mode flag to an existing option bag.
 
@@ -739,7 +739,7 @@ it safely (new optional field, backward-compatible default = `'authoritative'`).
 
 ## 7. Gate Assertions
 
-Added to the architecture test for `@method/agent-runtime`:
+Added to the architecture test for `@methodts/agent-runtime`:
 
 ```typescript
 // packages/agent-runtime/src/architecture.test.ts
@@ -797,7 +797,7 @@ the consuming PRDs (059, 060) or Cortex co-designs must settle:
    Re-open when PRD-068 Wave 7 decides. No change to the surface shape —
    adding `stream()` is additive on `Streamable`.
 2. **Pacta budget-enforcer mode extension.** The new option is a pacta-level
-   change. PRD-059 carries it; bump `@method/pacta` minor (no breaking API).
+   change. PRD-059 carries it; bump `@methodts/pacta` minor (no breaking API).
 3. **`ctx.llm` structured extras.** `thinkingBudgetTokens` and `temperature`
    require a negotiated `extra` field on `CompletionRequest` in the Cortex
    12.3 co-design. Until then, those drop silently. This is acceptable for

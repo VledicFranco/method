@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for `methodtsToCortex` pure mapping (PRD-066 Track A).
  *
@@ -10,7 +11,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { Tool } from "@method/methodts";
+import type { Tool } from "@methodts/methodts";
 import { methodtsToCortex, qualifiedToolName } from "./cortex-mapping.js";
 
 // A small P2-SD-shaped fixture. Stand-in: two read tools, one write, one

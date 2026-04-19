@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ProjectionStoreImpl — runtime for projection-based state persistence.
  *

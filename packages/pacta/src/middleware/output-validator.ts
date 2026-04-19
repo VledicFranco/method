@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Output Validator Middleware — validates agent results against output schemas.
  *

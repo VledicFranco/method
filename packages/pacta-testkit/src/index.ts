@@ -1,4 +1,5 @@
-// @method/pacta-testkit — verification affordances for Pacta agents
+// SPDX-License-Identifier: Apache-2.0
+// @methodts/pacta-testkit — verification affordances for Pacta agents
 // RecordingProvider, builders, assertions, cognitive helpers
 
 // Recording provider

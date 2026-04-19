@@ -11,7 +11,7 @@ Domains (independent — can be commissioned in parallel):
 Shared surfaces (orchestrator-owned):
 - `packages/bridge/src/ports/event-bus.ts`   — BridgeEvent schema extension
 - `packages/bridge/src/server-entry.ts`      — composition root wiring
-- `packages/bridge/package.json`             — @method/cluster dep, bin field
+- `packages/bridge/package.json`             — @methodts/cluster dep, bin field
 - `packages/cluster/src/index.ts`            — barrel exports (updated between waves)
 - `root package.json`                        — workspace entries, scripts, esbuild devDep
 - `root tsconfig.json`                       — project references
@@ -20,10 +20,10 @@ Shared surfaces (orchestrator-owned):
 
 | ID | Phase | Domain/Package | Title | Depends On | Status |
 |----|-------|---------------|-------|------------|--------|
-| C-1 | 039-P1 | @method/cluster | Cluster package — types, ports, membership, resources, test-doubles | — | pending |
+| C-1 | 039-P1 | @methodts/cluster | Cluster package — types, ports, membership, resources, test-doubles | — | pending |
 | C-2 | 038-P3 | scripts/, bridge/bin/ | Portable packaging — esbuild bundle + CLI entry | — | pending |
 | C-3 | 039-P2 | bridge/domains/cluster/ | Bridge cluster domain — core, routes, config, adapters | C-1 | blocked |
-| C-4 | 039-P3 | @method/cluster (routing/, federation/) | Cluster routing + event federation L3 | C-1 | blocked |
+| C-4 | 039-P3 | @methodts/cluster (routing/, federation/) | Cluster routing + event federation L3 | C-1 | blocked |
 | C-5 | 039-P3 | bridge/domains/cluster/ (additions) | Bridge federation sink + POST /cluster/route | C-3, C-4 | blocked |
 | C-6 | 039-P4 | packages/method-ctl/ | method-ctl CLI — status, nodes, projects | C-3 | blocked |
 
@@ -31,9 +31,9 @@ Shared surfaces (orchestrator-owned):
 
 | Wave | File | Change | Reason |
 |------|------|--------|--------|
-| pre-2 | root package.json | Add packages/cluster to workspaces | C-3 needs @method/cluster importable |
+| pre-2 | root package.json | Add packages/cluster to workspaces | C-3 needs @methodts/cluster importable |
 | pre-2 | root tsconfig.json | Add packages/cluster project reference | Build chain |
-| pre-2 | packages/bridge/package.json | Add @method/cluster dependency | Bridge imports cluster types |
+| pre-2 | packages/bridge/package.json | Add @methodts/cluster dependency | Bridge imports cluster types |
 | pre-3 | packages/cluster/src/index.ts | Update barrel: re-export membership + resources + ports | C-3 adapters import from cluster |
 | pre-4 | packages/bridge/src/ports/event-bus.ts | Add optional sourceNodeId, federated to BridgeEvent | C-5 federation sink needs these |
 | pre-4 | packages/cluster/src/index.ts | Update barrel: re-export routing + federation | C-5 + C-6 import router/relay |

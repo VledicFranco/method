@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/sessions — session pool + providers + supporting
+ * @methodts/runtime/sessions — session pool + providers + supporting
  * machinery. PRD-057 / S2 §3.3 / C5 public surface.
  *
  * The pool stays transport-free. Bridge provides its PTY-spawning

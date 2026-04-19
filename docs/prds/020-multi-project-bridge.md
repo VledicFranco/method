@@ -469,7 +469,7 @@ Every session created via bridge is bound to a specific project_id. Isolation is
 - Genesis tools (genesis_report, etc.) can only be called by sessions with project_id = "root"
 - Config reload (POST /projects/:id/reload) enforces session.project_id === id (or human-only override)
 - **Root project access control:** Sessions with project_id != "root" **cannot** access root-level events, config, or root-scoped MCP tools. Root project is isolated by design; child agents operate within their own project boundary.
-- MCP tool validation is centralized in validation middleware (e.g., `@method/mcp/validate-project-access.ts`), not duplicated in each tool:
+- MCP tool validation is centralized in validation middleware (e.g., `@methodts/mcp/validate-project-access.ts`), not duplicated in each tool:
   - Stripping user-supplied project_id (use session metadata instead)
   - Access control check before returning any project data (project_id must match session context)
   - Root-level operation checks (genesis_report, project_copy_* only with project_id="root")

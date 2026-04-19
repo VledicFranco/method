@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD-066 Track A architecture gates for the Cortex transport subtree.
  *
@@ -54,7 +55,7 @@ describe("G-BOUNDARY: cortex transport isolates from MCP SDK", () => {
   });
 });
 
-describe("G-LAYER: @method/mcp keeps Cortex as injected ctx", () => {
+describe("G-LAYER: @methodts/mcp keeps Cortex as injected ctx", () => {
   it("no value import from @cortex/* anywhere in packages/mcp/src/**", () => {
     const violations: string[] = [];
     for (const file of allSrcFiles()) {

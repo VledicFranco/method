@@ -15,7 +15,7 @@ domains_affected: [pacta, pacta-testkit, pacta-playground]
 **Status:** Implemented (all 5 phases — FactCards, MemoryPortV2, hybrid BM25+vector search, JSONL persistence)
 **Author:** PO + Lysica
 **Date:** 2026-03-27
-**Package:** `@method/pacta` (L3 — library)
+**Package:** `@methodts/pacta` (L3 — library)
 **Depends on:** PRD 030 (Pacta Cognitive Composition)
 **Organization:** Vidtecci — vida, ciencia y tecnologia
 

@@ -6,7 +6,7 @@ retrospective:
   prd: "PRD-057"
   branch: "feat/prd-057-method-runtime"
   pr: 175
-  scope: "@method/runtime package extraction (C1–C7, closed by C7)"
+  scope: "@methodts/runtime package extraction (C1–C7, closed by C7)"
 
   hardest_decision:
     step: "C7_bridge_test_validation"
@@ -113,7 +113,7 @@ retrospective:
         "Domain packages have zero transport dependencies" is the core
         invariant PRD-057 enforces. `G-RUNTIME-ZERO-TRANSPORT` catches
         any future fastify/ws/node-pty import into runtime. DR-03 is no
-        longer aspirational — it is machine-enforced for `@method/runtime`.
+        longer aspirational — it is machine-enforced for `@methodts/runtime`.
 
     - rule_id: DR-12
       verdict: helpful

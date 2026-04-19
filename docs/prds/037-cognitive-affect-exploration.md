@@ -15,7 +15,7 @@ domains_affected: [pacta, pacta-testkit]
 **Status:** Implemented (Affect module with somatic markers + Curiosity module with learning progress + 3 composition presets)
 **Author:** PO + Lysica
 **Date:** 2026-03-29
-**Package:** `@method/pacta` (L3 -- library)
+**Package:** `@methodts/pacta` (L3 -- library)
 **Depends on:** PRD 030 (Pacta Cognitive Composition), PRD 035 (soft)
 **Soft dependency on PRD 035:** Affect and Curiosity function with v1 Monitor (using confidence as proxy signals) but produce richer output with MonitorV2's enriched monitoring signals (prediction error, precision weighting).
 **Research:** `tmp/20260328-cognitive-architecture-research.md`, `tmp/20260328-cognitive-module-proposals.md`

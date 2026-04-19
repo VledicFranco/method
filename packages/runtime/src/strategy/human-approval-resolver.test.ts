@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * EventBusHumanApprovalResolver — Unit tests (F-L-1).
  *
@@ -8,16 +9,16 @@
  *   - Mismatched execution_id is ignored (falls through to timeout)
  *   - Emit failure does not abort the subscription wait
  *
- * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
+ * PRD-057 / S2 §3.2 / C2: moved from @methodts/bridge/domains/strategies/.
  * The test uses a tiny inline EventBus so it stays runnable without
- * depending on @method/runtime/event-bus (which lands in C3).
+ * depending on @methodts/runtime/event-bus (which lands in C3).
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { EventBusHumanApprovalResolver } from './human-approval-resolver.js';
-import type { HumanApprovalContext } from '@method/methodts/strategy/dag-types.js';
+import type { HumanApprovalContext } from '@methodts/methodts/strategy/dag-types.js';
 import type {
   EventBus,
   EventFilter,

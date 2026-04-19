@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * stdlib/methods/p3gov/ — P3-GOV (Governance) method definitions.
  *

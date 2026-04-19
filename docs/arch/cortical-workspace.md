@@ -28,7 +28,7 @@ Both surfaces live inside PRD-068; neither has a separate `decision.md` file.
 ## Architecture
 
 ```
-Cognitive tenant apps               @method/agent-runtime                Cortex ctx
+Cognitive tenant apps               @methodts/agent-runtime                Cortex ctx
 ─────────────────────               ─────────────────────                ───────────
 
 ┌─────────────────────┐             ┌───────────────────────────┐        ┌──────────┐

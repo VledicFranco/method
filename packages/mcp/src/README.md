@@ -1,6 +1,6 @@
-# @method/mcp — MCP Protocol Adapter
+# @methodts/mcp — MCP Protocol Adapter
 
-L3 package. Thin MCP (Model Context Protocol) server that exposes `@method/methodts` methodology tools and `@method/fca-index` context tools to Claude agents via the standard MCP stdio transport.
+L3 package. Thin MCP (Model Context Protocol) server that exposes `@methodts/methodts` methodology tools and `@methodts/fca-index` context tools to Claude agents via the standard MCP stdio transport.
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Bridges Claude agents to the method runtime. An agent with this MCP server confi
 
 ## Key Design Rule (DR-04)
 
-MCP handlers are thin wrappers only: parse input → call port → format output. No domain logic in handlers. All business logic lives in `@method/methodts`, `@method/fca-index`, or `@method/bridge`.
+MCP handlers are thin wrappers only: parse input → call port → format output. No domain logic in handlers. All business logic lives in `@methodts/methodts`, `@methodts/fca-index`, or `@methodts/bridge`.
 
 ## FCA Index Integration
 

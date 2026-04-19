@@ -1,15 +1,15 @@
 ---
 type: prd
-title: "PRD-059 — Cortex Service Adapters (`@method/pacta-provider-cortex`)"
+title: "PRD-059 — Cortex Service Adapters (`@methodts/pacta-provider-cortex`)"
 date: "2026-04-14"
 status: draft
 version: "0.1"
 author: Lysica (fcd-design session)
 size: M
 domains:
-  - "@method/pacta-provider-cortex (new, L3)"
-  - "@method/pacta (extend — budget-enforcer mode option, L2)"
-  - "@method/agent-runtime (consumer, L3 — PRD-058)"
+  - "@methodts/pacta-provider-cortex (new, L3)"
+  - "@methodts/pacta (extend — budget-enforcer mode option, L2)"
+  - "@methodts/agent-runtime (consumer, L3 — PRD-058)"
 surfaces_implemented:
   - "S3 — CortexServiceAdapters (frozen 2026-04-14) — `.method/sessions/fcd-surface-cortex-service-adapters/decision.md`"
 surfaces_consumed:
@@ -32,8 +32,8 @@ unblocks:
 
 > **Design-only PRD.** Implements the frozen S3 surface
 > (`fcd-surface-cortex-service-adapters`) as a new package
-> `@method/pacta-provider-cortex`, plus a backward-compatible minor extension
-> on `@method/pacta`'s `budgetEnforcer`. No code is written by this session.
+> `@methodts/pacta-provider-cortex`, plus a backward-compatible minor extension
+> on `@methodts/pacta`'s `budgetEnforcer`. No code is written by this session.
 
 ---
 
@@ -41,9 +41,9 @@ unblocks:
 
 Ship three concrete Cortex adapters — `CortexLLMProvider`,
 `CortexAuditMiddleware`, `CortexTokenExchangeMiddleware` — as the first
-(and only April-21-critical) package that connects `@method/pacta` to
+(and only April-21-critical) package that connects `@methodts/pacta` to
 Cortex `ctx.*` services. Adapters conform to the `CortexServiceAdapter<>`
-pattern frozen by S3. Package name: `@method/pacta-provider-cortex`
+pattern frozen by S3. Package name: `@methodts/pacta-provider-cortex`
 (preserves the `pacta-provider-*` family convention — S1+S3 decision).
 A minor, additive extension to pacta's `budgetEnforcer` adds a
 `mode: 'authoritative' | 'predictive'` option so `ctx.llm` can remain the
@@ -53,8 +53,8 @@ single budget authority without a double-count race.
 
 ## 2. Problem
 
-1. **No Cortex-aware adapters today.** `@method/pacta-provider-anthropic`
-   and `@method/pacta-provider-claude-cli` hold their own API keys, have no
+1. **No Cortex-aware adapters today.** `@methodts/pacta-provider-anthropic`
+   and `@methodts/pacta-provider-claude-cli` hold their own API keys, have no
    concept of `ctx.llm` tiers, do not exchange user-scoped tokens, and do
    not emit to `ctx.audit`. A Cortex tenant app of category `agent`
    (RFC-005 §10.2) cannot run any pacta pact in production without violating
@@ -111,16 +111,16 @@ Gate `G-ADAPTER-SHAPE`.
 
 ### C-05 — No Cortex import at module top level
 
-`@method/pacta-provider-cortex` only imports from `@t1/cortex-sdk` as
+`@methodts/pacta-provider-cortex` only imports from `@t1/cortex-sdk` as
 `import type` (erased). A narrow re-declaration lives at
 `packages/pacta-provider-cortex/src/ctx-types.ts` — the sole seam.
 Gate `G-CORTEX-ONLY-PATH` (already defined by S3 §7).
 
 ### C-06 — Package family discipline
 
-Name: `@method/pacta-provider-cortex`. L3 layer. Depends on `@method/pacta`
+Name: `@methodts/pacta-provider-cortex`. L3 layer. Depends on `@methodts/pacta`
 as peer (single version), `@t1/cortex-sdk` as type-only dev dep. No
-`@method/bridge` or `@method/agent-runtime` imports (wrong direction).
+`@methodts/bridge` or `@methodts/agent-runtime` imports (wrong direction).
 
 ### C-07 — Handler presence is mandatory at compose (PRD-068 §5.4)
 
@@ -163,7 +163,7 @@ Gate `G-LLM-HANDLERS-PRESENT`.
 
 ### 5.1 In scope
 
-1. **New package `@method/pacta-provider-cortex` (L3).**
+1. **New package `@methodts/pacta-provider-cortex` (L3).**
    - `src/adapter.ts` — `CortexServiceAdapter<>`, `ComposedAdapter<>`, `CortexAdapterComposeError` (verbatim from S3 §1).
    - `src/ctx-types.ts` — structural re-declaration of the Cortex SDK types consumed (`CortexLlmCtx`, `CortexAuditCtx`, `CortexAuthCtx`, `CompletionRequest`, `CompletionResult`, `StructuredResult`, `EmbeddingResult`, `BudgetStatus`, `LlmTier`, `ScopedToken`, `LlmBudgetHandlers`). ONE seam file.
    - `src/llm-provider.ts` — `cortexLLMProvider(config)` factory + `ComposedCortexLLMProvider`.
@@ -173,10 +173,10 @@ Gate `G-LLM-HANDLERS-PRESENT`.
    - `src/architecture.test.ts` — five gate assertions from S3 §7.
    - `tests/` — unit tests per §5.2 test strategy (one file per adapter).
 
-2. **Minor extension on `@method/pacta`.**
+2. **Minor extension on `@methodts/pacta`.**
    - `packages/pacta/src/middleware/budget-enforcer.ts` — add `BudgetEnforcerOptions { mode?: 'authoritative' | 'predictive' }` (default `'authoritative'`, preserves current behavior). Signature change: `budgetEnforcer<T>(inner, pact, onEvent?, options?)`. Cost + tokens suppression gated by `options.mode === 'predictive'`. Turns + duration unchanged.
    - `packages/pacta/src/middleware/budget-enforcer.test.ts` — new case `predictive mode emits but does not stop`.
-   - CHANGELOG + minor version bump on `@method/pacta`.
+   - CHANGELOG + minor version bump on `@methodts/pacta`.
 
 ### 5.2 Out of scope
 
@@ -184,7 +184,7 @@ Gate `G-LLM-HANDLERS-PRESENT`.
 - Pacta's `subagentDelegator` wiring to `exchangeForSubAgent` (PRD-058).
 - `ctx.llm.reserve()` / `settle()` API (Cortex open question O1 — blocks `batched-held` budget carry-over in S5, not this PRD).
 - Streaming (`ctx.llm` is request/response in v1; `capabilities().streaming = false`).
-- Deprecating `@method/pacta-provider-anthropic` (kept as a non-production/test provider).
+- Deprecating `@methodts/pacta-provider-anthropic` (kept as a non-production/test provider).
 - `thinkingBudgetTokens` + `temperature` pass-through (Cortex open question O3; dropped silently until `CompletionRequest.extra` lands).
 
 ---
@@ -195,7 +195,7 @@ Gate `G-LLM-HANDLERS-PRESENT`.
 
 ```
 packages/pacta-provider-cortex/
-  package.json                  { name: "@method/pacta-provider-cortex", peerDeps: { "@method/pacta": "^<current>" } }
+  package.json                  { name: "@methodts/pacta-provider-cortex", peerDeps: { "@methodts/pacta": "^<current>" } }
   tsconfig.json
   src/
     index.ts                    re-exports: cortexLLMProvider, cortexAuditMiddleware,
@@ -399,15 +399,15 @@ Handlers are registered with `ctx.llm` at compose time (or passed through `corte
 
 ## 7. Per-Domain Architecture
 
-### 7.1 `@method/pacta-provider-cortex` (new, L3)
+### 7.1 `@methodts/pacta-provider-cortex` (new, L3)
 
-- **Layer:** L3 (same as `@method/pacta-provider-anthropic`).
-- **Deps:** peer `@method/pacta`; type-only `@t1/cortex-sdk`; no runtime Cortex imports.
+- **Layer:** L3 (same as `@methodts/pacta-provider-anthropic`).
+- **Deps:** peer `@methodts/pacta`; type-only `@t1/cortex-sdk`; no runtime Cortex imports.
 - **Boundary gate:** `G-CORTEX-ONLY-PATH` (import scanner; allow-list = `ctx-types.ts`).
-- **Layer gate:** no `@method/bridge`, no `@method/agent-runtime` import in `src/`.
+- **Layer gate:** no `@methodts/bridge`, no `@methodts/agent-runtime` import in `src/`.
 - **Composition:** each factory is the composition root for its adapter. `compose()` is the single throw site. Post-compose, errors are typed values.
 
-### 7.2 `@method/pacta` (extend, L2)
+### 7.2 `@methodts/pacta` (extend, L2)
 
 - **Change scope:** one option field on `budgetEnforcer`. Pure — no Cortex types referenced.
 - **Backwards-compat:** default `'authoritative'` preserves every existing call-site (bridge, samples, pacta-testkit, smoke-test). Confirmed by reading `budget-enforcer.ts` — no current caller passes an options bag, so adding optional trailing param is source-compatible.
@@ -430,7 +430,7 @@ Handlers are registered with `ctx.llm` at compose time (or passed through `corte
 - Add to root `tsconfig.json` refs and `package.json` workspaces.
 - Copy `adapter.ts` (verbatim from S3 §1) and a stub `ctx-types.ts`.
 - Add gate file `architecture.test.ts` with failing stubs.
-- Minor: extend `BudgetEnforcerOptions` type on `@method/pacta/src/middleware/budget-enforcer.ts` (type only, no behavior change yet).
+- Minor: extend `BudgetEnforcerOptions` type on `@methodts/pacta/src/middleware/budget-enforcer.ts` (type only, no behavior change yet).
 
 **Acceptance:** `npm run build` passes; gate stubs fail; existing tests unchanged.
 
@@ -439,7 +439,7 @@ Handlers are registered with `ctx.llm` at compose time (or passed through `corte
 - Implement `mode: 'predictive'` behavior in `budgetEnforcer`.
 - Add unit test for predictive cost/tokens suppression + authoritative turns/duration.
 - Regression: existing enforcer tests pass.
-- Bump `@method/pacta` minor + CHANGELOG.
+- Bump `@methodts/pacta` minor + CHANGELOG.
 
 **Acceptance:** pacta tests green including new case; bridge + samples build unchanged.
 
@@ -516,7 +516,7 @@ Inherited from S3 §8 — none are new:
 
 ## 12. Judgment Calls Made in This Design
 
-1. **Package name:** `@method/pacta-provider-cortex`. Preserves the `pacta-provider-*` family naming convention (S1+S3 agreement). Rejected `@method/cortex-adapters` (loses family affiliation) and co-locating inside `@method/agent-runtime` (would force agent-runtime to depend on `@t1/cortex-sdk` types — violates S3 §6 layering).
+1. **Package name:** `@methodts/pacta-provider-cortex`. Preserves the `pacta-provider-*` family naming convention (S1+S3 agreement). Rejected `@methodts/cortex-adapters` (loses family affiliation) and co-locating inside `@methodts/agent-runtime` (would force agent-runtime to depend on `@t1/cortex-sdk` types — violates S3 §6 layering).
 2. **Pacta extension placement:** on the existing `budgetEnforcer` factory, as a trailing optional parameter. Rejected introducing a new `predictiveBudgetEnforcer` factory (API surface duplication) and a class-based rework (scope creep). The decision trades one parameter-position bump for zero new exports and zero conceptual duplication.
 3. **Default event suppression:** `['text', 'thinking']` suppressed by default in `CortexAuditMiddleware`. Rejected "log everything" (would fire two events per streamed token on chatty pacts — Cortex audit is a relational DB, not a time-series store). S6 `CortexEventConnector` will re-expose these via `ctx.events` for observability use cases; audit superset still holds because the suppress list is explicit + configurable.
 4. **Turns + duration stay authoritative in predictive mode.** Cortex doesn't know pacta's turn or wall-clock budget. Keeping those in pacta is the only correct split — and it also means the `BudgetExhaustedError` contract still fires for the resources pacta owns.

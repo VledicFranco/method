@@ -1,6 +1,6 @@
 # stdlib/ — Standard Methodology Library
 
-The built-in methodology registry for `@method/methodts`. Contains the canonical P-series methodologies (P1-EXEC through P3-SD, P-GH), methodology metadata, reusable predicates, prompts, and the stdlib strategy source.
+The built-in methodology registry for `@methodts/methodts`. Contains the canonical P-series methodologies (P1-EXEC through P3-SD, P-GH), methodology metadata, reusable predicates, prompts, and the stdlib strategy source.
 
 ## Contents
 

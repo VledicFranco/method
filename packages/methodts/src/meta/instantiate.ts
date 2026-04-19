@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method instantiation — apply a ProjectCard to a method or methodology.
  *

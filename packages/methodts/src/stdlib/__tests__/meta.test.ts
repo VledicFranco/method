@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for P0_META methodology, transition arms, and prompt templates.
  *

@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/dlq — PRD-062 / S5 §2.4 + §7.
+ * @methodts/runtime/dlq — PRD-062 / S5 §2.4 + §7.
  */
 
 export {

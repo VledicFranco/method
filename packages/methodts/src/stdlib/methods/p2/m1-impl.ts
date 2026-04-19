@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M1_IMPL — Method for Implementing Software from Architecture and PRDs (M1-IMPL v3.1).
  *

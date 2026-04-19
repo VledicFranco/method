@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Composition Operators — four operators that produce new cognitive modules
  * from existing ones, plus type-safe compose-time and runtime validation.

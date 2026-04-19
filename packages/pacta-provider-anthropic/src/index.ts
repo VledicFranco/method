@@ -1,4 +1,5 @@
-// @method/pacta-provider-anthropic — Anthropic Messages API AgentProvider
+// SPDX-License-Identifier: Apache-2.0
+// @methodts/pacta-provider-anthropic — Anthropic Messages API AgentProvider
 // anthropicProvider(), streaming, tool use, prompt caching
 
 // Provider factory

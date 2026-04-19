@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Throttler Middleware — wraps provider invocations with rate-limit slot
  * acquisition + release, and records outcomes for observability.
@@ -13,7 +14,7 @@
  */
 
 import type { Pact, AgentRequest, AgentResult } from '../pact.js';
-import type { ProviderClass, SlotId } from '@method/types';
+import type { ProviderClass, SlotId } from '@methodts/types';
 import type { RateGovernor, DispatchSlot, ObserveOutcome } from '../ports/rate-governor.js';
 import {
   isProviderError,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Assertion helpers for Pacta agent test verification.
  *
@@ -5,7 +6,7 @@
  * with any test runner (node:test, vitest, etc.).
  */
 
-import type { AgentResult, SchemaDefinition } from '@method/pacta';
+import type { AgentResult, SchemaDefinition } from '@methodts/pacta';
 import type { Recording } from './recording-provider.js';
 
 // ── assertToolsCalled ───────────────────────────────────────────
@@ -105,7 +106,7 @@ export function assertBudgetUnder(result: AgentResult, limits: BudgetLimits): vo
 
 /**
  * Assert that the agent result's output matches a schema definition.
- * Uses the same SchemaDefinition interface from @method/pacta.
+ * Uses the same SchemaDefinition interface from @methodts/pacta.
  */
 export function assertOutputMatches<T>(result: AgentResult, schema: SchemaDefinition<T>): T {
   const parsed = schema.parse(result.output);

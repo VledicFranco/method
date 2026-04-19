@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M1_TRIAGE — Issue Triage Method (P-GH/M1-TRIAGE v1.0).
  *

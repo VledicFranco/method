@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Scenario — declarative scenario definition and runner.
  *
@@ -16,11 +17,11 @@ import type {
   AgentRequest,
   AgentResult,
   SchemaDefinition,
-} from '@method/pacta';
-import type { Recording } from '@method/pacta-testkit';
-import { RecordingProvider } from '@method/pacta-testkit';
-import { createAgent } from '@method/pacta';
-import type { ToolProvider } from '@method/pacta';
+} from '@methodts/pacta';
+import type { Recording } from '@methodts/pacta-testkit';
+import { RecordingProvider } from '@methodts/pacta-testkit';
+import { createAgent } from '@methodts/pacta';
+import type { ToolProvider } from '@methodts/pacta';
 import type { FidelityLevel, EvalReport, ScenarioAssertion } from './types.js';
 import { VirtualToolProvider } from './virtual-tool-provider.js';
 import { ScriptedToolProvider } from './scripted-tool-provider.js';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.
  *

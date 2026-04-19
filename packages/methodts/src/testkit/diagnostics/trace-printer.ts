@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Pretty-print EvalTrace trees for diagnostic output on assertion failure.
  */

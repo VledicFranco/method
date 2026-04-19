@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cognitive Module — the fundamental type of the cognitive composition algebra.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Partitioned Cycle Tests — PRD 044 C-3.
  *

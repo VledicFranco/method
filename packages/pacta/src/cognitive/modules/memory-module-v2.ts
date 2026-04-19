@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Memory Module v2 — FactCard-based retrieval and extraction for the cognitive loop.
  *

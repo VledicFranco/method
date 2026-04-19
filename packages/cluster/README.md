@@ -1,4 +1,4 @@
-# @method/cluster
+# @methodts/cluster
 
 Transport-agnostic cluster protocol package for the Method bridge. Defines the
 membership state machine, resource schema, and port interfaces — all without
@@ -6,8 +6,8 @@ importing any transport library.
 
 ## Layer
 
-**L3** in the FCA layer stack. Depended on by `@method/bridge` (L4) and
-`method-ctl` (L4). Has zero dependencies on other `@method/*` packages.
+**L3** in the FCA layer stack. Depended on by `@methodts/bridge` (L4) and
+`method-ctl` (L4). Has zero dependencies on other `@methodts/*` packages.
 
 ## Structure
 

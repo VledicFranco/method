@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Offline Consolidation Engine — interleaved replay, schema consistency,
  * compression, and pruning for the CLS dual-store.

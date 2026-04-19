@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Methodology lifecycle fixture — mock methodology, methods, and steps
  * for smoke testing the methodology/method/step layer.
@@ -7,7 +8,7 @@
  *   - Method "implement" with 2 steps: [design, code]
  *
  * Constructs real Methodology<S> / Method<S> / Step<S> values using
- * @method/methodts core types. The execution functions are stubbed
+ * @methodts/methodts core types. The execution functions are stubbed
  * since the smoke test mock only reads structure (DAG, predicates),
  * never runs step logic.
  */
@@ -20,9 +21,9 @@ import type {
   Step,
   StepDAG,
   StepExecution,
-} from '@method/methodts';
-import { check } from '@method/methodts';
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
+} from '@methodts/methodts';
+import { check } from '@methodts/methodts';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
 
 // ── State type ────────────────────────────────────────────────────
 

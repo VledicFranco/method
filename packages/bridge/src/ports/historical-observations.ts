@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * HistoricalObservations — Port interface (PRD 051 S5).
  *
@@ -5,7 +6,7 @@
  * Implemented by ObservationsStore in cost-governor domain.
  */
 
-import type { InvocationSignature, ProviderClass, AccountId } from '@method/types';
+import type { InvocationSignature, ProviderClass, AccountId } from '@methodts/types';
 
 // ── Observation record ──────────────────────────────────────────
 

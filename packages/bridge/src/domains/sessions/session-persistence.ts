@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * WS-3: Session persistence store for print-mode sessions.
  *

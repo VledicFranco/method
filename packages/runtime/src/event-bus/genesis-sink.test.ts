@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for GenesisSink (PRD 026 Phase 4).
  */

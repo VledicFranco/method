@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for M3_MEVO — Method Evolution from Execution Evidence.
  */

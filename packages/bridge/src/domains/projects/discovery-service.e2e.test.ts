@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * End-to-End Discovery Test
  * Tests discovery of multiple git repositories with .method/project-config.yaml initialization

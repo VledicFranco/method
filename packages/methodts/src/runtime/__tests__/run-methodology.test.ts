@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for runMethod (DAG traversal) and runMethodology (coalgebraic loop).
  *

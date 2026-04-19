@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M3_RESOLVE — Merge Conflict Resolution Method (P-GH/M3-RESOLVE v1.0).
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SpawnQueue — enforces a minimum gap between PTY session spawns.
  *

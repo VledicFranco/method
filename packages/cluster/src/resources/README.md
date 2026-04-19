@@ -1,6 +1,6 @@
 # Resources
 
-Resource reporting types and validation for `@method/cluster`.
+Resource reporting types and validation for `@methodts/cluster`.
 
 ## Files
 

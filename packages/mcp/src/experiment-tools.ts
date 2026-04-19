@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Experiment MCP tool handlers (PRD 041 Phase 3).
  *
@@ -65,7 +66,7 @@ function createExperimentHandler<T extends z.ZodRawShape>(config: {
 }
 
 // ---------------------------------------------------------------------------
-// Known cognitive module registry (static, derived from @method/pacta)
+// Known cognitive module registry (static, derived from @methodts/pacta)
 // ---------------------------------------------------------------------------
 
 const MODULE_REGISTRY: Record<string, { description: string; configSchema: Record<string, unknown>; monitoringType: string }> = {
@@ -394,7 +395,7 @@ const experiment_compare = createExperimentHandler({
 
 /**
  * lab_list_presets — returns available cognitive agent preset names.
- * Derived statically from @method/pacta presets directory.
+ * Derived statically from @methodts/pacta presets directory.
  */
 const lab_list_presets = createExperimentHandler({
   schema: LabListPresetsSchema,

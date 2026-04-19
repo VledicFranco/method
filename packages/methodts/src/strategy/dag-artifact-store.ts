@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Strategy DAG Artifact Store — immutable versioned store for pipeline artifacts.
  *

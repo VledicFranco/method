@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for enriched cost tracking: ModelCostRecord, aggregateModelCosts,
  * CompletedMethodRecord with model breakdown, and generateRetro integration

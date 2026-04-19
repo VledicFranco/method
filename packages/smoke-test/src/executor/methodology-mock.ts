@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Methodology mock executor — self-contained methodology session lifecycle
  * for smoke testing without the bridge server.
  *
  * Re-implements the minimal MethodologySessionStore interface using
- * @method/methodts types directly. All methodology data comes from
+ * @methodts/methodts types directly. All methodology data comes from
  * the fixture (methodology-lifecycle.ts) via a mock MethodologySource.
  *
- * This executor does NOT import from @method/bridge — it stays within the
+ * This executor does NOT import from @methodts/bridge — it stays within the
  * L2 layer boundary of the smoke-test package.
  */
 
@@ -15,8 +16,8 @@ import {
   type Method,
   type Methodology,
   type Step,
-} from '@method/methodts';
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
+} from '@methodts/methodts';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
 import {
   smokeTestMethodology,
   smokeTestCatalogEntry,

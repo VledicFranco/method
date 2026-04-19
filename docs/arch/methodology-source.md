@@ -4,8 +4,8 @@ Concern: methodology data access abstraction (WS-1 core deprecation).
 
 ## Problem
 
-The original architecture used `@method/core` (L1) as a YAML loader to read methodology
-specs from `registry/` at runtime. Meanwhile, `@method/methodts` (L2) provided a typed
+The original architecture used `@methodts/core` (L1) as a YAML loader to read methodology
+specs from `registry/` at runtime. Meanwhile, `@methodts/methodts` (L2) provided a typed
 stdlib catalog with the same data compiled into TypeScript. This dual-source pattern
 created ambiguity about which layer was the source of truth for methodology data.
 
@@ -35,10 +35,10 @@ interface MethodologySource {
 
 | Class | Location | Purpose |
 |-------|----------|---------|
-| `StdlibSource` | `ports/stdlib-source.ts` | Production — wraps `@method/methodts` stdlib catalog. Zero I/O. |
+| `StdlibSource` | `ports/stdlib-source.ts` | Production — wraps `@methodts/methodts` stdlib catalog. Zero I/O. |
 | `InMemorySource` | `ports/in-memory-source.ts` | Testing — accepts data in constructor, proves port substitutability. |
 
-`StdlibSource` delegates to three functions from `@method/methodts/stdlib`:
+`StdlibSource` delegates to three functions from `@methodts/methodts/stdlib`:
 `getStdlibCatalog()`, `getMethod()`, and `getMethodology()`. All data is compiled
 TypeScript — no YAML parsing, no filesystem access at runtime.
 
@@ -57,18 +57,18 @@ const methodologyStore = new MethodologySessionStore(methodologySource);
 ```
 
 Domain code (`MethodologySessionStore`, route handlers) receives the port via constructor
-injection and never imports `@method/core` or `@method/methodts` directly.
+injection and never imports `@methodts/core` or `@methodts/methodts` directly.
 
 ## What This Replaces
 
-The old `@method/core` package provided:
+The old `@methodts/core` package provided:
 - YAML loader (`loadMethodology`, `loadMethod`) — read from `registry/` at runtime
 - Theory lookup functions
 
 With the MethodologySource port:
 - Methodology data comes from the typed stdlib catalog via `StdlibSource`
-- Theory lookup remains in `@method/core` (no port needed — read-only, no substitutability requirement)
-- `@method/core` is **deprecated** for methodology loading; its only remaining use is theory lookup
+- Theory lookup remains in `@methodts/core` (no port needed — read-only, no substitutability requirement)
+- `@methodts/core` is **deprecated** for methodology loading; its only remaining use is theory lookup
 
 ## DR-15 Compliance
 

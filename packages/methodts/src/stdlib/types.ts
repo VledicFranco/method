@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * stdlib state types — domain-specific state shapes for methodology execution.
  *

@@ -33,7 +33,7 @@ This guide covers Tier 1 and introduces the concepts needed for Tier 2.
 A **Pact** is a plain data object declaring what an agent may do and how it behaves. It is declared before invocation, and the runtime enforces it.
 
 ```typescript
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 const pact: Pact = {
   mode: { type: 'oneshot' },
@@ -58,8 +58,8 @@ A pact can declare:
 
 An **AgentProvider** is the port interface that connects Pacta to an LLM runtime. Providers are separate packages:
 
-- `@method/pacta-provider-claude-cli` — wraps the Claude CLI (`claude --print`)
-- `@method/pacta-provider-anthropic` — calls the Anthropic Messages API directly
+- `@methodts/pacta-provider-claude-cli` — wraps the Claude CLI (`claude --print`)
+- `@methodts/pacta-provider-anthropic` — calls the Anthropic Messages API directly
 
 ### createAgent()
 
@@ -72,8 +72,8 @@ The composition function that binds a provider (and optional parts) to a pact. I
 The fastest path. Reference agents come pre-assembled with sensible defaults:
 
 ```typescript
-import { codeAgent } from '@method/pacta';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { codeAgent } from '@methodts/pacta';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 
 const agent = codeAgent({
   provider: claudeCliProvider({ model: 'claude-sonnet-4-6' }),
@@ -93,7 +93,7 @@ console.log(result.cost.totalUsd);// Cost in USD
 
 The `codeAgent` uses oneshot mode, allows Read/Grep/Glob/Edit/Write/Bash tools, sets a $2.00 budget with 20 max turns, and enables the ReAct reasoning strategy with think tool and plan-between-actions.
 
-Three reference agents ship with `@method/pacta`:
+Three reference agents ship with `@methodts/pacta`:
 
 | Agent | Default tools | Reasoning | Budget |
 |-------|--------------|-----------|--------|
@@ -106,8 +106,8 @@ Three reference agents ship with `@method/pacta`:
 When reference agents don't fit, compose your own with `createAgent()`:
 
 ```typescript
-import { createAgent } from '@method/pacta';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { createAgent } from '@methodts/pacta';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 
 const agent = createAgent({
   provider: claudeCliProvider(),
@@ -177,8 +177,8 @@ The full event vocabulary includes: `started`, `text`, `thinking`, `tool_use`, `
 Reference agents support `.with()` to selectively override defaults without full `createAgent()` composition:
 
 ```typescript
-import { codeAgent } from '@method/pacta';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { codeAgent } from '@methodts/pacta';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 
 const agent = codeAgent({
   provider: claudeCliProvider(),

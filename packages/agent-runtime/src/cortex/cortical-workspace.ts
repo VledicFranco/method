@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cortical Workspace — PRD-068 §5 (S10 topic spec + S11 handshake protocol).
  *

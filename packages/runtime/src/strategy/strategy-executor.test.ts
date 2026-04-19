@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 017: Strategy Pipelines — DAG Executor Tests (Phase 1c)
  *
@@ -17,7 +18,7 @@ import {
 import type { StrategyYaml, StrategyDAG } from './strategy-parser.js';
 import { StrategyExecutor } from './strategy-executor.js';
 import type { StrategyExecutorConfig } from './strategy-executor.js';
-import type { AgentProvider, AgentRequest, AgentResult, Pact, ProviderCapabilities } from '@method/pacta';
+import type { AgentProvider, AgentRequest, AgentResult, Pact, ProviderCapabilities } from '@methodts/pacta';
 import { setStrategyParserYaml } from './strategy-parser.js';
 import { setRetroGeneratorYaml } from './retro-generator.js';
 import type { YamlLoader } from '../ports/yaml-loader.js';
@@ -25,7 +26,7 @@ import yaml from 'js-yaml';
 
 // PRD 024 / PRD-057 C2: Configure YAML port for tests with an inline
 // js-yaml-backed loader. The runtime stays transport-free — the bridge's
-// JsYamlLoader implementation lives in @method/bridge.
+// JsYamlLoader implementation lives in @methodts/bridge.
 const testYaml: YamlLoader = {
   load: (text: string) => yaml.load(text),
   dump: (obj: unknown) => yaml.dump(obj),

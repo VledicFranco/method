@@ -19,7 +19,7 @@ import type {
   CortexLogger,
   CortexScheduleFacade,
   CortexStorageFacade,
-} from '@method/agent-runtime';
+} from '@methodts/agent-runtime';
 
 export interface Spy<Args extends unknown[]> {
   calls: Args[];

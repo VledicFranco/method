@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Built-in Trace Sinks — concrete implementations of the TraceSink port.
  *

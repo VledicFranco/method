@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Algorithmic quality checks for generated code and design artifacts.
  *

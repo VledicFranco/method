@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * mode-detector — pure function that maps coverage stats to an IndexMode.
  *

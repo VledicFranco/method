@@ -32,7 +32,7 @@ A 4th advisor (PRD Quality / Test Coverage) was scoped but not dispatched — th
 
 ### Surface Compliance
 - **F-SC-01** Domain-scoped `ports/` subdirs conflict with top-level `packages/bridge/src/ports/` convention. 
-- **F-SC-02** `shared/canonical-types/` directory doesn't exist; entities belong in `@method/types` (L0).
+- **F-SC-02** `shared/canonical-types/` directory doesn't exist; entities belong in `@methodts/types` (L0).
 - **F-SC-03** "cost-governor at L2" layer misclaim — it's an L4 bridge domain.
 - **F-SC-04** Throttler in pacta consuming bridge-owned RateGovernor reverses layer direction.
 
@@ -61,7 +61,7 @@ All 12 CRITICAL findings converged on **FIX NOW** — none were downgradable. Th
 
 ### Port & Surface Structural (11)
 1. Moved 4 port files to `packages/bridge/src/ports/` top-level.
-2. Canonical types → `@method/types` (L0).
+2. Canonical types → `@methodts/types` (L0).
 3. Layer reclassified: cost-governor is L4 bridge domain.
 4. Throttler Option A: pacta defines base `RateGovernor`, bridge extends via `BridgeRateGovernor`.
 5. `SealedCredentials` opaque type with custom `[util.inspect.custom]`/`Symbol.toPrimitive`/`toJSON` all returning `[REDACTED]`.

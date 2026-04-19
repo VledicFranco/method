@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Entry Router Tests — PRD 044 C-2.
  *

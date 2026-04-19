@@ -1,5 +1,5 @@
 ---
-title: "@method/pacta-playground"
+title: "@methodts/pacta-playground"
 scope: package
 layer: L3
 contents:
@@ -10,7 +10,7 @@ contents:
   - src/comparative-runner.ts
 ---
 
-# @method/pacta-playground
+# @methodts/pacta-playground
 
 Simulated agent evaluation environment -- virtual tools, scenario runner, and comparative analysis.
 
@@ -31,16 +31,16 @@ The package also includes a fluent scenario builder for declaring evaluation sce
 ## Install
 
 ```bash
-npm install @method/pacta-playground
+npm install @methodts/pacta-playground
 ```
 
 ## Layer Position
 
 ```
-L4  @method/bridge                Uses playground for testing
-L3  @method/pacta-playground      This package
-    @method/pacta                 Core SDK (peer dependency)
-    @method/pacta-testkit         Recording + assertions (peer dependency)
+L4  @methodts/bridge                Uses playground for testing
+L3  @methodts/pacta-playground      This package
+    @methodts/pacta                 Core SDK (peer dependency)
+    @methodts/pacta-testkit         Recording + assertions (peer dependency)
 ```
 
 ## Usage
@@ -50,7 +50,7 @@ L3  @method/pacta-playground      This package
 A `ToolProvider` backed by an in-memory `Map<string, string>`. Implements Read, Write, Edit, Glob, and Grep operations with no host side effects.
 
 ```typescript
-import { VirtualToolProvider } from '@method/pacta-playground';
+import { VirtualToolProvider } from '@methodts/pacta-playground';
 
 const vfs = new VirtualToolProvider({
   '/src/index.ts': 'export function greet() { return "hello"; }',
@@ -100,7 +100,7 @@ The VirtualToolProvider supports:
 A `ToolProvider` with rule-based responses. Define what each tool returns for given inputs.
 
 ```typescript
-import { ScriptedToolProvider } from '@method/pacta-playground';
+import { ScriptedToolProvider } from '@methodts/pacta-playground';
 
 const scripted = new ScriptedToolProvider();
 
@@ -146,8 +146,8 @@ import {
   toolsCalled,
   outputMatches,
   tokensBelow,
-} from '@method/pacta-playground';
-import { RecordingProvider } from '@method/pacta-testkit';
+} from '@methodts/pacta-playground';
+import { RecordingProvider } from '@methodts/pacta-testkit';
 
 const s = scenario('find-and-fix-bug')
   .given(filesystem({
@@ -202,8 +202,8 @@ Then helpers (assertions):
 Run the same scenario against two agent configurations and diff the results:
 
 ```typescript
-import { scenario, filesystem, prompt, toolsCalled, compareAgents } from '@method/pacta-playground';
-import { RecordingProvider } from '@method/pacta-testkit';
+import { scenario, filesystem, prompt, toolsCalled, compareAgents } from '@methodts/pacta-playground';
+import { RecordingProvider } from '@methodts/pacta-testkit';
 
 const s = scenario('refactor-task')
   .given(filesystem({ '/src/app.ts': 'const x = 1;' }))

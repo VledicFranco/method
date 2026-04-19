@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `createMethodAgent` — the S1 frozen factory (PRD-058 §6.3, S1 §4.5).
  *
@@ -42,7 +43,7 @@ import {
   type AgentProvider,
   type AgentRequest,
   type Pact,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import {
   cortexAuditMiddleware,
   cortexLLMProvider,
@@ -55,7 +56,7 @@ import {
   type ComposedCortexLLMProvider,
   type ComposedCortexTokenExchangeMiddleware,
   type LlmBudgetHandlers,
-} from '@method/pacta-provider-cortex';
+} from '@methodts/pacta-provider-cortex';
 
 import type {
   CortexCtx,
@@ -295,7 +296,7 @@ export function createMethodAgent<TOutput = unknown>(
   let innerInvoke: <T>(
     p: Pact<T>,
     r: AgentRequest,
-  ) => Promise<import('@method/pacta').AgentResult<T>> = (p, r) =>
+  ) => Promise<import('@methodts/pacta').AgentResult<T>> = (p, r) =>
     provider.invoke(p, r);
 
   // outputValidator (when schema present) — runs closer to provider.

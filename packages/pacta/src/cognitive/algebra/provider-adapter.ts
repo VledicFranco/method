@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Provider Adapter — bridges AgentProvider.invoke() to the cognitive module step() contract.
  *

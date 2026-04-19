@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for KPIChecker DSL parser + mock adapter (PRD 049).
  */

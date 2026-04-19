@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * YAML Adapter — loads registry YAML into typed MethodTS values.
  *

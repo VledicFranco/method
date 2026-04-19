@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `s3ServiceAdaptersPlugin` — asserts CortexServiceAdapters (S3) invariants:
  * every LLM call routes through `ctx.llm` (not a bypassing provider); token

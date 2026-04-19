@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method composition — compose two methods, merge domain theories, compose step DAGs.
  *

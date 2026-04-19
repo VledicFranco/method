@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Claude CLI Provider — AgentProvider implementation for Claude Code CLI.
  *
@@ -14,7 +15,7 @@ import type {
   AgentResult,
   TokenUsage,
   CostReport,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 import {
   executeCli,

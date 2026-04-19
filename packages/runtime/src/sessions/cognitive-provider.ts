@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cognitive Agent Provider v3 — manual module composition (PRD 042 Phase 4).
  *
@@ -19,8 +20,8 @@ import type {
   ProviderAdapter,
   WorkspaceManager,
   ToolProvider,
-} from '@method/pacta';
-import { moduleId, createWorkspace } from '@method/pacta';
+} from '@methodts/pacta';
+import { moduleId, createWorkspace } from '@methodts/pacta';
 import type { PtySession, SessionStatus, StreamChunkCallback } from './print-session.js';
 import type { StreamEvent } from './pool.js';
 import type { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';

@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Signature Builder — canonicalizes invocation parameters into
  * an InvocationSignature for cost prediction lookups.
  */
 
-import type { InvocationSignature } from '@method/types';
+import type { InvocationSignature } from '@methodts/types';
 
 /** Input size bucket thresholds (character count). */
 const SIZE_THRESHOLDS = {

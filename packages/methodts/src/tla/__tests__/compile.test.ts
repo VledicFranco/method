@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
 import { compileToTLA, renderTLA, compileProperties, _predicateToTLA, _sanitizeName } from "../compile.js";
 import type { Methodology, Arm, SafetyBounds } from "../../methodology/methodology.js";

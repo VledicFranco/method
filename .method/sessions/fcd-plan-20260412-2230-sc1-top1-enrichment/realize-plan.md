@@ -175,7 +175,7 @@ status: pending
 2. Implement `trimParts(parts, isTop)` helper following PRD §Per-Domain Architecture / Domain 1 sketch.
 3. Modify `ResultFormatter.format()` to call `trimParts(entry.parts, i === 0)` and assign result.
 4. Create `result-formatter.test.ts` with 7 unit cases. Use `IndexEntry` fixture builder pattern from `query-engine.test.ts` if one exists; otherwise inline minimal builder.
-5. Run `npm test --workspace=@method/fca-index`. Verify all fca-index tests and all 6 fca-index gates pass.
+5. Run `npm test --workspace=@methodts/fca-index`. Verify all fca-index tests and all 6 fca-index gates pass.
 
 **FCA / DR compliance notes:**
 - DR-04 satisfied: presentation-shaping logic (per-rank trim) lives in the domain
@@ -184,8 +184,8 @@ status: pending
   content must be in the domain package").
 - DR-09 satisfied: tests use real fixtures (IndexEntry shape from existing tests).
 - G-PORT-QUERY satisfied: result-formatter does not import any HTTP client.
-- G-BOUNDARY-DETAIL satisfied: result-formatter does not import from cli/ or @method/mcp.
-- G-LAYER satisfied: result-formatter does not import from @method/mcp or @method/bridge.
+- G-BOUNDARY-DETAIL satisfied: result-formatter does not import from cli/ or @methodts/mcp.
+- G-LAYER satisfied: result-formatter does not import from @methodts/mcp or @methodts/bridge.
 
 ---
 
@@ -248,7 +248,7 @@ status: pending
 2. Add `isTop` branch in the part-rendering loop with multi-line `|`-prefix handling and total-budget tracking.
 3. Update `CONTEXT_TOOLS[0].description` (the `context_query` entry) with the nudge sentence.
 4. Add 5 new test cases to `context-tools.test.ts` covering the cases listed in the deliverables.
-5. Run `npm test --workspace=@method/mcp`. Verify all mcp tests and both mcp gates pass.
+5. Run `npm test --workspace=@methodts/mcp`. Verify all mcp tests and both mcp gates pass.
 
 **FCA / DR compliance notes:**
 - DR-04 boundary: this commission ONLY changes presentation/format. The
@@ -261,7 +261,7 @@ status: pending
   implemented inside `fca-index/query` (C-1). C-2's render-time differentiation
   is a defensive cap, not business logic.
 - The mcp domain has its own architecture.test.ts gates; this commission must
-  not import from `@method/fca-index/dist/...` directly (must use the public
+  not import from `@methodts/fca-index/dist/...` directly (must use the public
   exports only).
 
 ---

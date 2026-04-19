@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Playground types — fidelity levels, eval reports, scenario definitions.
  */
 
-import type { SchemaDefinition } from '@method/pacta';
+import type { SchemaDefinition } from '@methodts/pacta';
 
 // ── Fidelity Levels ──────────────────────────────────────────────
 

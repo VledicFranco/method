@@ -2,9 +2,9 @@
 type: co-design-record
 surface: ContextQueryPort
 date: "2026-04-08"
-owner: "@method/fca-index"
-producer: "@method/fca-index"
-consumer: "@method/mcp"
+owner: "@methodts/fca-index"
+producer: "@methodts/fca-index"
+consumer: "@methodts/mcp"
 direction: "fca-index → mcp (unidirectional)"
 status: frozen
 mode: new
@@ -65,13 +65,13 @@ export type IndexMode = 'discovery' | 'production';
 
 ## Producer
 
-- **Package:** `@method/fca-index`
+- **Package:** `@methodts/fca-index`
 - **Implementation:** `packages/fca-index/src/query/query-engine.ts` (planned)
 - **Wiring:** Exported from `packages/fca-index/src/index.ts`; consumed via npm dependency
 
 ## Consumer
 
-- **Package:** `@method/mcp`
+- **Package:** `@methodts/mcp`
 - **Usage:** `packages/mcp/src/context-tools.ts` (planned — new file, context_query tool handler)
 - **Injection:** `ContextQueryPort` instance created in `packages/mcp/src/index.ts` composition root,
   passed to context-tools.ts handler constructor
@@ -80,13 +80,13 @@ export type IndexMode = 'discovery' | 'production';
 
 ```typescript
 // In packages/mcp — add to architecture gate test (or create mcp architecture.test.ts)
-// G-BOUNDARY: mcp context tools import ContextQueryPort from @method/fca-index public API only
+// G-BOUNDARY: mcp context tools import ContextQueryPort from @methodts/fca-index public API only
 
-it('mcp does not import @method/fca-index internals', () => {
+it('mcp does not import @methodts/fca-index internals', () => {
   const violations = scanImports('packages/mcp/src/**', {
     forbidden: ['packages/fca-index/src/query', 'packages/fca-index/src/scanner',
                 'packages/fca-index/src/index-store'],
-    allowed: ['@method/fca-index'],  // only public package exports
+    allowed: ['@methodts/fca-index'],  // only public package exports
   });
   expect(violations).toEqual([]);
 });
@@ -96,4 +96,4 @@ it('mcp does not import @method/fca-index internals', () => {
 
 - Frozen: 2026-04-08
 - Port file: `packages/fca-index/src/ports/context-query.ts`
-- Changes require: new `/fcd-surface @method/fca-index @method/mcp` session
+- Changes require: new `/fcd-surface @methodts/fca-index @methodts/mcp` session

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CostOracle implementation backed by HistoricalObservations.
  *
@@ -5,7 +6,7 @@
  * Delegates DAG walking to estimator.ts.
  */
 
-import type { InvocationSignature, CostBand } from '@method/types';
+import type { InvocationSignature, CostBand } from '@methodts/types';
 import type { CostOracle, StrategyEstimate } from '../ports/cost-oracle.js';
 import type { HistoricalObservations } from '../ports/historical-observations.js';
 import { computeBands } from './percentile.js';

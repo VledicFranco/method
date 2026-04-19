@@ -1,6 +1,6 @@
 # Routing
 
-Capacity-weighted work routing for `@method/cluster`.
+Capacity-weighted work routing for `@methodts/cluster`.
 
 ## Scoring Function
 

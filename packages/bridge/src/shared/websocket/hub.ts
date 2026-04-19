@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── WebSocket pub/sub hub for real-time frontend push ────────
 //
 // Single multiplexed WebSocket connection at /ws with topic-based

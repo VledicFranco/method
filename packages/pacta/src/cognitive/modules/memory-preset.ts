@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Memory Preset — convenience factory composing MemoryV3 + Consolidator
  * with a shared InMemoryDualStore for common use cases.

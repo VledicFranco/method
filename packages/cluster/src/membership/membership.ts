@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Membership Manager ──────────────────────────────────────────
 //
 // State machine managing cluster membership: join, leave, suspect,

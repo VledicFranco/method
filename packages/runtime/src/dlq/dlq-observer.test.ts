@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * G-DLQ-SINGLE-EMIT — PRD-062 / S5 §7.
  *
@@ -7,7 +8,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import type { PactDeadLetterEvent } from '@method/pacta';
+import type { PactDeadLetterEvent } from '@methodts/pacta';
 import { CortexJobBackedExecutor } from '../executors/cortex-job-backed-executor.js';
 import { CortexDlqObserver } from './cortex-dlq-observer.js';
 import type { ContinuationEnvelope } from '../ports/continuation-envelope.js';

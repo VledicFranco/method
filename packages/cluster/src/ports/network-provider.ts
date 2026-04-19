@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Network Provider Port ───────────────────────────────────────
 //
 // How a bridge sends and receives messages to/from peers. Implementations

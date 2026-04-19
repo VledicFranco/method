@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Domain theory assertions — validate signature, axioms, and axiom violations.
  */

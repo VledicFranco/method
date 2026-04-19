@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Percentile computation utilities for cost/duration estimation.
  */

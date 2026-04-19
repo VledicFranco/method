@@ -9,9 +9,9 @@ size: S
 group: A
 phase: 1
 domains:
-  - "@method/agent-runtime (S1 owner)"
+  - "@methodts/agent-runtime (S1 owner)"
   - "t1-cortex platform (S1 consumer)"
-  - "@method/pacta (peer dep, impact audit)"
+  - "@methodts/pacta (peer dep, impact audit)"
 surfaces:
   - "S1 — MethodAgentPort (frozen 2026-04-14, .method/sessions/fcd-surface-method-agent-port/decision.md)"
 related:
@@ -72,13 +72,13 @@ how S1 changes.
 
 **Non-negotiable (inherited from S1 and FCD discipline):**
 
-- **Producer-owned semver.** `@method/agent-runtime` owns version
+- **Producer-owned semver.** `@methodts/agent-runtime` owns version
   numbers. Consumer (Cortex) cannot unilaterally declare a bump.
 - **Bilateral approval for breaking changes.** Any `major` bump requires
   a new `/fcd-surface` session co-signed by both Surface Advocates.
 - **Type-only Cortex imports.** The port declares `CortexCtx` structurally;
   Cortex must not require `@cortex/sdk` value imports in
-  `@method/agent-runtime` at runtime. This is a gate, not a guideline
+  `@methodts/agent-runtime` at runtime. This is a gate, not a guideline
   (G-BOUNDARY in §8 of decision.md).
 - **Cadence floor.** Surface review happens at minimum quarterly or on
   every `major` proposal, whichever comes first. No "set and forget."
@@ -88,7 +88,7 @@ how S1 changes.
 - **April 21 demo freeze.** S1 cannot be amended between now and
   April 21 (incident-triage demo) except for bug-level clarifications
   (no field adds/removes). Ratification must complete *before* the demo.
-- **Peer-dep invariant.** `@method/pacta` is a peer dep; if pacta majors,
+- **Peer-dep invariant.** `@methodts/pacta` is a peer dep; if pacta majors,
   agent-runtime majors, and S1's `Pact`/`AgentEvent` re-exports may shift.
   Change-control must anticipate cascaded majors.
 
@@ -127,7 +127,7 @@ Three measurable outcomes. All three must hold for PRD-060 to close.
    runs against a mock `CortexCtx` implementing the frozen facades.
    The sample app's type checker must accept *only* the symbols the
    decision.md exports — no `@cortex/*` value imports, no reaches into
-   `@method/pacta` internals. Evidenced by CI green on the sample app
+   `@methodts/pacta` internals. Evidenced by CI green on the sample app
    in `method-1` and by PRD-058's G-PORT gate passing.
 
 Optional but recommended: **SC-0 (pre-req)** — joint surface-read session
@@ -162,8 +162,8 @@ becomes a change request.
 
 ### Out of scope
 
-- **Any code in `@method/agent-runtime` itself.** PRD-058's job.
-- **Any code in `@method/pacta-provider-cortex`.** PRD-059's job.
+- **Any code in `@methodts/agent-runtime` itself.** PRD-058's job.
+- **Any code in `@methodts/pacta-provider-cortex`.** PRD-059's job.
 - **`CortexLLMProvider`, audit middleware, token-exchange middleware
   implementations.** PRD-059's job; PRD-060 only ratifies that S1's
   injection shape accommodates them.
@@ -184,7 +184,7 @@ becomes a change request.
 ## Domain Map
 
 ```
-@method/agent-runtime  ──S1 (frozen)──►  Cortex tenant app (category: agent)
+@methodts/agent-runtime  ──S1 (frozen)──►  Cortex tenant app (category: agent)
        ▲                                               │
        │ governs (PRD-060, this doc)                   │
        │                                               │
@@ -239,9 +239,9 @@ by S1. This PRD ratifies the ownership structure, not the entities.
 ### Gate assertions
 
 All gates are inherited from S1 (decision.md §8):
-- **G-BOUNDARY** — `@method/agent-runtime` has no value imports from `@cortex/*`.
+- **G-BOUNDARY** — `@methodts/agent-runtime` has no value imports from `@cortex/*`.
 - **G-PORT** — public export set matches decision.md §4.
-- **G-LAYER** — no imports from `@method/bridge`.
+- **G-LAYER** — no imports from `@methodts/bridge`.
 
 PRD-060 adds **one meta-gate**:
 
@@ -262,21 +262,21 @@ by this PRD). Reproduced here for PRD review.
 | Class | Example | Protocol | Version |
 |---|---|---|---|
 | **Clarification** | Typo, wording fix, example code adjustment, non-normative note | PR to decision.md with `changelog: clarification` in the frontmatter; no version bump | patch (optional) |
-| **Additive** | New optional field on `CortexCtx`, new `MethodAgent` method with default impl, new error type | PR to decision.md with `changelog: additive` + update `@method/agent-runtime` exports; `fcd-surface` not required but **recommended** for ≥ 2 field adds in one change; Surface Advocate from each side approves PR | minor |
+| **Additive** | New optional field on `CortexCtx`, new `MethodAgent` method with default impl, new error type | PR to decision.md with `changelog: additive` + update `@methodts/agent-runtime` exports; `fcd-surface` not required but **recommended** for ≥ 2 field adds in one change; Surface Advocate from each side approves PR | minor |
 | **Breaking** | Rename, remove, narrow field; flip default; change return type; change sync→async | **Mandatory** new `/fcd-surface` session with both teams' Surface Advocates present; mandatory `/fcd-debate` if contentious (≥ 1 advocate objects); migration plan required; both-sides PRs land on the same day | major |
 
 ### Versioning authority
 
-- `@method/agent-runtime` owns the version number (semver).
+- `@methodts/agent-runtime` owns the version number (semver).
 - Producer-side bump cadence is independent of Cortex's version cadence.
-- Cortex pins a range `"@method/agent-runtime": "^X.Y.Z"` and updates
+- Cortex pins a range `"@methodts/agent-runtime": "^X.Y.Z"` and updates
   on a schedule it controls. Major bumps require a Cortex-side migration
   PR and are coordinated as a joint release.
 
 ### Peer-dependency cascade
 
-If `@method/pacta` majors:
-1. `@method/agent-runtime` majors in the same release window.
+If `@methodts/pacta` majors:
+1. `@methodts/agent-runtime` majors in the same release window.
 2. The major bump is treated as breaking per the table above (mandatory
    `/fcd-surface` session even if no field literally changed — because
    the re-exported `Pact` / `AgentEvent` types shifted).
@@ -336,7 +336,7 @@ authoritative: .method/sessions/fcd-surface-method-agent-port/decision.md
 # MethodAgentPort — Bilateral Signoff
 
 This document records the bilateral acceptance of MethodAgentPort (S1)
-as the contract between @method/agent-runtime and Cortex tenant apps of
+as the contract between @methodts/agent-runtime and Cortex tenant apps of
 category `agent`.
 
 ## Interface
@@ -346,8 +346,8 @@ that file is permitted without amendment per CHANGES.md.
 ## Method team
 - Surface Advocate: {name} ({github-handle})
 - Signed: {YYYY-MM-DD}
-- Role authority: @method/agent-runtime maintainer
-- Commitment: @method/agent-runtime ≥ 1.0.0 exports match decision.md §4.
+- Role authority: @methodts/agent-runtime maintainer
+- Commitment: @methodts/agent-runtime ≥ 1.0.0 exports match decision.md §4.
 
 ## Cortex team
 - Surface Advocate: {name} ({github-handle})
@@ -380,7 +380,7 @@ updated once Cortex's PR lands and we know the actual signer + date.
 | Define S1 interface | **A** / **R** | **C** |
 | Ratify S1 (this PRD) | **R** | **A** |
 | Sign `co-design/method-agent-port.md` | **R** (method advocate) | **R** (cortex advocate) |
-| Own `@method/agent-runtime` semver | **A** / **R** | **I** |
+| Own `@methodts/agent-runtime` semver | **A** / **R** | **I** |
 | Own `@cortex/sdk` `ctx.*` shape | **I** | **A** / **R** |
 | Propose a **clarification** | method or cortex | method or cortex |
 | Approve a **clarification** | advocate | advocate |
@@ -500,7 +500,7 @@ Duration: 1 week (gated on PRD-058 sample-app progress).
 | Step | Owner | Deliverable |
 |---|---|---|
 | W1.1 | PRD-058 (supervised by this PRD) | Ship `samples/cortex-incident-triage-agent/` that compiles against frozen S1 exports |
-| W1.2 | Method team | Verify no `@cortex/*` value imports and no `@method/pacta` reaches (G-BOUNDARY, G-LAYER) |
+| W1.2 | Method team | Verify no `@cortex/*` value imports and no `@methodts/pacta` reaches (G-BOUNDARY, G-LAYER) |
 | W1.3 | Cortex team | Run the sample app against their mock or dev `ctx` |
 | W1.4 | Both | Confirm SC-3: end-to-end validation green |
 

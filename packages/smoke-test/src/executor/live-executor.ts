@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Live executor — wires real Anthropic provider into DagStrategyExecutor.
  *
@@ -5,8 +6,8 @@
  * against real Claude API for human verification of end-to-end behavior.
  */
 
-import type { AgentProvider } from '@method/pacta';
-import { anthropicProvider } from '@method/pacta-provider-anthropic';
+import type { AgentProvider } from '@methodts/pacta';
+import { anthropicProvider } from '@methodts/pacta-provider-anthropic';
 
 /**
  * Check if live mode is available (API key present).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Write-time compilation gate runner for CortexMethodologySource.
  *
@@ -6,7 +7,7 @@
  * `pending` here. G5 (guidance review) is a WARN — it flags
  * `needs_review` but does not block.
  *
- * This is not a re-implementation of `@method/methodts`'s stdlib gates
+ * This is not a re-implementation of `@methodts/methodts`'s stdlib gates
  * (those are typed over a `DesignState` used during method authoring).
  * At the methodology-persistence boundary we care about structural
  * validity: can the YAML be parsed into a Method/Methodology, are the
@@ -18,10 +19,10 @@
 
 import type { CompilationGateResult, CompilationReport } from './types.js';
 import yaml from 'js-yaml';
-import { loadMethodologyFromYamlString } from '@method/methodts';
+import { loadMethodologyFromYamlString } from '@methodts/methodts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyMethodology = import('@method/methodts').Methodology<any>;
+type AnyMethodology = import('@methodts/methodts').Methodology<any>;
 
 /**
  * Methodts version pin. Persisted on every compilationReport so load-time
@@ -36,7 +37,7 @@ export async function getMethodtsVersion(): Promise<string> {
     const { createRequire } = await import('module');
     const req = createRequire(import.meta.url);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (req('@method/methodts/package.json') as any).version ?? 'unknown';
+    return (req('@methodts/methodts/package.json') as any).version ?? 'unknown';
   } catch {
     return 'unknown';
   }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * testkit/runners/ — Test execution harnesses for methodologies and steps.
  *

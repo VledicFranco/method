@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * feature-dev-commission — resumable, depth-2 delegation, high-budget.
  * Primary vehicle for C4 (token exchange depth) and C6 (resume roundtrip).
  * Exercises all six S1 checks. PRD-065 §8.2.
  */
 
-import type { AgentResult } from '@method/pacta';
+import type { AgentResult } from '@methodts/pacta';
 import type { ConformanceFixture } from './index.js';
 import { usage, cost } from './index.js';
 

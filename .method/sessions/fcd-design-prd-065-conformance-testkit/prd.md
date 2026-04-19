@@ -29,7 +29,7 @@ blocks:
 
 ## 0. Summary
 
-Ship the `@method/pacta-testkit/conformance` subpath that lets a Cortex
+Ship the `@methodts/pacta-testkit/conformance` subpath that lets a Cortex
 tenant app of `category: agent` self-certify compliance with
 `MethodAgentPort` (S1) and the `CortexServiceAdapters` (S3) in its own
 CI. Produces a signed `ComplianceReport.json` that Cortex reads to flip
@@ -45,7 +45,7 @@ no cross-domain refactor).
 ## 1. Problem
 
 Cortex RFC-005 §10.2 defines `category: agent` apps as Tier-2 services
-that consume `@method/agent-runtime`. There is no mechanical way today
+that consume `@methodts/agent-runtime`. There is no mechanical way today
 for Cortex to verify a tenant app actually satisfies `MethodAgentPort`
 instead of merely declaring it in its manifest. Six invariants must
 hold per invocation (port entry via `createMethodAgent`, LLM budget
@@ -65,7 +65,7 @@ harness exists — blocking both April 21 demos and Twins Wave 1.
 
 **From the S8 freeze (non-negotiable):**
 
-1. **Subpath, not new package.** Ship as `@method/pacta-testkit/conformance`.
+1. **Subpath, not new package.** Ship as `@methodts/pacta-testkit/conformance`.
    Duplicating `RecordingProvider`, builders, and assertions in a second
    package is explicitly rejected (S8 §2).
 2. **Required plugins cannot be disabled.** `s1MethodAgentPortPlugin`
@@ -82,7 +82,7 @@ harness exists — blocking both April 21 demos and Twins Wave 1.
 5. **Runner-agnostic.** The entry point is a plain async function that
    returns a report — works under vitest, tap, `node:test`, or
    standalone. No test-framework dependency.
-6. **No value imports from `@method/agent-runtime` in `conformance/`.**
+6. **No value imports from `@methodts/agent-runtime` in `conformance/`.**
    Peer dep only. Gate `G-BOUNDARY` enforces (S8 §11).
 
 **Environmental:**
@@ -93,7 +93,7 @@ harness exists — blocking both April 21 demos and Twins Wave 1.
    land in a new `src/conformance/` directory.
 8. The older `packages/testkit/` (dist-only remnant) is **out of scope**.
    Per S8, conformance extends the pacta testkit, not the legacy one.
-9. `@method/pacta-testkit` is versioned as one unit; a major bump here
+9. `@methodts/pacta-testkit` is versioned as one unit; a major bump here
    affects the core testkit's consumers too. Bias toward additive
    changes within v0.x.
 
@@ -105,7 +105,7 @@ The PRD is done when **all** of the following hold:
 
 - **SC-1 — Runs in tenant-app CI:** `samples/cortex-incident-triage-agent/`
   (or an equivalent fixture app) imports
-  `runCortexAgentConformance` from `@method/pacta-testkit/conformance`
+  `runCortexAgentConformance` from `@methodts/pacta-testkit/conformance`
   inside its own CI, passes the three canonical fixtures, and emits a
   `compliance-report.json` with `passed: true` and `schemaVersion: '1.0'`.
 - **SC-2 — Emits a schema-valid `ComplianceReport.json`:** a round-trip
@@ -119,7 +119,7 @@ The PRD is done when **all** of the following hold:
   confirms that passing `plugins: []` (or omitting `s1MethodAgentPortPlugin`)
   throws `ConformanceRunError('INVALID_FIXTURE')`.
 - **SC-5 — Gate assertions green:** G-BOUNDARY, G-PORT, G-LAYER,
-  G-SCHEMA (from S8 §11) all pass under `npm --workspace=@method/pacta-testkit test`.
+  G-SCHEMA (from S8 §11) all pass under `npm --workspace=@methodts/pacta-testkit test`.
 - **SC-6 — All six S1 checks validated:** each of C1–C6 has at least
   one positive fixture that passes and one negative fixture (in the
   suite's own tests, not in `DEFAULT_FIXTURES`) that fails with
@@ -149,7 +149,7 @@ The PRD is done when **all** of the following hold:
 
 ### Out of scope
 
-- **New package.** Not creating `@method/pacta-conformance`. Explicit
+- **New package.** Not creating `@methodts/pacta-conformance`. Explicit
   per S8 §2.
 - **Platform-side sandbox re-run of the suite.** Wave 2.
 - **S4/S5/S6/S7/S9 plugins.** Plugin interface ships here; concrete
@@ -174,22 +174,22 @@ library and reaches two frozen ports (S1, S3) via **types only**.
 
 ```
 Cortex tenant app (consumer)
-        │  import { runCortexAgentConformance } from '@method/pacta-testkit/conformance'
+        │  import { runCortexAgentConformance } from '@methodts/pacta-testkit/conformance'
         ▼
-@method/pacta-testkit (producer, L3)
+@methodts/pacta-testkit (producer, L3)
   ├── src/ (existing — Recording*, builders, assertions)      [untouched]
   └── src/conformance/ (NEW)
         │   type-only: import type { CortexCtx, MethodAgent, ... }
-        │              from '@method/agent-runtime'  (peer)
-        ├──► @method/pacta         (value — createAgent, event types)
-        └──► @method/agent-runtime (type-only peer — MethodAgentPort shapes)
+        │              from '@methodts/agent-runtime'  (peer)
+        ├──► @methodts/pacta         (value — createAgent, event types)
+        └──► @methodts/agent-runtime (type-only peer — MethodAgentPort shapes)
 
 Cortex platform (passive reader of the signed JSON)
 ```
 
 No new cross-domain wires. S1 and S3 are already frozen; we consume
 their types. The only new surface is the public shape of
-`@method/pacta-testkit/conformance` itself — **that shape is S8**, also
+`@methodts/pacta-testkit/conformance` itself — **that shape is S8**, also
 already frozen.
 
 ---
@@ -200,24 +200,24 @@ already frozen.
 
 ```json
 {
-  "name": "@method/pacta-testkit",
+  "name": "@methodts/pacta-testkit",
   "exports": {
     ".": "./dist/index.js",
     "./conformance": "./dist/conformance/index.js",
     "./conformance/fixtures": "./dist/conformance/fixtures/index.js"
   },
   "peerDependencies": {
-    "@method/agent-runtime": "^0.1.0"
+    "@methodts/agent-runtime": "^0.1.0"
   },
   "peerDependenciesMeta": {
-    "@method/agent-runtime": { "optional": true }
+    "@methodts/agent-runtime": { "optional": true }
   }
 }
 ```
 
 `peerDependenciesMeta.optional = true` because non-conformance consumers
-of `@method/pacta-testkit` (existing users of RecordingProvider) must
-not be forced to install `@method/agent-runtime`. The conformance
+of `@methodts/pacta-testkit` (existing users of RecordingProvider) must
+not be forced to install `@methodts/agent-runtime`. The conformance
 runner throws `ConformanceRunError('MISSING_APP')` with actionable
 message if the peer is absent at runtime.
 
@@ -258,10 +258,10 @@ Total: ~14 new files. All within one package. No touches outside.
 
 ### 6.3 Layering
 
-- Layer: **L3** (same as rest of `@method/pacta-testkit`).
-- Upstream deps (value): `@method/pacta` only.
-- Upstream deps (type-only): `@method/agent-runtime` (peer).
-- No import from `@method/bridge`, `@method/methodts`, `@method/mcp`,
+- Layer: **L3** (same as rest of `@methodts/pacta-testkit`).
+- Upstream deps (value): `@methodts/pacta` only.
+- Upstream deps (type-only): `@methodts/agent-runtime` (peer).
+- No import from `@methodts/bridge`, `@methodts/methodts`, `@methodts/mcp`,
   or any `@cortex/*` package.
 - Gate `G-LAYER` in `__tests__/gates.test.ts` pins this.
 
@@ -626,9 +626,9 @@ contracts.
 
 | Gate | Check | Where |
 |---|---|---|
-| **G-BOUNDARY** | no value imports from `@method/agent-runtime` in `src/conformance/` | `__tests__/gates.test.ts` |
+| **G-BOUNDARY** | no value imports from `@methodts/agent-runtime` in `src/conformance/` | `__tests__/gates.test.ts` |
 | **G-PORT** | public exports match frozen S8 §5 symbol set | `__tests__/gates.test.ts` |
-| **G-LAYER** | no imports from `@method/bridge` or higher layers | `__tests__/gates.test.ts` |
+| **G-LAYER** | no imports from `@methodts/bridge` or higher layers | `__tests__/gates.test.ts` |
 | **G-SCHEMA** | runner output parses under `ComplianceReport` interface; `schemaVersion === '1.0'` | `__tests__/gates.test.ts` |
 | **G-REQUIRED-PLUGINS** | runner rejects plugin list missing S1 or S3 | `__tests__/runner.test.ts` |
 | **G-SIGNATURE-ROUNDTRIP** | when `signer` provided, `report.signature.algorithm` set; when absent, field absent | `__tests__/compliance-report.test.ts` |
@@ -656,7 +656,7 @@ contracts.
 | **Schema drift between `ComplianceReport` TS interface and canonicalization.** Field renames that bypass the schema table. | Low | High | `G-SCHEMA` gate + automated canonicalization golden file committed to the repo. Any TS change that alters the canonical output breaks the golden. |
 | **Fixture over-constrains real apps.** A canonical fixture bakes in an implementation detail no Cortex agent should be required to match. | Medium | Medium | Every fixture's `minimumExpectations` uses **subset** matching for audit kinds. Required audit kinds are the S1 C3 minimum only. Tenant apps may emit more; that's always valid. |
 | **Subpath exports not resolved in older Node/bundlers.** `package.json#exports` has sharp edges on Node < 16.17. | Low | Medium | Engines field pins `node >= 18`. CI matrix includes Node 18 and Node 20. |
-| **Peer-dep optional confusion.** Non-conformance users of the testkit don't need `@method/agent-runtime`; warning from npm could alarm them. | Low | Low | `peerDependenciesMeta.optional = true` + README note. Runtime error (`ConformanceRunError('MISSING_APP')`) is friendly. |
+| **Peer-dep optional confusion.** Non-conformance users of the testkit don't need `@methodts/agent-runtime`; warning from npm could alarm them. | Low | Low | `peerDependenciesMeta.optional = true` + README note. Runtime error (`ConformanceRunError('MISSING_APP')`) is friendly. |
 
 ---
 
@@ -715,7 +715,7 @@ implementation plan, not a design question.
 ## 16. Agreement
 
 **Design freeze:** 2026-04-14.
-**Owner:** `@method/pacta-testkit` maintainers.
+**Owner:** `@methodts/pacta-testkit` maintainers.
 **Size:** S.
 **Unblocks:** `certified: boolean` flag for Cortex tenant apps,
 `samples/cortex-incident-triage-agent/` CI gate, roadmap B8 closeout.

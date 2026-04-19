@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Reusable spy-backed mock Cortex `ctx` for @method/agent-runtime tests.
+ * Reusable spy-backed mock Cortex `ctx` for @methodts/agent-runtime tests.
  *
  * Not exported from the package barrel — internal test support only. Lives
  * under `src/test-support/` so the TS project can still compile it without

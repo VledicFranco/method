@@ -1,37 +1,87 @@
 {
-  "name": "@method/runtime",
+  "name": "@methodts/runtime",
   "version": "0.1.0",
-  "type": "module",
-  "main": "dist/index.js",
-  "exports": {
-    ".": "./dist/index.js",
-    "./strategy": "./dist/strategy/index.js",
-    "./sessions": "./dist/sessions/index.js",
-    "./event-bus": "./dist/event-bus/index.js",
-    "./cost-governor": "./dist/cost-governor/index.js",
-    "./ports": "./dist/ports/index.js",
-    "./config": "./dist/config/index.js",
-    "./executors": "./dist/executors/index.js",
-    "./scheduling": "./dist/scheduling/index.js",
-    "./dlq": "./dist/dlq/index.js"
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/runtime"
   },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./strategy": {
+      "types": "./dist/strategy/index.d.ts",
+      "default": "./dist/strategy/index.js"
+    },
+    "./sessions": {
+      "types": "./dist/sessions/index.d.ts",
+      "default": "./dist/sessions/index.js"
+    },
+    "./event-bus": {
+      "types": "./dist/event-bus/index.d.ts",
+      "default": "./dist/event-bus/index.js"
+    },
+    "./cost-governor": {
+      "types": "./dist/cost-governor/index.d.ts",
+      "default": "./dist/cost-governor/index.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "default": "./dist/ports/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "default": "./dist/config/index.js"
+    },
+    "./executors": {
+      "types": "./dist/executors/index.d.ts",
+      "default": "./dist/executors/index.js"
+    },
+    "./scheduling": {
+      "types": "./dist/scheduling/index.d.ts",
+      "default": "./dist/scheduling/index.js"
+    },
+    "./dlq": {
+      "types": "./dist/dlq/index.d.ts",
+      "default": "./dist/dlq/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@method/types": "*",
-    "@method/methodts": "*",
-    "@method/pacta": "*",
-    "@method/fca-index": "*",
+    "@methodts/types": "*",
+    "@methodts/methodts": "*",
+    "@methodts/pacta": "*",
+    "@methodts/fca-index": "*",
     "js-yaml": "^4.1.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@method/pacta-testkit": "*",
+    "@methodts/pacta-testkit": "*",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
-  }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module"
 }

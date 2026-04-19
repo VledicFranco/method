@@ -1,14 +1,14 @@
-# Testkit — @method/fca-index/testkit
+# Testkit — @methodts/fca-index/testkit
 
-Test doubles for the external ports of `@method/fca-index`. Import from the testkit subpackage — these are not included in the production bundle.
+Test doubles for the external ports of `@methodts/fca-index`. Import from the testkit subpackage — these are not included in the production bundle.
 
 ```typescript
-import { RecordingContextQueryPort, RecordingCoverageReportPort } from '@method/fca-index/testkit';
+import { RecordingContextQueryPort, RecordingCoverageReportPort } from '@methodts/fca-index/testkit';
 ```
 
-**Purpose:** Enable `@method/mcp` tests (and any other port consumers) to test their handlers without standing up a real index. The recording ports stub return values and record all calls for assertion.
+**Purpose:** Enable `@methodts/mcp` tests (and any other port consumers) to test their handlers without standing up a real index. The recording ports stub return values and record all calls for assertion.
 
-**When NOT to use:** If you are testing `@method/fca-index` internals, use `InMemoryIndexStore` directly — it gives you control over the stored data. The testkit is for consumers of the external ports, not for testing the library itself.
+**When NOT to use:** If you are testing `@methodts/fca-index` internals, use `InMemoryIndexStore` directly — it gives you control over the stored data. The testkit is for consumers of the external ports, not for testing the library itself.
 
 ---
 
@@ -43,8 +43,8 @@ new RecordingContextQueryPort(options?: {
 
 ```typescript
 import { describe, it } from 'vitest';
-import { RecordingContextQueryPort } from '@method/fca-index/testkit';
-import type { ComponentContext } from '@method/fca-index';
+import { RecordingContextQueryPort } from '@methodts/fca-index/testkit';
+import type { ComponentContext } from '@methodts/fca-index';
 
 describe('my handler', () => {
   it('queries the index and formats results', async () => {
@@ -119,7 +119,7 @@ Default stub values:
 ### Usage example (vitest)
 
 ```typescript
-import { RecordingCoverageReportPort } from '@method/fca-index/testkit';
+import { RecordingCoverageReportPort } from '@methodts/fca-index/testkit';
 
 const port = new RecordingCoverageReportPort({
   mode: 'production',

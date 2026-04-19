@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { ResourceProvider } from '../ports/resource-provider.js';
 import type { ResourceSnapshot } from '../types.js';
 

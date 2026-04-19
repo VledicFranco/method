@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * F-THANE-2: Discovery-Registry Integration Service
  *

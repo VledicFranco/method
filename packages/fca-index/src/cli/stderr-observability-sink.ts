@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * StderrObservabilitySink — default ObservabilityPort implementation for
  * standalone fca-index runs (CLI). Emits one `[<prefix>.<scope>] {json}\n`

@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `CortexSessionStore` — PRD-061 §5 Cortex/ctx.storage-backed adapter for the
- * `@method/runtime` SessionStore port.
+ * `@methodts/runtime` SessionStore port.
  *
  * Backend notes — S4 §9.1 specifies a Mongo-collection-shaped surface
  * (`collection('method_session_snapshots').findOneAndUpdate(...)`). The
@@ -26,15 +27,15 @@
  */
 
 import type { CortexCtx, CortexStorageFacade } from './ctx-types.js';
-import type { SessionStore } from '@method/runtime/ports';
-import { SessionStoreError } from '@method/runtime/ports';
+import type { SessionStore } from '@methodts/runtime/ports';
+import { SessionStoreError } from '@methodts/runtime/ports';
 import type {
   Checkpoint,
   CheckpointMeta,
   PersistedSessionSnapshot as SessionSnapshot,
   ResumeContext,
   ResumeOptions,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 
 /** Locally-redeclared to avoid depending on the runtime `SessionStatus`
  * which collides with print-session's SessionStatus in the barrel. */

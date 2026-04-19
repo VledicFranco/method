@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SemanticNodeExecutor — Port + implementation for executing SPL algorithms
  * as strategy DAG nodes.

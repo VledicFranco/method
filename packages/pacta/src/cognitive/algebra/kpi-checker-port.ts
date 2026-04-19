@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * KPIChecker Port — PRD 049 contract for automated CheckableKPI generation.
  *

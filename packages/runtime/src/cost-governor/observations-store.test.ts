@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -11,7 +12,7 @@ import type {
 import type {
   InvocationSignature,
   AccountId,
-} from '@method/types';
+} from '@methodts/types';
 
 // In-memory FileSystemProvider mock
 class MemFs implements FileSystemProvider {

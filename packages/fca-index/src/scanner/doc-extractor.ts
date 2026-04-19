@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * DocExtractor — Extracts a short documentation excerpt from a source file.
  *

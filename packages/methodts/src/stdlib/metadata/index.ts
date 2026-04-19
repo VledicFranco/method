@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Metadata barrel — re-exports all narrative metadata for stdlib methods and methodologies.
  */

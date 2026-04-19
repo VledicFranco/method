@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * stdlib/methods/p2/ — P2-SD (Software Development) method definitions.
  *

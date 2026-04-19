@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── PRD 010: Auto-Retrospective Generator ──────────────────────
 // Synthesizes a minimal retrospective from PTY watcher observations
 // when a session terminates. Writes to .method/retros/.

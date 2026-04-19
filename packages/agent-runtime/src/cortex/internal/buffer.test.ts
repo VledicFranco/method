@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for the bounded FIFO buffer — PRD-063 §Tests (buffer unit).
  *

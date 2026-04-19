@@ -51,7 +51,7 @@ Ship the implementation needed to produce a **strong, conclusive R-13 experiment
 
 ### Change Map
 
-All changes within `@method/pacta` (L3), `src/cognitive/` subtree, plus experiment runner:
+All changes within `@methodts/pacta` (L3), `src/cognitive/` subtree, plus experiment runner:
 
 ```
 packages/pacta/src/cognitive/

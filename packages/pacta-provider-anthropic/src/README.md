@@ -1,11 +1,11 @@
-# @method/pacta-provider-anthropic
+# @methodts/pacta-provider-anthropic
 
-Anthropic Messages API provider for `@method/pacta`. Implements `AgentProvider` using the Anthropic API directly (not via the Claude CLI). Supports streaming, native tool use, and prompt caching.
+Anthropic Messages API provider for `@methodts/pacta`. Implements `AgentProvider` using the Anthropic API directly (not via the Claude CLI). Supports streaming, native tool use, and prompt caching.
 
 ## Usage
 
 ```typescript
-import { anthropicProvider } from '@method/pacta-provider-anthropic';
+import { anthropicProvider } from '@methodts/pacta-provider-anthropic';
 
 const provider = anthropicProvider({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -30,4 +30,4 @@ const provider = anthropicProvider({
 
 ## When to Use
 
-Use this provider when you need direct API access (no Claude CLI installed), fine-grained control over streaming, or cost tracking. For local development with a running Claude CLI session, prefer `@method/pacta-provider-claude-cli`.
+Use this provider when you need direct API access (no Claude CLI installed), fine-grained control over streaming, or cost tracking. For local development with a running Claude CLI session, prefer `@methodts/pacta-provider-claude-cli`.
