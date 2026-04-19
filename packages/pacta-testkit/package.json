@@ -42,7 +42,7 @@
     "@methodts/pacta": "*"
   },
   "peerDependencies": {
-    "@methodts/agent-runtime": "^0.1.0"
+    "@methodts/agent-runtime": "^0.2.0"
   },
   "engines": {
     "node": ">=18"
