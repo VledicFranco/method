@@ -1,13 +1,14 @@
 {
-  "name": "@methodts/pacta-provider-cortex",
+  "name": "@methodts/pacta-provider-claude-agent-sdk",
   "version": "0.1.0",
-  "description": "Cortex service adapters for Pacta — LLM provider, audit middleware, RFC-8693 token-exchange middleware",
+  "type": "module",
+  "description": "Pacta agent provider that delegates the inner agent loop to @anthropic-ai/claude-agent-sdk. Supports both direct (raw API key) and Cortex-pluggable (via @methodts/pacta-provider-cortex/anthropic-transport) modes.",
   "license": "Apache-2.0",
   "author": "Francisco Aramburo",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/VledicFranco/method.git",
-    "directory": "packages/pacta-provider-cortex"
+    "directory": "packages/pacta-provider-claude-agent-sdk"
   },
   "homepage": "https://github.com/VledicFranco/method#readme",
   "bugs": {
@@ -33,17 +34,10 @@
     "@methodts/pacta": "*"
   },
   "peerDependencies": {
-    "@methodts/pacta": "*",
-    "@methodts/pacta-provider-claude-agent-sdk": "*"
-  },
-  "peerDependenciesMeta": {
-    "@methodts/pacta-provider-claude-agent-sdk": {
-      "optional": true
-    }
+    "@anthropic-ai/claude-agent-sdk": "^0.2.114"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true
-  },
-  "type": "module"
+  }
 }
