@@ -291,6 +291,7 @@ amendment log below.
 |---|---|---|---|---|---|
 | 2026-04-14 | S1 | initial freeze + bilateral ratification | `decision.md` freeze via `/fcd-surface`; ratification artifacts produced by PRD-060 (this file, `method-agent-port.md`, `readthrough-2026-04-14.md`, CODEOWNERS, `proposals/` and `history/` scaffolds) | n/a (pre-1.0) | PRD-060 |
 | 2026-04-18 | S1 | ratification | Cortex countersignature landed; status flipped to `ratified`. No interface change (SHA `7402c3ae419821719b8f55aa0c2201cdb93d1938` still authoritative). G-RATIFIED gate now exits permissive form. | n/a | this commit |
+| 2026-04-19 | S-CORTEX-ANTHROPIC-TRANSPORT | additive | Wave 2 / C-2: implement `cortexAnthropicTransport` body in `@methodts/pacta-provider-cortex` — new pairing export with `@methodts/pacta-provider-claude-agent-sdk` (S-ANTHROPIC-SDK-TRANSPORT consumer). Localhost HTTP proxy injects `ANTHROPIC_BASE_URL`, intercepts `/v1/messages` POSTs, ducktypes `ctx.llm.reserve/settle` (Cortex O1) with documented degraded-mode fallback, emits `method.transport.turn_completed` audit per turn. No S3 amendment — additive new file, frozen surfaces (S3 ctx.llm/ctx.audit) unchanged. Frozen Wave 0 ctx parameter shape (`CortexLlmCtx & CortexAuditCtx`, flat) preserved. | n/a (pre-1.0) | feat/claude-agent-sdk-c2-cortex-transport |
 
 Future entries append in chronological order. Each entry must link to a PR
 (or a commit SHA, when the change lands outside a PR flow) so the audit
