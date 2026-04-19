@@ -42,6 +42,15 @@ export type {
   AuditMappingEntry,
 } from './audit-middleware.js';
 
+// Cortex Anthropic SDK transport (S-CORTEX-ANTHROPIC-TRANSPORT — for use
+// with @methodts/pacta-provider-claude-agent-sdk; Wave 0 stub, Wave 2 impl)
+export { cortexAnthropicTransport } from './anthropic-transport.js';
+export type {
+  CortexAnthropicTransportConfig,
+  AnthropicMessagesRequestShape,
+  BudgetEvent,
+} from './anthropic-transport.js';
+
 // Token-exchange middleware (S3 §5)
 export {
   cortexTokenExchangeMiddleware,
