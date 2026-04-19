@@ -17,7 +17,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22 required for native glob support in `node --test` (see ci.yml).
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 

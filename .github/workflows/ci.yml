@@ -14,7 +14,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22 required: per-package test scripts use `node --test src/**/*.test.ts`
+          # which only globs natively from Node 22+. Node 20 treats the pattern as
+          # a literal file path and errors with "Could not find ...".
+          node-version: 22
           cache: 'npm'
 
       - run: npm ci
