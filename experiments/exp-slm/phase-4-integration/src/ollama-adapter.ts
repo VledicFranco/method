@@ -1,7 +1,7 @@
 /**
  * Ollama ProviderAdapter — calls Ollama's OpenAI-compatible endpoint.
  *
- * Uses the experiment's local ProviderAdapter interface (not @method/pacta)
+ * Uses the experiment's local ProviderAdapter interface (not @methodts/pacta)
  * so it can plug directly into createLlmMonitor() and createSLMProviderAdapter().
  *
  * Cost is always $0 (local inference on Tailscale GPU cluster).

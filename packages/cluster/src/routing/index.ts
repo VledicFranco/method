@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * routing/ — Capacity-weighted work routing (PRD 039).
  *

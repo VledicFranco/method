@@ -1,6 +1,6 @@
-# @method/pacta-testkit
+# @methodts/pacta-testkit
 
-Testing utilities for `@method/pacta`. Provides recording providers, cognitive assertions, test builders, and mock tool providers — everything needed to test pacts, agents, and cognitive compositions without live LLM calls.
+Testing utilities for `@methodts/pacta`. Provides recording providers, cognitive assertions, test builders, and mock tool providers — everything needed to test pacts, agents, and cognitive compositions without live LLM calls.
 
 ## Components
 
@@ -17,7 +17,7 @@ Testing utilities for `@method/pacta`. Provides recording providers, cognitive a
 ## Usage
 
 ```typescript
-import { RecordingProvider, assertToolCalled } from '@method/pacta-testkit';
+import { RecordingProvider, assertToolCalled } from '@methodts/pacta-testkit';
 
 const provider = new RecordingProvider(baseProvider);
 await agent.run(provider, input);

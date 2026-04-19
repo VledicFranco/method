@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Review Agent — pre-assembled reference agent for code review tasks.
  *

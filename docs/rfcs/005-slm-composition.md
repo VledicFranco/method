@@ -3,7 +3,7 @@
 **Status:** Draft — exploratory theory document
 **Author:** PO + Lysica
 **Date:** 2026-04-03
-**Applies to:** `@method/pacta`, `experiments/exp-slm-composition`
+**Applies to:** `@methodts/pacta`, `experiments/exp-slm-composition`
 **Organization:** Vidtecci
 **Extends:** RFC 002 (Small Language Models as Cognitive Skill Compilation)
 **Depends on:** RFC 002 experimental results (Phase 3 Gate 3 PASS, Phase 5 R-14 through R-22)

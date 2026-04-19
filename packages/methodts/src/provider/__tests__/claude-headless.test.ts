@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for ClaudeHeadlessProvider — argument building, output parsing,
  * error mapping, session ID generation, and Layer construction.

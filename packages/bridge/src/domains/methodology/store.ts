@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Methodology Session Store
  *
- * Wraps @method/methodts types in the interactive session interface that
+ * Wraps @methodts/methodts types in the interactive session interface that
  * HTTP route handlers expect. All methodology data access goes through
  * the injected MethodologySource port (DR-15).
  *
@@ -11,11 +12,11 @@
 
 import {
   topologicalOrder,
-} from "@method/methodts";
+} from "@methodts/methodts";
 import type {
   Method,
   Step,
-} from "@method/methodts";
+} from "@methodts/methodts";
 import type {
   MethodologySource,
   MethodologyChange,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Role<S, V> — Typed representation of F1-FTH Definition 2.1.
  *

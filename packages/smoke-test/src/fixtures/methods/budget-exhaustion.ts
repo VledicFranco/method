@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method fixture: budget exhaustion
  *
  * Agent with extremely tight budget. Mock provider simulates exceeding it.
  */
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 export const METHOD_ID = 'budget-exhaustion';
 

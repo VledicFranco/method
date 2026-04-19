@@ -1,4 +1,5 @@
-// @method/pacta-provider-claude-cli — Claude CLI AgentProvider
+// SPDX-License-Identifier: Apache-2.0
+// @methodts/pacta-provider-claude-cli — Claude CLI AgentProvider
 // claudeCliProvider(), simpleCodeAgent
 
 // Provider factory

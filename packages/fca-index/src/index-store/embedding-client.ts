@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * VoyageEmbeddingClient — EmbeddingClientPort implementation backed by Voyage AI REST API.
  *

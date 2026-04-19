@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateAutoRetro, type AutoRetroInput } from './auto-retro.js';
@@ -30,7 +31,7 @@ import type { FileSystemProvider, DirEntry, FileStat } from '../ports/file-syste
 // ── Helpers ──────────────────────────────────────────────────────
 
 // Local test FS — mirrors NodeFileSystemProvider (bridge-only) without a
-// cross-package import. Keeps auto-retro.test.ts inside @method/runtime.
+// cross-package import. Keeps auto-retro.test.ts inside @methodts/runtime.
 class TestNodeFs implements FileSystemProvider {
   readFileSync(path: string, encoding: BufferEncoding): string {
     return readFileSync(path, encoding);

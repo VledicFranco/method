@@ -3,13 +3,13 @@ type: co-design-record
 surface: "MethodAgentPort"
 slug: "method-agent-port"
 date: "2026-04-14"
-owner: "@method/agent-runtime"
-producer: "@method/agent-runtime (L3, new package — PRD-058)"
+owner: "@methodts/agent-runtime"
+producer: "@methodts/agent-runtime (L3, new package — PRD-058)"
 consumer: "Cortex tenant app (category: agent, Tier 2 service) — consumes via npm install"
 direction: "producer → consumer (unidirectional factory + streaming events back to consumer callback)"
 status: frozen
 mode: "new"
-prd: "058 — @method/agent-runtime (Cortex-targeted public API)"
+prd: "058 — @methodts/agent-runtime (Cortex-targeted public API)"
 related:
   - docs/roadmap-cortex-consumption.md (S1, item A2, A7)
   - docs/arch/pacta.md
@@ -24,7 +24,7 @@ blocks: "PRD-059 (CortexLLMProvider + middleware), PRD-061 (SessionStore), PRD-0
 
 > **S1** of the Cortex Consumption roadmap. The top-level public API a Cortex
 > tenant app uses to create, invoke, and observe a method-backed agent. This is
-> the *only* surface a normal tenant app imports from `@method/agent-runtime` —
+> the *only* surface a normal tenant app imports from `@methodts/agent-runtime` —
 > every richer surface (providers, middleware, stores) is a plug-in that
 > composes under this one.
 
@@ -63,20 +63,20 @@ don't have to write that wiring.
 
 ```
 Cortex tenant app (B, consumer)
-        │  import { createMethodAgent } from '@method/agent-runtime'
+        │  import { createMethodAgent } from '@methodts/agent-runtime'
         ▼
-@method/agent-runtime (A, producer) ─── exposes MethodAgentPort
+@methodts/agent-runtime (A, producer) ─── exposes MethodAgentPort
         │
-        ├──► @method/pacta        (createAgent, middleware, reference agents)
-        ├──► @method/pacta-provider-cortex   (NEW, PRD-059 — CortexLLMProvider)
+        ├──► @methodts/pacta        (createAgent, middleware, reference agents)
+        ├──► @methodts/pacta-provider-cortex   (NEW, PRD-059 — CortexLLMProvider)
         └──► Cortex ctx           (injected, never imported at module top level)
 ```
 
 Key discipline: **no `@cortex/*` import appears at module load time in
-`@method/agent-runtime`**. The Cortex contract is expressed by the
+`@methodts/agent-runtime`**. The Cortex contract is expressed by the
 `CortexCtx` *type shape* (structural), which the runtime re-declares or
 imports as `type`-only. The concrete `ctx` object is received by
-`createMethodAgent` at call time. This keeps `@method/agent-runtime`
+`createMethodAgent` at call time. This keeps `@methodts/agent-runtime`
 testable without Cortex and publishable as a normal npm package.
 
 ## 2. Scope
@@ -110,9 +110,9 @@ testable without Cortex and publishable as a normal npm package.
 
 ## 3. Ownership
 
-**Owner:** `@method/agent-runtime` (producer). Defines and publishes all
+**Owner:** `@methodts/agent-runtime` (producer). Defines and publishes all
 types below. Semver discipline: any change to an exported type is a minor
-(additive) or major (breaking) bump on `@method/agent-runtime`.
+(additive) or major (breaking) bump on `@methodts/agent-runtime`.
 
 **Consumer:** Cortex tenant apps (`category: agent`, Tier 2). Consumer code
 depends on the published types only.
@@ -124,17 +124,17 @@ on both sides (see §7 Compatibility).
 ## 4. Interface — TypeScript
 
 **File (planned):** `packages/agent-runtime/src/index.ts` (new package,
-PRD-058). Publicly exported from `@method/agent-runtime`.
+PRD-058). Publicly exported from `@methodts/agent-runtime`.
 
 ### 4.1 The `CortexCtx` injection shape
 
-`@method/agent-runtime` re-declares a *structural* subset of the Cortex `ctx`
+`@methodts/agent-runtime` re-declares a *structural* subset of the Cortex `ctx`
 object. It imports nothing from `@cortex/*` at runtime; a `type`-only import
 of `@cortex/sdk` is acceptable if the import is erased at compile time.
 
 ```typescript
 /**
- * Structural subset of the Cortex tenant-app ctx that @method/agent-runtime
+ * Structural subset of the Cortex tenant-app ctx that @methodts/agent-runtime
  * needs. Providers and middleware in PRD-059 add fields as they wire in.
  *
  * Consumer responsibility: pass the real Cortex ctx. Structural typing
@@ -218,7 +218,7 @@ export interface CortexLogger {
 > Composition-theorem note: every field above is used by at least one shipped
 > middleware in PRD-059 / PRD-061 / PRD-062 / PRD-063. Fields without a
 > consumer at freeze time are `?` optional; if no consumer appears before
-> GA of `@method/agent-runtime`, they come out.
+> GA of `@methodts/agent-runtime`, they come out.
 
 ### 4.2 `CreateMethodAgentOptions<T>`
 
@@ -339,7 +339,7 @@ export interface MethodAgentResult<TOutput = unknown> extends AgentResult<TOutpu
   readonly auditEventCount: number;
 }
 
-/** Opaque resumption descriptor. Shape is owned by @method/agent-runtime;
+/** Opaque resumption descriptor. Shape is owned by @methodts/agent-runtime;
  *  tenant apps must treat it as a black-box string payload. */
 export interface Resumption {
   readonly sessionId: string;
@@ -382,7 +382,7 @@ export function createMethodAgent<TOutput = unknown>(
 All pacta error types are re-exported; agent-runtime adds three:
 
 ```typescript
-// Re-exported from @method/pacta (no behavioral change):
+// Re-exported from @methodts/pacta (no behavioral change):
 export {
   ProviderError, TransientError, PermanentError,
   RateLimitError, NetworkError, TimeoutError,
@@ -391,7 +391,7 @@ export {
   CapabilityError,
   BudgetExhaustedError,
   isProviderError, isTransientError, isPermanentError,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 /** Thrown at composition time when CreateMethodAgentOptions is invalid. */
 export class ConfigurationError extends Error {
@@ -424,8 +424,8 @@ retry semantics — it only adds audit + budget pre-check side effects.
 
 ### 4.7 Re-exported pacta types
 
-To keep consumers from importing `@method/pacta` directly (and accidentally
-reaching into implementation), `@method/agent-runtime` re-exports the
+To keep consumers from importing `@methodts/pacta` directly (and accidentally
+reaching into implementation), `@methodts/agent-runtime` re-exports the
 pacta types used by the port:
 
 ```typescript
@@ -437,7 +437,7 @@ export type {
   ContextPolicy, ReasoningPolicy,
   TokenUsage, CostReport, RecoveryIntent,
   AgentProvider,  // only for the advanced `options.provider` escape hatch
-} from '@method/pacta';
+} from '@methodts/pacta';
 ```
 
 ## 5. Name validation
@@ -445,7 +445,7 @@ export type {
 Proposed name `createMethodAgent({ ctx, pact, onEvent? })` **validated**.
 
 Considered and rejected:
-- `createAgent` — collides with pacta's existing export; `@method/pacta` users
+- `createAgent` — collides with pacta's existing export; `@methodts/pacta` users
   expect `createAgent` to mean the low-level primitive.
 - `spawnAgent` — implies process semantics (PTY, child process); the Cortex
   case is in-process composition.
@@ -460,15 +460,15 @@ by the ctx you hand me." That's what it does.
 
 ### 6.1 Producer
 
-- **Package:** `@method/agent-runtime` (L3, NEW — PRD-058)
+- **Package:** `@methodts/agent-runtime` (L3, NEW — PRD-058)
 - **Entry file:** `packages/agent-runtime/src/index.ts`
 - **Core composition:** `packages/agent-runtime/src/create-method-agent.ts`
 - **Middleware stack home:** `packages/agent-runtime/src/middleware/` (audit,
   token-exchange, budget-precheck — implementations land in PRD-059)
 - **Provider home:** `packages/pacta-provider-cortex/src/cortex-llm-provider.ts`
   (NEW, PRD-059 — NOT in agent-runtime itself to preserve the pacta provider
-  family convention). `@method/agent-runtime` depends on
-  `@method/pacta-provider-cortex` for the default provider.
+  family convention). `@methodts/agent-runtime` depends on
+  `@methodts/pacta-provider-cortex` for the default provider.
 - **Wiring:** Tenant apps construct directly via `createMethodAgent(...)`.
   No DI container. The factory is the composition root on the agent-runtime
   side; on the Cortex side, the composition root is the tenant app's entry
@@ -494,7 +494,7 @@ by the ctx you hand me." That's what it does.
 ```typescript
 // samples/cortex-incident-triage-agent/src/agent.ts
 import type { Ctx } from '@cortex/sdk';
-import { createMethodAgent, oneshot } from '@method/agent-runtime';
+import { createMethodAgent, oneshot } from '@methodts/agent-runtime';
 import { incidentTriagePact } from './pacts/incident-triage.js';
 
 export default async function app(ctx: Ctx) {
@@ -511,7 +511,7 @@ export default async function app(ctx: Ctx) {
 
 ## 7. Compatibility Guarantees (semver)
 
-`@method/agent-runtime` is versioned independently of `@method/pacta`.
+`@methodts/agent-runtime` is versioned independently of `@methodts/pacta`.
 
 | Change | Semver bump |
 |---|---|
@@ -537,7 +537,7 @@ convention — central arch-gate file). Package-local gate tests live at
 `packages/agent-runtime/src/gates/gates.test.ts` (new, mirrors pacta).
 
 ```typescript
-// G-BOUNDARY: @method/agent-runtime does not import from @cortex/* at runtime
+// G-BOUNDARY: @methodts/agent-runtime does not import from @cortex/* at runtime
 describe('G-BOUNDARY: agent-runtime keeps Cortex as injected ctx, not import', () => {
   it('no value import from @cortex/* in agent-runtime src', () => {
     const violations: string[] = [];
@@ -553,10 +553,10 @@ describe('G-BOUNDARY: agent-runtime keeps Cortex as injected ctx, not import', (
   });
 });
 
-// G-PORT: @method/agent-runtime's public surface matches the frozen MethodAgentPort
+// G-PORT: @methodts/agent-runtime's public surface matches the frozen MethodAgentPort
 describe('G-PORT: MethodAgentPort surface exports are stable', () => {
   it('exports the expected symbol set', async () => {
-    const mod = await import('@method/agent-runtime');
+    const mod = await import('@methodts/agent-runtime');
     const expected = [
       'createMethodAgent',
       'ConfigurationError', 'MissingCtxError', 'UnknownSessionError', 'IllegalStateError',
@@ -567,9 +567,9 @@ describe('G-PORT: MethodAgentPort surface exports are stable', () => {
   });
 });
 
-// G-LAYER: agent-runtime is L3 — no imports from @method/bridge (L4)
+// G-LAYER: agent-runtime is L3 — no imports from @methodts/bridge (L4)
 describe('G-LAYER: agent-runtime does not reach upward to bridge', () => {
-  it('no import from @method/bridge in agent-runtime src', () => {
+  it('no import from @methodts/bridge in agent-runtime src', () => {
     const violations = scanImports('packages/agent-runtime/src', /^@method\/bridge/);
     assert.deepStrictEqual(violations, []);
   });
@@ -611,12 +611,12 @@ No questions remain open. **Status: frozen.**
   separate factory (PRD-062) that composes `createMethodAgent` with
   `ctx.schedule`. Not on this port.
 - **Bridge parity.** This port does not expose bridge-specific session/PTY
-  controls. Bridge consumption keeps using `@method/pacta` directly.
+  controls. Bridge consumption keeps using `@methodts/pacta` directly.
 
 ## 11. Agreement
 
 **Frozen:** 2026-04-14
-**Owner:** `@method/agent-runtime` (PRD-058)
+**Owner:** `@methodts/agent-runtime` (PRD-058)
 **Unblocks:** PRD-058 implementation, PRD-059 (provider + middleware),
 PRD-061 (session store), PRD-062 (scheduler), PRD-063 (event connector),
 sample app `samples/cortex-incident-triage-agent/`, roadmap gate A7.

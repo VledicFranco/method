@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/mcp — Cortex transport types (PRD-066 Track A, S9 §5.2).
+ * @methodts/mcp — Cortex transport types (PRD-066 Track A, S9 §5.2).
  *
  * Payload, result, and option types for `CortexToolRegistrationClient`
  * and `MethodologyToolPublisher`. Structural-only — no runtime value

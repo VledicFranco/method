@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ManifestReaderPort — Port for reading a project's FCA scan configuration.
  *
- * Owned by @method/fca-index. The default implementation reads `.fca-index.yaml`
+ * Owned by @methodts/fca-index. The default implementation reads `.fca-index.yaml`
  * at the project root and falls back to auto-detected FCA directory conventions
  * when no config file exists.
  *
@@ -12,8 +13,8 @@
  *   (a) Providing a `.fca-index.yaml` config file (ProjectScanConfig shape), or
  *   (b) Relying on auto-detection of standard FCA conventions.
  *
- * Owner:     @method/fca-index (defines interface + provides default implementation)
- * Consumer:  @method/fca-index scanner domain (internal)
+ * Owner:     @methodts/fca-index (defines interface + provides default implementation)
+ * Consumer:  @methodts/fca-index scanner domain (internal)
  * Direction: filesystem → fca-index scanner (unidirectional)
  * Co-designed: 2026-04-08
  * Status:    frozen

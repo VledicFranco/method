@@ -1,16 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 017: Strategy Pipelines — DAG Executor (Phase 1c)
  *
- * Thin adapter over @method/methodts DagStrategyExecutor. Wires the AgentProvider
+ * Thin adapter over @methodts/methodts DagStrategyExecutor. Wires the AgentProvider
  * into the methodts DagNodeExecutor port, then delegates all execution logic to
  * methodts.
  *
- * PRD 028 C-5: Migrated from LlmProvider to AgentProvider (@method/pacta).
- * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
+ * PRD 028 C-5: Migrated from LlmProvider to AgentProvider (@methodts/pacta).
+ * PRD-057 / S2 §3.2 / C2: moved from @methodts/bridge/domains/strategies/.
  */
 
-import type { AgentProvider, AgentResult, Pact } from '@method/pacta';
-import { createAgent } from '@method/pacta';
+import type { AgentProvider, AgentResult, Pact } from '@methodts/pacta';
+import { createAgent } from '@methodts/pacta';
 import type {
   StrategyDAG,
   StrategyNode,
@@ -21,9 +22,9 @@ import {
   type DagNodeExecutor,
   type ContextLoadExecutor,
   type CrossAppNodeExecutor,
-} from '@method/methodts/strategy/dag-executor.js';
-import type { StrategyExecutorConfig, SubStrategySource, HumanApprovalResolver } from '@method/methodts/strategy/dag-types.js';
-import type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
+} from '@methodts/methodts/strategy/dag-executor.js';
+import type { StrategyExecutorConfig, SubStrategySource, HumanApprovalResolver } from '@methodts/methodts/strategy/dag-types.js';
+import type { SemanticNodeExecutor } from '@methodts/methodts/semantic/node-executor.js';
 
 // Re-export types from methodts (preserving the runtime's type surface)
 export type {
@@ -35,15 +36,15 @@ export type {
   StrategyExecutorConfig,
   SubStrategySource,
   HumanApprovalResolver,
-} from '@method/methodts/strategy/dag-types.js';
+} from '@methodts/methodts/strategy/dag-types.js';
 
-export type { ContextLoadExecutor, CrossAppNodeExecutor } from '@method/methodts/strategy/dag-executor.js';
+export type { ContextLoadExecutor, CrossAppNodeExecutor } from '@methodts/methodts/strategy/dag-executor.js';
 
 // Re-export SemanticNodeExecutor port type for the composition root
-export type { SemanticNodeExecutor } from '@method/methodts/semantic/node-executor.js';
+export type { SemanticNodeExecutor } from '@methodts/methodts/semantic/node-executor.js';
 
 // Re-export ExecutionState as an opaque type (callers use getState() snapshot)
-export type { ExecutionStateSnapshot as ExecutionState } from '@method/methodts/strategy/dag-types.js';
+export type { ExecutionStateSnapshot as ExecutionState } from '@methodts/methodts/strategy/dag-types.js';
 
 // ── Adapter: AgentProvider -> DagNodeExecutor ───────────────────
 

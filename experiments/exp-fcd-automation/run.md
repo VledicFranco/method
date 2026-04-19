@@ -56,9 +56,9 @@ ok 3 - PRD-044: FCD Automation Pipeline structural invariants
     ok 1 - print-session.ts contains exactly 1 createAgent( call site
 ok 4 - I-9: createAgent is hoisted to session scope in print-session.ts
 # Subtest: G-LAYER: Package layer ordering is respected
-    ok 1 - @method/types (L0) does not import higher-layer packages
-    ok 2 - @method/methodts (L2) does not import higher-layer packages
-    ok 3 - @method/mcp (L3) does not import higher-layer packages
+    ok 1 - @methodts/types (L0) does not import higher-layer packages
+    ok 2 - @methodts/methodts (L2) does not import higher-layer packages
+    ok 3 - @methodts/mcp (L3) does not import higher-layer packages
 ok 5 - G-LAYER: Package layer ordering is respected
 
 1..5
@@ -94,7 +94,7 @@ source .env && INSTANCE_NAME=test PORT=3457 ROOT_DIR=test-fixtures/bridge-test \
 ```
 [cluster] Cluster disabled — skipping start
 Server listening at http://127.0.0.1:3457
-@method/bridge listening on port 3457
+@methodts/bridge listening on port 3457
 Scanning 12 strategy file(s) in .method/strategies
 Registered 1 trigger(s) for strategy S-CORE-TEST-WATCH
 Registered 1 trigger(s) for strategy S-PERF-FILE-WATCH

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for BridgeAgentProvider — spawn payload building, response parsing,
  * error mapping, config defaults, and Layer construction.

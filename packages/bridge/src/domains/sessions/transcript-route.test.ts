@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Transcript route tests (PRD 013 Phase 2).
  *
@@ -9,7 +10,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registerTranscriptRoutes } from './transcript-route.js';
-import type { SessionPool } from '@method/runtime/sessions';
+import type { SessionPool } from '@methodts/runtime/sessions';
 import type { TranscriptReader, SessionSummary, TranscriptTurn } from './transcript-reader.js';
 
 // ── Stubs ─────────────────────────────────────────────────────

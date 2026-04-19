@@ -9,7 +9,7 @@ status: implemented
 **Author:** PO + Lysica
 **Date:** 2026-03-26
 **Issue:** VledicFranco/method#67
-**Packages:** `@method/pacta-provider-claude-cli`, `@method/bridge`
+**Packages:** `@methodts/pacta-provider-claude-cli`, `@methodts/bridge`
 **Depends on:** PRD 027 (Pacta SDK), PRD 026 (Universal Event Bus)
 **Organization:** Vidtecci — vida, ciencia y tecnología
 
@@ -28,9 +28,9 @@ The bridge currently has three separate implementations of the same CLI invocati
 
 | Layer | Implementation | Status |
 |-------|---------------|--------|
-| `@method/methodts` | `ClaudeHeadlessProvider` (Effect) | Full: JSON parsing, `--session-id`/`--resume`, per-model cost |
-| `@method/bridge` L4 | `LlmProvider` + `ClaudeCodeProvider` | Full: JSON parsing, abort signal, output format negotiation |
-| `@method/pacta-provider-claude-cli` | `claudeCliProvider` | **Incomplete**: `emptyUsage()`, no JSON, no abort, no `--session-id` |
+| `@methodts/methodts` | `ClaudeHeadlessProvider` (Effect) | Full: JSON parsing, `--session-id`/`--resume`, per-model cost |
+| `@methodts/bridge` L4 | `LlmProvider` + `ClaudeCodeProvider` | Full: JSON parsing, abort signal, output format negotiation |
+| `@methodts/pacta-provider-claude-cli` | `claudeCliProvider` | **Incomplete**: `emptyUsage()`, no JSON, no abort, no `--session-id` |
 
 Pacta was built to be the canonical agent runtime. It needs to absorb what the bridge needs and make `LlmProvider` redundant.
 

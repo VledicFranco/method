@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 017: Strategy Pipelines — HTTP Routes (Phase 1d)
  *
@@ -7,7 +8,7 @@
 
 import { join, resolve, isAbsolute } from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 import { NodeFileSystemProvider, type FileSystemProvider } from '../../ports/file-system.js';
 import { JsYamlLoader, type YamlLoader } from '../../ports/yaml-loader.js';
 import type { EventBus } from '../../ports/event-bus.js';
@@ -31,7 +32,7 @@ export function setStrategyRoutesEventBus(bus: EventBus): void {
 }
 
 // Adaptive oversight: SessionPool port for auto-spawning oversight sessions
-import type { SessionPool } from '@method/runtime/sessions';
+import type { SessionPool } from '@methodts/runtime/sessions';
 let _pool: SessionPool | null = null;
 
 /** Configure SessionPool for adaptive oversight auto-spawn. Called from composition root. */
@@ -40,9 +41,9 @@ export function setStrategyRoutesPool(pool: SessionPool): void {
 }
 
 // PRD-044: HumanApprovalResolver + SubStrategySource ports
-// PRD-057 / S2 §3.2 / C2: engine logic moved to @method/runtime/strategy.
-import type { SubStrategySource, HumanApprovalResolver } from '@method/runtime/strategy';
-import { FsSubStrategySource } from '@method/runtime/strategy';
+// PRD-057 / S2 §3.2 / C2: engine logic moved to @methodts/runtime/strategy.
+import type { SubStrategySource, HumanApprovalResolver } from '@methodts/runtime/strategy';
+import { FsSubStrategySource } from '@methodts/runtime/strategy';
 
 let _humanApprovalResolver: HumanApprovalResolver | null = null;
 let _subStrategySource: SubStrategySource | null = null;
@@ -62,13 +63,13 @@ import {
   validateStrategyDAG,
   StrategyExecutor,
   ContextLoadExecutorImpl,
-} from '@method/runtime/strategy';
+} from '@methodts/runtime/strategy';
 import type {
   StrategyYaml,
   StrategyExecutorConfig,
   StrategyExecutionResult,
   ContextLoadExecutor,
-} from '@method/runtime/strategy';
+} from '@methodts/runtime/strategy';
 
 /** Build executor config from environment variables with defaults (DR-03: env access in bridge only) */
 export function loadExecutorConfig(): StrategyExecutorConfig {
@@ -91,7 +92,7 @@ let _contextLoadExecutor: ContextLoadExecutor | null = null;
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 if (VOYAGE_API_KEY) {
   const projectRoot = process.cwd();
-  import('@method/fca-index').then(({ createDefaultFcaIndex }) =>
+  import('@methodts/fca-index').then(({ createDefaultFcaIndex }) =>
     createDefaultFcaIndex({ projectRoot, voyageApiKey: VOYAGE_API_KEY })
   ).then((fcaIndex) => {
     _contextLoadExecutor = new ContextLoadExecutorImpl(fcaIndex.query);
@@ -101,8 +102,8 @@ if (VOYAGE_API_KEY) {
     console.error('[fca-index] context-load executor failed to initialize:', msg);
   });
 }
-import { generateRetro, saveRetro } from '@method/runtime/strategy';
-import type { StrategyDAG } from '@method/runtime/strategy';
+import { generateRetro, saveRetro } from '@methodts/runtime/strategy';
+import type { StrategyDAG } from '@methodts/runtime/strategy';
 
 // ── In-memory execution store ──────────────────────────────────
 

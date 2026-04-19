@@ -1,5 +1,5 @@
 ---
-title: "@method/pacta-provider-anthropic"
+title: "@methodts/pacta-provider-anthropic"
 scope: package
 layer: L3
 contents:
@@ -9,7 +9,7 @@ contents:
   - src/types.ts
 ---
 
-# @method/pacta-provider-anthropic
+# @methodts/pacta-provider-anthropic
 
 AgentProvider implementation for the Anthropic Messages API -- direct HTTP, no SDK dependency.
 
@@ -27,15 +27,15 @@ The provider implements both `AgentProvider` and `Streamable` interfaces. No ext
 ## Install
 
 ```bash
-npm install @method/pacta-provider-anthropic
+npm install @methodts/pacta-provider-anthropic
 ```
 
 ## Layer Position
 
 ```
-L4  @method/bridge                       Uses providers to deploy agents
-L3  @method/pacta-provider-anthropic     This package
-    @method/pacta                        Core SDK (peer dependency)
+L4  @methodts/bridge                       Uses providers to deploy agents
+L3  @methodts/pacta-provider-anthropic     This package
+    @methodts/pacta                        Core SDK (peer dependency)
 ```
 
 ## Usage
@@ -43,8 +43,8 @@ L3  @method/pacta-provider-anthropic     This package
 ### Basic Provider
 
 ```typescript
-import { anthropicProvider } from '@method/pacta-provider-anthropic';
-import { createAgent } from '@method/pacta';
+import { anthropicProvider } from '@methodts/pacta-provider-anthropic';
+import { createAgent } from '@methodts/pacta';
 
 const provider = anthropicProvider({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -93,8 +93,8 @@ Pass a `ToolProvider` to enable agentic tool use loops. The provider automatical
 5. Repeats until the model stops requesting tools or the turn limit is reached
 
 ```typescript
-import { anthropicProvider } from '@method/pacta-provider-anthropic';
-import { MockToolProvider } from '@method/pacta-testkit';
+import { anthropicProvider } from '@methodts/pacta-provider-anthropic';
+import { MockToolProvider } from '@methodts/pacta-testkit';
 
 const tools = new MockToolProvider();
 tools.addTool(
@@ -145,7 +145,7 @@ The streaming path parses SSE events from the Anthropic response body, maps them
 For custom cost tracking or offline calculations:
 
 ```typescript
-import { mapUsage, calculateCost } from '@method/pacta-provider-anthropic';
+import { mapUsage, calculateCost } from '@methodts/pacta-provider-anthropic';
 
 // Convert Anthropic API usage to Pacta TokenUsage
 const usage = mapUsage({

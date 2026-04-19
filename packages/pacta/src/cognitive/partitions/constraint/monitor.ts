@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Constraint Partition Monitor — violation detection and capacity warnings.
  *

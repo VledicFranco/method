@@ -16,7 +16,7 @@ contents:
 
 # Registry
 
-Project registry and resource management domain. Maintains an in-memory queryable registry of compiled methodology YAML specs and discovered project configurations. Serves the methodology tree, method details, manifest sync status, and promotion records via REST API backed by the @method/methodts stdlib catalog. Also provides resource copying between projects — copying methodology entries and strategy entries from a source manifest to target project manifests with per-target status reporting and graceful partial failure handling.
+Project registry and resource management domain. Maintains an in-memory queryable registry of compiled methodology YAML specs and discovered project configurations. Serves the methodology tree, method details, manifest sync status, and promotion records via REST API backed by the @methodts/methodts stdlib catalog. Also provides resource copying between projects — copying methodology entries and strategy entries from a source manifest to target project manifests with per-target status reporting and graceful partial failure handling.
 
 | Module | Purpose |
 |--------|---------|

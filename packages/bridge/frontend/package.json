@@ -1,5 +1,5 @@
 {
-  "name": "@method/bridge-frontend",
+  "name": "@methodts/bridge-frontend",
   "private": true,
   "type": "module",
   "scripts": {

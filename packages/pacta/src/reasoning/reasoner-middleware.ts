@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reasoner Middleware — type definition for reasoning strategy wrappers.
  *

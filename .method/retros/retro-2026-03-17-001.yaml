@@ -40,7 +40,7 @@ retro:
     - id: OBS-03
       type: architecture
       observation: >
-        js-yaml was already a dependency in @method/core but not in @method/bridge.
+        js-yaml was already a dependency in @methodts/core but not in @methodts/bridge.
         Adding it to bridge was necessary for Strategy YAML parsing (DR-03 prevents
         importing from core for transport reasons). This is the right call — the
         bridge independently needs YAML parsing for strategy files, not as a

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for cortexTokenExchangeMiddleware (PRD-059 §5.1 / SC-05).
  *
@@ -13,7 +14,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Pact, AgentRequest, AgentResult } from '@method/pacta';
+import type { Pact, AgentRequest, AgentResult } from '@methodts/pacta';
 import {
   cortexTokenExchangeMiddleware,
   CortexDelegationDepthExceededError,

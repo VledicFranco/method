@@ -14,4 +14,4 @@ Minimal fake implementations of the cluster's three port interfaces. Used exclus
 
 All fakes are intentionally minimal — under 20 lines each. They implement the port interface with the bare minimum needed to exercise the domain logic. No mocking frameworks, no spy wrappers — just simple in-memory state.
 
-Per FCA P3: test doubles belong next to the interfaces they fake, not in a central `__tests__/` directory. They are co-located with the cluster package so any package that depends on `@method/cluster` can import them for testing.
+Per FCA P3: test doubles belong next to the interfaces they fake, not in a central `__tests__/` directory. They are co-located with the cluster package so any package that depends on `@methodts/cluster` can import them for testing.

@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Shared event bus module — PRD 026.
  *
  * PRD-057 / S2 §3.4 / C3: The bus implementation and all transport-free sinks
- * now live in `@method/runtime/event-bus`. This barrel re-exports them so
+ * now live in `@methodts/runtime/event-bus`. This barrel re-exports them so
  * in-tree bridge consumers keep working; `WebSocketSink` stays here (depends
  * on @fastify/websocket — transport-bound per S2 §5.1).
  */
@@ -17,7 +18,7 @@ export {
   createAgentEventAdapter,
   toChannelMessage,
   toAllEventsWrapper,
-} from '@method/runtime/event-bus';
+} from '@methodts/runtime/event-bus';
 
 export type {
   InMemoryEventBusOptions,
@@ -30,7 +31,7 @@ export type {
   SessionCheckpointSinkOptions,
   PersistedSessionInput,
   SessionStatusInfo,
-} from '@method/runtime/event-bus';
+} from '@methodts/runtime/event-bus';
 
 // Bridge-only (transport-bound): WebSocketSink depends on @fastify/websocket.
 export { WebSocketSink } from './websocket-sink.js';

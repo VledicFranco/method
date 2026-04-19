@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Shared formatting and helper utilities.
  * Extracted from dashboard-route.ts so they survive legacy UI removal.

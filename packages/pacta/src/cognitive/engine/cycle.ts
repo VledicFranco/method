@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CognitiveCycle — the 8-phase cognitive cycle orchestrator.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for cognitive-provider v2 (PRD 040 C-2).
  *
@@ -12,7 +13,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { ProviderAdapter, ToolProvider, ToolResult } from '@method/pacta';
+import type { ProviderAdapter, ToolProvider, ToolResult } from '@methodts/pacta';
 import { createCognitiveSession } from '../cognitive-provider.js';
 import type { StreamEvent } from '../pool.js';
 

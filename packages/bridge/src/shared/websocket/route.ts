@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── WebSocket route registration for Fastify ────────────────
 
 import type { FastifyInstance } from 'fastify';

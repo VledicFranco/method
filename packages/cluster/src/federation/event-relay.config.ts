@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Federation Configuration ────────────────────────────────────
 //
 // Zod-validated config for the EventRelay. Controls which events

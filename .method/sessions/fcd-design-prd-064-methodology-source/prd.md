@@ -6,13 +6,13 @@ status: implemented (PR #183, merged 2026-04-15)
 version: "0.1"
 size: M
 domains:
-  - "@method/agent-runtime"        # new impl lives here
-  - "@method/runtime"               # port extension owner (post PRD-057)
-  - "@method/bridge"                # reference consumer + session-store listener
+  - "@methodts/agent-runtime"        # new impl lives here
+  - "@methodts/runtime"               # port extension owner (post PRD-057)
+  - "@methodts/bridge"                # reference consumer + session-store listener
 surfaces:
   - S7   # CortexMethodologySource + MethodologySource extension (frozen)
 consumes:
-  - S2   # RuntimePackageBoundary — port moves to @method/runtime/ports
+  - S2   # RuntimePackageBoundary — port moves to @methodts/runtime/ports
   - S1   # MethodAgentPort — CortexCtx shape (storage + events facades)
 related:
   - docs/roadmap-cortex-consumption.md §4.2 item 11
@@ -29,7 +29,7 @@ blocks:
   - Group B5 (roadmap §5)
   - PlatformMethodologyApi (Cortex-side follow-on PRD)
 depends_on:
-  - PRD-057 (moves MethodologySource port to @method/runtime/ports)
+  - PRD-057 (moves MethodologySource port to @methodts/runtime/ports)
   - PRD-058 (agent-runtime scaffold + CortexCtx shape)
 ---
 
@@ -76,7 +76,7 @@ gate reports, (c) `methodology.updated` events trigger targeted
 ## 2. Problem
 
 Today the only `MethodologySource` implementation is `StdlibSource`, which
-wraps the compiled `@method/methodts` stdlib catalog. That is a zero-I/O,
+wraps the compiled `@methodts/methodts` stdlib catalog. That is a zero-I/O,
 fixed, one-size-fits-all view. When method runs as a library inside a
 Cortex tenant app, three properties break:
 
@@ -133,10 +133,10 @@ registry-invariant (DR-01, no uncompiled methodology in production) is
 upheld at the write boundary where an admin is synchronously waiting.
 
 ### C-5. No Cortex SDK coupling in the shared port
-`MethodologySource` lives in `@method/runtime/ports` and must never import
+`MethodologySource` lives in `@methodts/runtime/ports` and must never import
 from `@cortex/*`. All Cortex-specific types live on
 `CortexMethodologySourceDeps` and two structural shims (`CortexStoragePort`,
-`CortexEventsPort`) declared inside `@method/agent-runtime`. The Cortex
+`CortexEventsPort`) declared inside `@methodts/agent-runtime`. The Cortex
 SDK is adapted to those shims at the agent-runtime composition root —
 the runtime itself stays Cortex-agnostic.
 
@@ -219,7 +219,7 @@ production-invariant: runtime code does not write.
   version advance.
 - **Inheritance resolver** with three modes: `stdlib-plus-overrides`
   (default), `per-app-only`, `stdlib-read-only`.
-- **Compilation pipeline binding**: reuse `@method/methodts` compile/parse
+- **Compilation pipeline binding**: reuse `@methodts/methodts` compile/parse
   primitives to run G1-G6 at write time. Persist the resulting
   `compilationReport` on every doc.
 - **Admin methods** on the class (callable from the Cortex-side
@@ -271,7 +271,7 @@ L4   Cortex admin UI (Cortex tenant webapp)           — not in this PRD
      │
      │ HTTPS ──→ PlatformMethodologyApi routes        — follow-on Cortex PRD
      │
-L3   @method/agent-runtime                            — THIS PRD
+L3   @methodts/agent-runtime                            — THIS PRD
      │   methodology/
      │     cortex-methodology-source.ts
      │     types.ts                                   — MethodologyDocument etc.
@@ -283,17 +283,17 @@ L3   @method/agent-runtime                            — THIS PRD
      │
      │ implements (import type)
      ▼
-L3   @method/runtime/ports                            — PRD-057 (dependency)
+L3   @methodts/runtime/ports                            — PRD-057 (dependency)
      │   methodology-source.ts                        — extended (optional lifecycle)
      │   stdlib-source.ts                             — gains no-op stubs
      │   in-memory-source.ts                          — gains controllable onChange
      ▼
-L2   @method/methodts                                 — reused verbatim
+L2   @methodts/methodts                                 — reused verbatim
          compile/parse primitives, Method<S>, Methodology<S>, Gate
 ```
 
-The Cortex binding stays entirely inside `@method/agent-runtime`.
-`@method/runtime` is transport-free and Cortex-free.
+The Cortex binding stays entirely inside `@methodts/agent-runtime`.
+`@methodts/runtime` is transport-free and Cortex-free.
 
 ### 6.2 Dual-Path Hot Reload
 
@@ -497,7 +497,7 @@ interface MethodologyDocument {
       details: string;
     }>;
     compiledAt: string;                 // ISO-8601
-    methodtsVersion: string;            // pin of @method/methodts at compile
+    methodtsVersion: string;            // pin of @methodts/methodts at compile
   };
   createdAt: string;
   createdBy: string;                    // userId from Cortex auth
@@ -636,7 +636,7 @@ entry.
 
 ## 10. Per-Domain Architecture
 
-### 10.1 `@method/runtime/ports` (port extension, via PRD-057)
+### 10.1 `@methodts/runtime/ports` (port extension, via PRD-057)
 
 Files changed:
 - `methodology-source.ts` — add four optional lifecycle methods +
@@ -651,7 +651,7 @@ No breaking change. All existing consumers compile unchanged.
 Gates: `G-METHODOLOGY-SOURCE-CORE-SYNC` (S7 §11) enforces that the
 three core reads remain synchronous.
 
-### 10.2 `@method/agent-runtime` (new impl)
+### 10.2 `@methodts/agent-runtime` (new impl)
 
 Directory layout:
 
@@ -662,7 +662,7 @@ packages/agent-runtime/src/methodology/
   cortex-storage-port.ts            — structural shim for ctx.storage subset
   cortex-events-port.ts             — structural shim for ctx.events subset
   inheritance-resolver.ts           — resolveCache() algorithm (§6.3)
-  gate-runner.ts                    — write-time G1-G6 orchestration over @method/methodts
+  gate-runner.ts                    — write-time G1-G6 orchestration over @methodts/methodts
   cortex-methodology-source.test.ts — unit tests (fixture ports)
   inheritance-resolver.test.ts
 ```
@@ -675,7 +675,7 @@ Tests use fixture implementations of `CortexStoragePort` and
 `CortexEventsPort` — no Mongo, no SNS. The conformance testkit
 (PRD-065) subsumes a real-Mongo smoke test later.
 
-### 10.3 `@method/bridge` (consumer wiring)
+### 10.3 `@methodts/bridge` (consumer wiring)
 
 `domains/methodology/store.ts`: add
 `onMethodologyChange(change: MethodologyChange): void` that drops the
@@ -694,7 +694,7 @@ Additive release. No breaking changes.
 1. **After PRD-057 lands** (port extension):
    - `StdlibSource` / `InMemorySource` get no-op lifecycle stubs.
    - Bridge `MethodologySessionStore` adds `onMethodologyChange` (no-op path).
-2. **PRD-064 lands** in two sub-waves inside `@method/agent-runtime`:
+2. **PRD-064 lands** in two sub-waves inside `@methodts/agent-runtime`:
    - Wave A: types + shims + `CortexMethodologySource` class + in-memory
      test coverage with fixture ports.
    - Wave B: architecture gates + integration test against a fixture
@@ -720,7 +720,7 @@ replica handled which turn.
 **Mitigation:**
 - Session affinity at the pool level (sessions stick to their starting
   replica for their duration) — already the default in
-  `@method/runtime/sessions`.
+  `@methodts/runtime/sessions`.
 - DLQ monitoring on the `methodology.updated` subscription. Flag for the
   follow-on Cortex admin UI PRD to surface DLQ counts.
 - Bounded: the drift window closes on the next successful delivery or
@@ -865,8 +865,8 @@ Plus one new gate introduced here:
    subscriptions; declaring one type is strictly simpler than
    declaring four.
 
-7. **Keep `StdlibSource` in `@method/runtime/ports`**, not in
-   `@method/agent-runtime`. `StdlibSource` is the inheritance base for
+7. **Keep `StdlibSource` in `@methodts/runtime/ports`**, not in
+   `@methodts/agent-runtime`. `StdlibSource` is the inheritance base for
    `CortexMethodologySource` — agent-runtime needs to import it. S2
    (RuntimePackageBoundary) moves it; this PRD consumes it as a
    dependency.
@@ -880,8 +880,8 @@ Plus one new gate introduced here:
 
 - **Status:** draft. Reviewers: Method team (pacta maintainers),
   Cortex team (PRD-072 and PRD-064 owners).
-- **Depends on:** PRD-057 (port move, `@method/runtime` package), PRD-058
-  (`@method/agent-runtime` scaffold + `CortexCtx` shape).
+- **Depends on:** PRD-057 (port move, `@methodts/runtime` package), PRD-058
+  (`@methodts/agent-runtime` scaffold + `CortexCtx` shape).
 - **Blocks:** Cortex-side `PlatformMethodologyApi` routes PRD (follow-on);
   PRD-065 conformance fixture for methodology curation.
 - **Surface contract:** S7 frozen on 2026-04-14 at

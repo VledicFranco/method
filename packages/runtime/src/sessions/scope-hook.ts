@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── PRD 014: Pre-Commit Hook Generator ─────────────────────────
 // Generates a bash pre-commit hook that enforces allowed_paths
 // scope constraints in git worktrees. The hook is self-contained

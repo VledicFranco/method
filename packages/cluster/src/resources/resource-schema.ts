@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Resource Schema ─────────────────────────────────────────────
 //
 // Re-exports the ResourceSnapshot type from types.ts for convenient

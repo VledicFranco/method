@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M1_INTERACTIVE — Human-in-the-Loop Dispatch Method (M1-INTERACTIVE v1.0).
  *

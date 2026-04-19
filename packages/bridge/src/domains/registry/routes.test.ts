@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 019.2: Registry API Endpoint Tests
  *
  * Tests the registry API endpoints. The tree and method detail endpoints
- * now serve from the @method/methodts stdlib catalog and metadata.
+ * now serve from the @methodts/methodts stdlib catalog and metadata.
  * Manifest and promotion endpoints still use YAML files.
  */
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Experiments domain — type definitions (PRD 041 Phase 2).
  *

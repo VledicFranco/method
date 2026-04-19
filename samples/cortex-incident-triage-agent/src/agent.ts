@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Sample Cortex tenant app — the entry-point module Cortex calls with a
  * real `ctx`. In production deployment, Cortex wires this through the
@@ -13,7 +14,7 @@ import {
   type AgentEvent,
   type CortexCtx,
   type MethodAgentResult,
-} from '@method/agent-runtime';
+} from '@methodts/agent-runtime';
 import { incidentTriagePact } from './pacts/incident-triage.js';
 import type { TriageOutput } from './types.js';
 

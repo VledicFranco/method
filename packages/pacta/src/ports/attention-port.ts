@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Attention Port — event-driven stimuli for multi-sense cognitive agents (PRD 032, P8).
  *

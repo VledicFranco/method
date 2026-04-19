@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { EpisodicEntry, SemanticEntry } from '@method/pacta';
+import type { EpisodicEntry, SemanticEntry } from '@methodts/pacta';
 import { DualStoreBuilder, dualStoreBuilder } from './cognitive-builders.js';
 
 // ── DualStoreBuilder ──────────────────────────────────────────

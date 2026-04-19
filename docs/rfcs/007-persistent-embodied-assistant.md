@@ -3,7 +3,7 @@
 **Status:** Draft — exploratory architecture + research program
 **Author:** PO + Lysica
 **Date:** 2026-04-05
-**Applies to:** `pv-lysica` (new repo), `pacta-py` (new package), `@method/pacta` (parity), `packages/bridge` (MCP consumer)
+**Applies to:** `pv-lysica` (new repo), `pacta-py` (new package), `@methodts/pacta` (parity), `packages/bridge` (MCP consumer)
 **Organization:** Vidtecci
 **Extends:** RFC 001 (Cognitive Composition), RFC 002 (SLM Compilation), RFC 005 (Autonomous Skill Compilation)
 **Depends on:** RFC 001 module algebra, RFC 003 workspace partitions, RFC 005 bootstrap flywheel
@@ -93,7 +93,7 @@ a clean port of the module contract, composition operators, and workspace system
 ### pacta-py Parity Strategy
 
 Reimplementing the cognitive algebra in Python creates a drift risk. Three mechanisms
-enforce parity between `@method/pacta` (TypeScript) and `pacta-py` (Python):
+enforce parity between `@methodts/pacta` (TypeScript) and `pacta-py` (Python):
 
 **P1 — Shared test fixtures (primary enforcement):**
 Language-agnostic YAML/JSON test scenarios in a shared `pacta-schema/` package:
@@ -973,8 +973,8 @@ Beyond Phase 5, the following directions are available but not planned:
 | RFC 003 (Workspace Partitions) | Persona anchor uses NoEviction constraint partition (ported to pacta-py) |
 | RFC 005 (Autonomous Compilation) | Lysica's accumulated experience → training data → autonomous SLM creation |
 | RFC 006 (Anticipatory Monitoring) | Phase-aware evaluation applies to Lysica's scheduled actions |
-| `@method/pacta` (TypeScript) | Parity target — shared fixtures ensure algebra consistency across languages |
-| `@method/bridge` | Infrastructure consumed via MCP + WS + HTTP. Bridge is unmodified. |
+| `@methodts/pacta` (TypeScript) | Parity target — shared fixtures ensure algebra consistency across languages |
+| `@methodts/bridge` | Infrastructure consumed via MCP + WS + HTTP. Bridge is unmodified. |
 | PRD 036 (Memory Architecture) | CLS dual-store design ported to LanceDB + SQLite |
 | PRD 049 (KPI Checker SLM) | Bootstrapped SLM methodology applies to new Lysica modules |
 
@@ -1005,7 +1005,7 @@ merger or clear scope separation during Phase 0 co-design.
 (`VledicFranco/pacta-py`) once stabilized. This enables:
 - Other Python agents to use the cognitive algebra
 - SLM experiments to run natively in Python (where the ML tooling lives)
-- Eventual parity with `@method/pacta` as two implementations of one specification
+- Eventual parity with `@methodts/pacta` as two implementations of one specification
 
 ---
 

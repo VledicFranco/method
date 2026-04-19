@@ -5,12 +5,12 @@ status: implemented
 
 # PRD 021: MethodTS — Typed Methodology SDK
 
-**Status:** Phase 2 Complete (2026-03-22). 1171 methodts tests + 1045 monorepo tests. MCP rewired, core cleaned, @method/types shared package created.
+**Status:** Phase 2 Complete (2026-03-22). 1171 methodts tests + 1045 monorepo tests. MCP rewired, core cleaned, @methodts/types shared package created.
 **Owner:** Steering Council
 **Methodology:** P2-SD v2.0
 **Depends on:** PRD 017 (strategy pipelines), PRD 004 (methodology runtime), F1-FTH (formal theory)
 **Complexity:** High — new package, Effect ecosystem adoption, touches theory extensions
-**Package:** `@method/methodts` (new)
+**Package:** `@methodts/methodts` (new)
 **Review:** 4-advisor adversarial review completed 2026-03-21. 41 findings, 14 fixes applied. Action plan: `tmp/action-plan-021-methodts-2026-03-21.md`
 **Impacts:** PRD 004 (replaced Phase 3), PRD 017 (subsumed Phase 2-3), PRD 015 (subsumed), PRD 006 (extended), PRD 018 (extended — EventBus feeds triggers), PRD 012 (extended — wraps print-mode), PRD 020 (extended — project-scoped execution), PRD 010 (complemented — typed retros), PRD 014 (complemented — typed scope), PRD 008 (unchanged — richer events via hook)
 
@@ -85,7 +85,7 @@ import {
 
   // stdlib (batteries included)
   P0_META, M1_MDES, D_META, predicates, prompts, compilationGates,
-} from "@method/methodts"
+} from "@methodts/methodts"
 ```
 
 ### 2.3 User Stories
@@ -95,7 +95,7 @@ import {
 *"I'm a methodology designer. I want to define a new code review method in TypeScript and verify it's structurally sound before shipping it."*
 
 ```typescript
-import { check, and, not, type DomainTheory, type Step, type Method, compileMethod } from "@method/methodts"
+import { check, and, not, type DomainTheory, type Step, type Method, compileMethod } from "@methodts/methodts"
 
 // 1. Define the domain — what the method operates on
 type ReviewState = {
@@ -173,7 +173,7 @@ report.gates.forEach(g => console.log(`${g.gate}: ${g.status}`))
 *"I'm running a delivery methodology. I want the runtime to pause at review steps so I can inspect the trace and decide whether to continue."*
 
 ```typescript
-import { runMethodology, ClaudeHeadlessProvider } from "@method/methodts"
+import { runMethodology, ClaudeHeadlessProvider } from "@methodts/methodts"
 import { P2_SD_methodology, type DeliveryState } from "./my-methodology"
 
 const suspended = await pipe(
@@ -203,7 +203,7 @@ if ("reason" in suspended) {
 *"I'm an orchestrator. I need to generate a typed commission prompt for an implementation sub-agent with delivery rules and scope constraints."*
 
 ```typescript
-import { sequence, constant, Prompt, commission, type Commission } from "@method/methodts"
+import { sequence, constant, Prompt, commission, type Commission } from "@methodts/methodts"
 
 type TaskContext = { taskId: string; description: string; scope: string[]; rules: string[] }
 
@@ -230,7 +230,7 @@ const comms = batchCommission(implCommission, tasks, (t, i) => ({
 *"I want a strategy that runs my delivery methodology, and if it fails at the review gate, a human decides whether to fix and retry or switch to a different approach."*
 
 ```typescript
-import { runStrategy, interactiveController, type StrategyController } from "@method/methodts"
+import { runStrategy, interactiveController, type StrategyController } from "@methodts/methodts"
 
 const myStrategy: StrategyController<DeliveryState> = {
   id: "S-DELIVERY",
@@ -276,7 +276,7 @@ const result = await pipe(
 *"I want to use M1-MDES (the method design method) from the stdlib to design a new methodology, then compile it with the library."*
 
 ```typescript
-import { P0_META, M1_MDES, compilationGates, compileMethod, runMethodologyToCompletion } from "@method/methodts/stdlib"
+import { P0_META, M1_MDES, compilationGates, compileMethod, runMethodologyToCompletion } from "@methodts/methodts/stdlib"
 
 // Run the design method — an agent crystallizes domain knowledge into a method
 const designResult = await pipe(
@@ -310,7 +310,7 @@ if (report.overall === "compiled") {
 *"I want to verify that my methodology's routing logic is correct before burning tokens."*
 
 ```typescript
-import { evaluateTransition, simulateRun, type Methodology } from "@method/methodts"
+import { evaluateTransition, simulateRun, type Methodology } from "@methodts/methodts"
 
 // Single-state evaluation
 const result = evaluateTransition(myMethodology, currentState)
@@ -334,7 +334,7 @@ assert.deepEqual(
 *"I want to send a Slack notification whenever a methodology completes, and trigger a new triage methodology when a GitHub webhook fires."*
 
 ```typescript
-import { EventBus, type EventHook, type RuntimeEvent } from "@method/methodts"
+import { EventBus, type EventHook, type RuntimeEvent } from "@methodts/methodts"
 
 // Hook: notify on completion
 const slackNotify: EventHook<any> = {
@@ -367,7 +367,7 @@ app.post("/webhook/github", (req) => {
 *"I want to run a set of quality checks against my project as a gate suite — like a test runner, but the checks are methodology-aware."*
 
 ```typescript
-import { testRunner, scriptGate, checklistGate, type GateSuite } from "@method/methodts"
+import { testRunner, scriptGate, checklistGate, type GateSuite } from "@methodts/methodts"
 
 const qualityGates: GateSuite<ProjectState> = {
   name: "Release Readiness",
@@ -403,7 +403,7 @@ The API is layered for progressive learning:
 **Level 1 — Templates and shortcuts** (day 1):
 ```typescript
 // Use pre-built templates, don't touch the algebra
-import { commission, templates } from "@method/methodts"
+import { commission, templates } from "@methodts/methodts"
 const comm = commission(templates.implementation, myTask, bridgeParams)
 ```
 
@@ -430,7 +430,7 @@ const result = await runStrategy(myController, initialState)
 **Level 5 — Stdlib and meta-methods** (week 4+):
 ```typescript
 // Use M1-MDES to design new methods, compose methods, derive IDDs
-import { M1_MDES, compose, deriveIDD } from "@method/methodts/stdlib"
+import { M1_MDES, compose, deriveIDD } from "@methodts/methodts/stdlib"
 ```
 
 ---
@@ -439,23 +439,23 @@ import { M1_MDES, compose, deriveIDD } from "@method/methodts/stdlib"
 
 ### Vision
 
-MethodTS is a TypeScript library that makes the formal theory executable — and ultimately **replaces `@method/core` as the methodology runtime** (D-093, SESSION-039, PO-approved). A method designer writes typed definitions — domain theories, steps, methods, methodologies — and the library provides: prompt composition, predicate evaluation, routing automation, commission generation, state tracking, gate evaluation, sort extraction, and TLA+ compilation. Agent context windows are freed for judgment and creativity; everything else is compiled, tested, and instant.
+MethodTS is a TypeScript library that makes the formal theory executable — and ultimately **replaces `@methodts/core` as the methodology runtime** (D-093, SESSION-039, PO-approved). A method designer writes typed definitions — domain theories, steps, methods, methodologies — and the library provides: prompt composition, predicate evaluation, routing automation, commission generation, state tracking, gate evaluation, sort extraction, and TLA+ compilation. Agent context windows are freed for judgment and creativity; everything else is compiled, tested, and instant.
 
 **TypeScript is the source of truth** for methodology definitions (D-094). YAML becomes a compilation target — readable, archival, backward-compatible — but not authoritative. The project invariant ("theory is source of truth") and the faithfulness priority both favor this: TypeScript types represent F1-FTH definitions more faithfully than YAML strings.
 
 ### Transition Plan (D-093)
 
-**Phase 1 — Prove:** MethodTS is standalone (DR-T05). `@method/core` is unchanged. MethodTS must demonstrate it can express and run methodologies independently. Type duplication between core and MethodTS is intentional and temporary.
+**Phase 1 — Prove:** MethodTS is standalone (DR-T05). `@methodts/core` is unchanged. MethodTS must demonstrate it can express and run methodologies independently. Type duplication between core and MethodTS is intentional and temporary.
 
 **Phase 2 — Integrate:** MCP tool handlers rewire to call MethodTS instead of core (D-099a). A runtime YAML adapter loads existing YAML into MethodTS types dynamically for methodologies not yet ported to TypeScript (D-098). Shared types package extracts structural overlap. P1-EXEC and P2-SD ported to stdlib (D-100).
 
-**Phase 3 — Deprecate:** `@method/core` deprecated. MethodTS IS the runtime. YAML registry becomes archival. P-GH, P3-GOV, P3-DISPATCH ported to stdlib. Core's session management, routing, and validation fully replaced.
+**Phase 3 — Deprecate:** `@methodts/core` deprecated. MethodTS IS the runtime. YAML registry becomes archival. P-GH, P3-GOV, P3-DISPATCH ported to stdlib. Core's session management, routing, and validation fully replaced.
 
 **Empirical gate for Phase 2:** MethodTS must run P2-SD end-to-end on a real project (pv-method itself) using `ClaudeHeadlessProvider`, producing equivalent results to the current core-based execution. This is not a test-state simulation — it is a real commissioned agent producing real code.
 
 **What stays unchanged during transition:**
-- `@method/bridge` stays as the agent session transport layer (PTY management, dashboard, channels, spawn queue). The bridge does not execute methodology logic. (D-099b)
-- `@method/mcp` tool surfaces stay unchanged — agents see no difference. Only the handler implementations change. (D-099a)
+- `@methodts/bridge` stays as the agent session transport layer (PTY management, dashboard, channels, spawn queue). The bridge does not execute methodology logic. (D-099b)
+- `@methodts/mcp` tool surfaces stay unchanged — agents see no difference. Only the handler implementations change. (D-099a)
 - The YAML registry stays readable via the runtime adapter. No methodology becomes inaccessible during transition. (D-098)
 
 ### Scope
@@ -488,7 +488,7 @@ MethodTS is a TypeScript library that makes the formal theory executable — and
 **Phase 2 — Integrate (D-093, D-098, D-099, D-100):**
 - **MCP rewire:** tool handlers call MethodTS instead of core. Tool surfaces unchanged. (D-099a)
 - **Runtime YAML adapter:** load existing YAML into MethodTS types dynamically (D-098). One-time scaffolding tool to generate .ts stubs from .yaml.
-- **Shared types package:** `@method/types` extracts structural overlap between core and MethodTS (D-099d)
+- **Shared types package:** `@methodts/types` extracts structural overlap between core and MethodTS (D-099d)
 - **Stdlib expansion:** P1-EXEC + P2-SD ported as typed MethodTS values (D-100)
 - `BridgeAgentProvider` — bridge-backed agent execution with PTY sessions, channels, dashboard
 - `agentSteeredController` — strategy controller that commissions reasoning agents for decisions
@@ -509,7 +509,7 @@ MethodTS is a TypeScript library that makes the formal theory executable — and
 - Heterogeneous quantifiers (`forall` over sub-types)
 
 **Phase 3 — Deprecate (D-093, D-100):**
-- `@method/core` deprecated and removed
+- `@methodts/core` deprecated and removed
 - MethodTS IS the methodology runtime
 - YAML registry becomes read-only archival format
 - Stdlib expansion: P-GH + P3-GOV + P3-DISPATCH ported as typed MethodTS values
@@ -548,7 +548,7 @@ Phase 1b (integration, Effect services + runtime):
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   @method/methodts                   │
+│                   @methodts/methodts                   │
 │                                                      │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
 │  │  Prompt   │  │Predicate │  │   DomainTheory    │  │
@@ -576,7 +576,7 @@ Phase 1b (integration, Effect services + runtime):
 └──────────────────────┬──────────────────────────────┘
                        │
           ┌────────────┴────────────┐
-          │    @method/bridge       │
+          │    @methodts/bridge       │
           │  (spawn, prompt, kill)  │
           └─────────────────────────┘
 ```
@@ -1243,7 +1243,7 @@ type Commission<A> = {
 
 ### Component 10: Strategy — Adaptive Methodology Loop
 
-A Strategy is **not** a static DAG of nodes (that model is in `@method/core` PRD 017). A Strategy is an **adaptive meta-loop** that runs a methodology, observes outcomes, and dynamically decides how to continue — including changing the methodology itself. Strategies are possible because the runtime supports **first-class suspension** (§12.1).
+A Strategy is **not** a static DAG of nodes (that model is in `@methodts/core` PRD 017). A Strategy is an **adaptive meta-loop** that runs a methodology, observes outcomes, and dynamically decides how to continue — including changing the methodology itself. Strategies are possible because the runtime supports **first-class suspension** (§12.1).
 
 A Strategy wraps methodology execution with: objectives (what "done" means at the strategy level), gates (when to stop), failure tolerance (how to recover), and a decision-maker (human or agent) that steers adaptation at each suspension point.
 
@@ -2658,8 +2658,8 @@ export {
 The core value proposition: a user who wants to design a new methodology uses the stdlib's `M1_MDES` — the method design method — which is itself a typed MethodTS method. The design workflow is:
 
 ```typescript
-import { M1_MDES, D_MDES, compilationGates } from "@method/methodts/stdlib"
-import { runMethodology, ClaudeHeadlessProvider } from "@method/methodts"
+import { M1_MDES, D_MDES, compilationGates } from "@methodts/methodts/stdlib"
+import { runMethodology, ClaudeHeadlessProvider } from "@methodts/methodts"
 
 // Design a new methodology by running M1-MDES
 const designResult = await pipe(
@@ -2820,7 +2820,7 @@ packages/methodts/
 | Property testing | **fast-check** | Generate arbitrary Predicate<A>, Step<S> values to verify algebraic laws |
 | Build | **tsc** | Standard TypeScript compilation. Preferred over tsup for library builds due to known Effect tree-shaking conflicts with esbuild. |
 | Documentation | **Markdown** in `docs/` | Consistent with project conventions |
-| YAML | **js-yaml** | Consistent with `@method/core` (DR-05) |
+| YAML | **js-yaml** | Consistent with `@methodts/core` (DR-05) |
 
 ---
 
@@ -2870,10 +2870,10 @@ packages/methodts/
 | ID | Rule |
 |----|------|
 | DR-T01 | All types must map to a named F1-FTH definition or be documented as an implementation concept. Document the mapping and fidelity level in `theory-mapping.md`. |
-| DR-T02 | Within `@method/methodts`, Effect is the primary side-effect mechanism. No raw Promises or `async/await` in internal logic. Integration boundaries with existing packages use `Effect.promise()` wrappers. Existing packages (`core`, `mcp`, `bridge`) retain their current async patterns. |
+| DR-T02 | Within `@methodts/methodts`, Effect is the primary side-effect mechanism. No raw Promises or `async/await` in internal logic. Integration boundaries with existing packages use `Effect.promise()` wrappers. Existing packages (`core`, `mcp`, `bridge`) retain their current async patterns. |
 | DR-T03 | Algebraic laws (monoid, functor, logical equivalences) must have property-based tests. |
 | DR-T04 | Every public function must have JSDoc documentation with at least one example. |
-| DR-T05 | **Phase 1 only:** Zero runtime dependency on `@method/core`, `@method/mcp`, or `@method/bridge`. MethodTS is standalone. Type duplication is intentional. Phase 2 introduces shared types package. Phase 3 deprecates core — DR-T05 expires. (D-099d, SESSION-039) |
+| DR-T05 | **Phase 1 only:** Zero runtime dependency on `@methodts/core`, `@methodts/mcp`, or `@methodts/bridge`. MethodTS is standalone. Type duplication is intentional. Phase 2 introduces shared types package. Phase 3 deprecates core — DR-T05 expires. (D-099d, SESSION-039) |
 | DR-T06 | State tracking types must be serializable to YAML (for retro/trace integration). |
 | DR-T07 | Script steps execute within the Effect runtime with the same pre/post contract as agent steps. |
 | DR-T08 | Gate evaluation must produce diagnostic traces (not just pass/fail) for commission feedback. |
@@ -2915,7 +2915,7 @@ packages/methodts/
 22. `compose(M_left, M_right, interface)` produces a composite method that passes `compileMethod()`
 
 **Phase 3 is complete when:**
-23. `@method/core` removed from the monorepo — MethodTS is the sole methodology runtime
+23. `@methodts/core` removed from the monorepo — MethodTS is the sole methodology runtime
 24. P-GH, P3-GOV, P3-DISPATCH ported to stdlib
 25. YAML registry is read-only archival — all methodology authoring is TypeScript
 
@@ -2930,7 +2930,7 @@ packages/methodts/
 | TLA+ tooling availability | Low — TLA+ toolbox is Java-based, may not be in all environments | Phase 2 delivery. Compiler produces .tla text files that can be verified externally. |
 | Premature core replacement | High — replacing core before MethodTS is proven causes regression | Empirical gate: MethodTS must run P2-SD end-to-end on pv-method with ClaudeHeadlessProvider before Phase 2 integration begins. DR-T05 enforces Phase 1 standalone. (D-093) |
 | Fast-check generator complexity | Medium — generating valid Predicate<A> trees requires careful recursion bounds | Use `fc.letrec` for recursive structures with depth cap of 3. Budget implementation time for generator design. Quantifier laws tested with hand-crafted generators; propositional laws with fully generic generators. |
-| Type duplication with @method/core | Medium — parallel type definitions may drift over time | Intentional per DR-T05 and Migration Strategy. Phase 2 addresses convergence via shared types package or code generation. |
+| Type duplication with @methodts/core | Medium — parallel type definitions may drift over time | Intentional per DR-T05 and Migration Strategy. Phase 2 addresses convergence via shared types package or code generation. |
 | Suspension serialization complexity | High — reconstructing coroutine resume from serialized position is non-trivial | `SuspendedMethodology<S>` must serialize to YAML/JSON (DR-T06) and reconstruct `resume` from position + methodology on deserialization. Risk: state divergence or reconstruction failure at certain suspension points (mid-retry, mid-context-assembly). Mitigation: round-trip property tests for every `SuspensionReason` variant; explicit test coverage of resume-from-deserialization; limit serializability to well-defined suspension points (post-step, post-gate, method-boundary) — mid-step suspensions are not serializable. |
 | EventBus blocking hook deadlock | Low — blocking hooks can stall the runtime if they wait for events the runtime hasn't emitted | Mitigation: mandatory timeout on all blocking hooks (default 30s). Blocking hooks that exceed timeout are killed and logged as hook failures. Document that blocking hooks must not call `EventBus.waitFor` on events from the same methodology run. |
 

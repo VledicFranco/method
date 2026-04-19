@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Persona Module — dynamic reasoning style injection (PRD 032, P4).
  *

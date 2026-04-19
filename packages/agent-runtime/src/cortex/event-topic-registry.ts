@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * METHOD_TOPIC_REGISTRY — the single source of truth for the 21 Cortex
  * `ctx.events` topics the method runtime emits (PRD-063, S6 §3.3).

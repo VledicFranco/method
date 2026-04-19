@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Monitor — meta-level cognitive module for anomaly detection and escalation.
  *

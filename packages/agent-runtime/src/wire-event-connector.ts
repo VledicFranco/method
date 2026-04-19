@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Optional `CortexEventConnector` auto-wiring (PRD-058 §5 D7, S6).
  *
@@ -10,7 +11,7 @@
  * (`method.agent.<type>`) and is fire-and-forget (errors logged via ctx.log).
  */
 
-import type { AgentEvent } from '@method/pacta';
+import type { AgentEvent } from '@methodts/pacta';
 import type { CortexCtx } from './cortex/ctx-types.js';
 
 export interface CortexEventConnectorSubscriber {

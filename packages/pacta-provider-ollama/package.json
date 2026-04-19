@@ -1,17 +1,41 @@
 {
-  "name": "@method/pacta-provider-ollama",
+  "name": "@methodts/pacta-provider-ollama",
   "version": "0.1.0",
   "description": "Ollama AgentProvider for Pacta — OpenAI-compatible API over local/remote Ollama instances",
-  "type": "module",
-  "main": "dist/index.js",
-  "exports": {
-    ".": "./dist/index.js"
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/pacta-provider-ollama"
   },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -b",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "test": "tsx --test src/ollama-provider.test.ts",
+    "test:integration": "tsx --test src/ollama-provider.integration.test.ts"
   },
   "dependencies": {
-    "@method/pacta": "*"
-  }
+    "@methodts/pacta": "*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module"
 }

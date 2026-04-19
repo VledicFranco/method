@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * adapter/ — YAML ↔ TypeScript serialization layer.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * WS-2: Strategy DAG Pipeline Tests
  *

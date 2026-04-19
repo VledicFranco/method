@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Narrative metadata for P2-SD (Software Delivery Methodology) and its 7 methods.
  * Extracted from compiled YAML specs in registry/P2-SD/.

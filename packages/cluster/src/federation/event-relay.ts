@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Event Relay ─────────────────────────────────────────────────
 //
 // Federates bridge events across cluster peers. Decides which local

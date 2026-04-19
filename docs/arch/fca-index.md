@@ -2,13 +2,13 @@
 
 ## Layer placement
 
-`@method/fca-index` is an L3 library. It has zero dependencies on `@method/mcp` or `@method/bridge`. The dependency flows upward: `@method/mcp` depends on `@method/fca-index`, not the reverse.
+`@methodts/fca-index` is an L3 library. It has zero dependencies on `@methodts/mcp` or `@methodts/bridge`. The dependency flows upward: `@methodts/mcp` depends on `@methodts/fca-index`, not the reverse.
 
 ```
-L4  @method/bridge
-L3  @method/mcp ──────────────────────────▶ @method/fca-index
-    @method/pacta                             (this package)
-    @method/methodts
+L4  @methodts/bridge
+L3  @methodts/mcp ──────────────────────────▶ @methodts/fca-index
+    @methodts/pacta                             (this package)
+    @methodts/methodts
 ```
 
 The library is self-contained. It can be used independently of the rest of the method system.
@@ -36,9 +36,9 @@ Six ports, split by visibility:
 
 | Port | Direction | Consumer |
 |------|-----------|----------|
-| `ContextQueryPort` | fca-index → mcp | `@method/mcp` `context_query` tool |
-| `CoverageReportPort` | fca-index → mcp, fca-index → CLI | `@method/mcp` `coverage_check`, `fca-index` binary |
-| `ManifestReaderPort` | filesystem → scanner | `@method/fca-index` scanner domain (via factory) |
+| `ContextQueryPort` | fca-index → mcp | `@methodts/mcp` `context_query` tool |
+| `CoverageReportPort` | fca-index → mcp, fca-index → CLI | `@methodts/mcp` `coverage_check`, `fca-index` binary |
+| `ManifestReaderPort` | filesystem → scanner | `@methodts/fca-index` scanner domain (via factory) |
 
 **Internal (frozen 2026-04-10, extended from 2026-04-08) — within the library:**
 
@@ -101,4 +101,4 @@ Two factory functions with different tradeoffs:
 | `G-PORT-SCANNER` | `scanner/` must not import from `query/`, `coverage/`, or `index-store/` directly | architecture test (`src/architecture.test.ts`) |
 | `G-PORT-QUERY` | `query/` and `coverage/` must not import from `scanner/` or `cli/` | architecture test |
 | `G-BOUNDARY-CLI` | `cli/` must not be imported by `query/`, `coverage/`, or `scanner/` (infra deps stay at the edge) | architecture test |
-| `G-LAYER` | `@method/fca-index` must not import from `@method/mcp` or `@method/bridge` | package.json + architecture test |
+| `G-LAYER` | `@methodts/fca-index` must not import from `@methodts/mcp` or `@methodts/bridge` | package.json + architecture test |

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Bounded Recursive Tower — hierarchical composition applied recursively.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method and methodology harnesses — run in isolation with zero Effect ceremony.
  */

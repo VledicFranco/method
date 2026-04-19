@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reasoning module — factory functions that turn ReasoningPolicy config into middleware.
  *

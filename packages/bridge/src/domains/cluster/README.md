@@ -19,7 +19,7 @@ contents:
 
 # Cluster
 
-Bridge domain for multi-machine cluster coordination (PRD 039 Phase 2). Wraps the transport-agnostic `@method/cluster` package with bridge-specific adapters and HTTP routes.
+Bridge domain for multi-machine cluster coordination (PRD 039 Phase 2). Wraps the transport-agnostic `@methodts/cluster` package with bridge-specific adapters and HTTP routes.
 
 When `CLUSTER_ENABLED=false` (default), the domain is a complete no-op: no timers, no network calls, no resource overhead. When enabled, it discovers peer bridges (via Tailscale or static seeds), maintains cluster membership through heartbeat-based failure detection, and exposes HTTP endpoints for peer coordination.
 
@@ -27,14 +27,14 @@ When `CLUSTER_ENABLED=false` (default), the domain is a complete no-op: no timer
 
 ```
 ClusterDomain (core.ts)
-  |-- MembershipManager (@method/cluster)
+  |-- MembershipManager (@methodts/cluster)
   |     |-- DiscoveryProvider  <-- TailscaleDiscovery (adapters/)
   |     |-- NetworkProvider    <-- HttpNetwork (adapters/)
   |     \-- ResourceProvider   <-- NodeResource (adapters/)
   \-- registerClusterRoutes (routes.ts)
 ```
 
-The domain follows the port/adapter pattern: `@method/cluster` defines transport-agnostic port interfaces, and this domain provides concrete implementations injected at the composition root.
+The domain follows the port/adapter pattern: `@methodts/cluster` defines transport-agnostic port interfaces, and this domain provides concrete implementations injected at the composition root.
 
 ## Configuration
 

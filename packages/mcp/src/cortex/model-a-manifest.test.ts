@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for the Model A manifest generator (PRD-066 §7.7).
  *
@@ -8,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { Tool } from "@method/methodts";
+import type { Tool } from "@methodts/methodts";
 import { generateStaticToolsSection } from "./model-a-manifest.js";
 
 const TRUE = { tag: "val" as const, value: true };

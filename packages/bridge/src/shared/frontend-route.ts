@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 019.1: Narrative Flow Frontend — Static file server
  *

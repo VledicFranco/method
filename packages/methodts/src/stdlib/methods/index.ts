@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * stdlib/methods/ — All standard library Method<S> definitions.
  *

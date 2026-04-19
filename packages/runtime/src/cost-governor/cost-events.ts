@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cost telemetry event types + emit helpers.
  *
@@ -12,7 +13,7 @@
  */
 
 import type { EventBus, RuntimeEventInput } from '../ports/event-bus.js';
-import type { InvocationSignature, AccountId, ProviderClass } from '@method/types';
+import type { InvocationSignature, AccountId, ProviderClass } from '@methodts/types';
 import type { AppId } from './rate-governor-impl.js';
 
 const SOURCE = 'runtime/cost-governor';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * gate/runners/ — Concrete gate runner implementations.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Smoke test web server — serves test case browser + runs cases via SSE.
  *
@@ -14,7 +15,7 @@ import { runMockStrategy, loadFixtureYaml, type MockRunOptions } from './executo
 import type { RunFlow } from './executor/run-flow.js';
 import { checkResult, type AssertionResult } from './executor/result-checker.js';
 import { load as loadYaml } from 'js-yaml';
-import { createAgent, type Pact } from '@method/pacta';
+import { createAgent, type Pact } from '@methodts/pacta';
 import { isLiveModeAvailable, createLiveProvider } from './executor/live-executor.js';
 import { MethodologyMock } from './executor/methodology-mock.js';
 import { layerRegistry } from './layers/index.js';

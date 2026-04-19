@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 018: Event Triggers — HTTP Trigger Management API + Webhook Routes (Phase 2a-3)
  * PRD 019.4: Extended with trigger_config derived fields, single-trigger detail,

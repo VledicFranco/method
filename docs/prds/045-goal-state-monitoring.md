@@ -91,7 +91,7 @@ All cross-domain interactions use existing patterns:
 - `engine/ → experiments/`: CycleResult returned, experiment runner reads (existing pattern)
 
 **No new ports needed.** All interactions follow existing import patterns within the
-`@method/pacta` package. The surfaces are new *types* added to existing barrel exports,
+`@methodts/pacta` package. The surfaces are new *types* added to existing barrel exports,
 not new *ports* between domains.
 
 ## Surfaces (Primary Deliverable)

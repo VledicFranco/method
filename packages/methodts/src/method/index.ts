@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * method/ — Method and Step execution types (F1-FTH).
  *

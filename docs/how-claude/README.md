@@ -4,7 +4,7 @@ Reverse-engineered documentation of Claude Code's internal filesystem persistenc
 session management, and context window mechanics. Based on empirical observation of
 `~/.claude/` directory structure and JSONL session logs.
 
-**Purpose:** The bridge (`@method/bridge`) spawns and manages Claude Code sessions.
+**Purpose:** The bridge (`@methodts/bridge`) spawns and manages Claude Code sessions.
 Understanding Claude's native persistence is essential for building correct recovery,
 observability, and transcript features. This directory documents what we have learned
 through experimentation — none of it is part of an official API.

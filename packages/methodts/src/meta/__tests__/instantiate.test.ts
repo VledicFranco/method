@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
 import { instantiate, instantiateMethodology, validateCardCompatibility } from "../instantiate.js";
 import type { Method } from "../../method/method.js";

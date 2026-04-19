@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for the opaque Resumption codec — PRD-058 §6.4 D4 + §4 criterion 9.
  */

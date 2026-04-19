@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
 /**
  * fca-index MCP server — standalone stdio server for FCA-indexed context retrieval.
  *

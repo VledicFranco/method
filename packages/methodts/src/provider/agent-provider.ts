@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * AgentProvider — Effect service interface for executing agent commissions.
  *

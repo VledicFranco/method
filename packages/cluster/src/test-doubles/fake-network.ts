@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { NetworkProvider } from '../ports/network-provider.js';
 import type { PeerAddress, ClusterMessage } from '../types.js';
 

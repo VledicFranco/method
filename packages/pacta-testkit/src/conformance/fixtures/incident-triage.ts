@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * incident-triage — oneshot, scoped to `['Grep','Read','Slack']`, low-budget.
  * Exercises budget handlers (C2), audit minimum (C3), scope respect (C5), and
  * the vacuous no-resume path (C6 skipped). PRD-065 §8.1.
  */
 
-import type { AgentResult } from '@method/pacta';
+import type { AgentResult } from '@methodts/pacta';
 import type { ConformanceFixture } from './index.js';
 import { usage, cost } from './index.js';
 

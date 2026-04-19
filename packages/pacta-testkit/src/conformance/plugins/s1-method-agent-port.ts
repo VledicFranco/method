@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `s1MethodAgentPortPlugin` — checks C1–C6 from S8 §6 / PRD-065 §10.1.
  *

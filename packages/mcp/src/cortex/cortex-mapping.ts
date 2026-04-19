@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/mcp — Pure methodts → Cortex mapping (PRD-066 Track A, S9 §4.3).
+ * @methodts/mcp — Pure methodts → Cortex mapping (PRD-066 Track A, S9 §4.3).
  *
  * `methodtsToCortex()` turns a loaded methodology's Hoare-typed `Tool<S>`
  * set (plus role authorizations) into a Cortex `ToolRegistrationPayload`.
@@ -29,7 +30,7 @@
  * in Cortex's sense — no platform state change).
  */
 
-import type { Tool } from "@method/methodts";
+import type { Tool } from "@methodts/methodts";
 import type {
   CortexOperationDef,
   CortexToolDescriptor,

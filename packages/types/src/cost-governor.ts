@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cost Governor — Canonical Types (PRD 051)
  *

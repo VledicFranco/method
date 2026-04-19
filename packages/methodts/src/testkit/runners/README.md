@@ -11,7 +11,7 @@ Structured test harnesses for running methods, steps, and scenarios in a control
 ## Usage
 
 ```typescript
-import { MethodHarness } from '@method/methodts/testkit';
+import { MethodHarness } from '@methodts/methodts/testkit';
 
 const harness = new MethodHarness(myMethod, { provider: mockProvider });
 const result = await harness.run({ initialState: buildWorldState() });

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Runtime Tool Provider — real filesystem-backed tools for cognitive sessions.
  *
@@ -13,7 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execFileSync, execSync } from 'node:child_process';
 import { resolve, dirname, relative, isAbsolute } from 'node:path';
-import type { ToolProvider, ToolDefinition, ToolResult } from '@method/pacta';
+import type { ToolProvider, ToolDefinition, ToolResult } from '@methodts/pacta';
 
 const TOOL_DEFS: ToolDefinition[] = [
   { name: 'Read', description: 'Read a file by path. Input: { path: string, offset?: number, limit?: number } — offset/limit are line numbers (1-based start, count of lines). Use these for large files that exceed the 8000-char output limit.' },

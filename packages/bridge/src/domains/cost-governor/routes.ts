@@ -1,22 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Bridge-side Fastify wrapper for the runtime cost-governor.
  *
  * PRD-057 / S2 §3.5 / C4: the `createCostGovernor` factory in
- * `@method/runtime/cost-governor` no longer owns route registration —
+ * `@methodts/runtime/cost-governor` no longer owns route registration —
  * that's a transport concern that stays in bridge. This module consumes
  * the runtime primitives (`oracle`, `rateGovernor`, `observations`) and
  * wires them to Fastify. HTTP API is unchanged (PRD 051).
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { InvocationSignature } from '@method/types';
+import type { InvocationSignature } from '@methodts/types';
 import type {
   CostGovernor,
   HistogramCostOracle,
   SingleAccountRateGovernor,
-} from '@method/runtime/cost-governor';
-import { buildSignature } from '@method/runtime/cost-governor';
-import type { HistoricalObservations } from '@method/runtime/ports';
+} from '@methodts/runtime/cost-governor';
+import { buildSignature } from '@methodts/runtime/cost-governor';
+import type { HistoricalObservations } from '@methodts/runtime/ports';
 
 export interface CostGovernorRouteContext {
   oracle: HistogramCostOracle;

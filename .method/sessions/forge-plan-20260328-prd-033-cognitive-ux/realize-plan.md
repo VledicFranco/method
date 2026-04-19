@@ -212,8 +212,8 @@ These are parallel because:
   - `cognitive-provider.ts` — new file containing:
     - `CognitiveSessionConfig` interface: config name, pattern flags, module overrides
     - `createCognitiveSession()` factory function that:
-      - Creates cognitive modules (observer, memory, reasoner, actor, monitor, evaluator, planner, reflector) using factories from `@method/pacta`
-      - Creates a `CognitiveAgent` via `createCognitiveAgent()` from `@method/pacta`
+      - Creates cognitive modules (observer, memory, reasoner, actor, monitor, evaluator, planner, reflector) using factories from `@methodts/pacta`
+      - Creates a `CognitiveAgent` via `createCognitiveAgent()` from `@methodts/pacta`
       - Returns a session-like object implementing a `sendCognitivePrompt()` method
     - `sendCognitivePrompt(agent, input, onEvent)`:
       - Invokes `agent.invoke(input)` with an `onEvent` callback
@@ -224,7 +224,7 @@ These are parallel because:
   - `pool.ts` modifications:
     - In `create()`: when `provider_type === 'cognitive-agent'`, store the cognitive config and set `sessionModes` to `'cognitive-agent'`
     - In `promptStream()`: when session mode is `'cognitive-agent'`, route through `sendCognitivePrompt()` instead of `session.sendPromptStream()`
-    - The cognitive provider runs the cognitive cycle internally — it does NOT shell out to `claude --print`. It uses `anthropicProvider` from `@method/pacta-provider-anthropic` (or the existing claude-cli provider) for LLM calls within the cycle.
+    - The cognitive provider runs the cognitive cycle internally — it does NOT shell out to `claude --print`. It uses `anthropicProvider` from `@methodts/pacta-provider-anthropic` (or the existing claude-cli provider) for LLM calls within the cycle.
   - `routes.ts` modifications:
     - POST `/sessions` body: parse `provider_type`, `config`, `patterns` fields
     - Pass `provider_type`, `cognitive_config`, `cognitive_patterns` through to `pool.create()`
@@ -479,7 +479,7 @@ These are parallel because:
 
 **Result: PASS.**
 
-### Gate 5/8 — No commission modifies `@method/pacta` source
+### Gate 5/8 — No commission modifies `@methodts/pacta` source
 
 | Commission | Modifies pacta? |
 |------------|----------------|

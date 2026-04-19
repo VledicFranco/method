@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M3_APPROVE — Human Approval Method (M3-APPROVE v0.1).
  *

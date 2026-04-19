@@ -17,12 +17,12 @@ extends:
 
 ## Context
 
-Two internal ports in `@method/fca-index` were extended post-freeze (2026-04-09) to support
+Two internal ports in `@methodts/fca-index` were extended post-freeze (2026-04-09) to support
 Feature Sets A and B. The extensions were marked WARN-LEGACY at the time. This record
 formalizes them as frozen extensions.
 
 Both ports are **internal** — they do not cross package boundaries. All producers and
-consumers are within `@method/fca-index`. The co-design obligation is lighter than for
+consumers are within `@methodts/fca-index`. The co-design obligation is lighter than for
 external ports but the record still matters for maintaining port discipline.
 
 ## Extension 1: FileSystemPort.getModifiedTime

@@ -30,7 +30,7 @@ Each persona provides:
 
 ## Built-in Personas
 
-Five personas ship with `@method/pacta`:
+Five personas ship with `@methodts/pacta`:
 
 | Persona | Reasoning Mode | Best For |
 |---------|---------------|----------|
@@ -59,7 +59,7 @@ Selection is case-insensitive. The most frequently occurring keyword wins. If no
 ### Direct Module Usage
 
 ```typescript
-import { createPersonaModule } from '@method/pacta/cognitive/modules/persona-module.js';
+import { createPersonaModule } from '@methodts/pacta/cognitive/modules/persona-module.js';
 
 const personaModule = createPersonaModule(writePort, {
   defaultPersona: 'architect',   // fallback when auto-selection finds no match
@@ -88,7 +88,7 @@ The persona module detects when the task type changes between cycles. If the wor
 ## Programmatic Access
 
 ```typescript
-import { selectPersona, getPersona, PERSONAS } from '@method/pacta/cognitive/config/personas.js';
+import { selectPersona, getPersona, PERSONAS } from '@methodts/pacta/cognitive/config/personas.js';
 
 // Select by task type string
 const persona = selectPersona('debug this API error');

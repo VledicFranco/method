@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * P0-META transition arms — the 8 priority-ordered conditions of delta_META.
  *

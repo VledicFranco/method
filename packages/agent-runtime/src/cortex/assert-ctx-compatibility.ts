@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Runtime structural compatibility check for the injected Cortex ctx.
  *

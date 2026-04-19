@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * MethodologySource — Port interface for methodology data access.
  *
@@ -5,7 +6,7 @@
  * with a single port interface. All consumers (bridge, MCP) access methodology
  * data exclusively through this port.
  *
- * First implementation: StdlibSource (wraps @method/methodts stdlib catalog) —
+ * First implementation: StdlibSource (wraps @methodts/methodts stdlib catalog) —
  * stays in bridge per PRD-057 / S2 §5.3.
  * Test implementation: InMemorySource (proves port substitutability).
  *
@@ -14,7 +15,7 @@
  * `MethodologyChange` notification payload. Core synchronous reads
  * (`list`, `getMethod`, `getMethodology`) are preserved verbatim — they are
  * the runtime hot path. Cortex-backed implementations (`CortexMethodologySource`
- * in `@method/agent-runtime`) hydrate their in-memory cache in `init()` and
+ * in `@methodts/agent-runtime`) hydrate their in-memory cache in `init()` and
  * notify invalidation listeners through `onChange()`. Stdlib/in-memory
  * sources no-op the optional methods.
  *
@@ -22,9 +23,9 @@
  * The composition root (server-entry.ts) wires the concrete provider.
  */
 
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
-import type { Method } from '@method/methodts';
-import type { Methodology } from '@method/methodts';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
+import type { Method } from '@methodts/methodts';
+import type { Methodology } from '@methodts/methodts';
 
 // ── Port interface ──────────────────────────────────────────────
 
@@ -35,8 +36,8 @@ import type { Methodology } from '@method/methodts';
  * on every runtime tick. Implementations MUST maintain an in-memory cache;
  * network I/O happens only in init/reload.
  *
- * Owner:     @method/runtime
- * Consumers: @method/bridge (via StdlibSource), @method/agent-runtime
+ * Owner:     @methodts/runtime
+ * Consumers: @methodts/bridge (via StdlibSource), @methodts/agent-runtime
  *            (via CortexMethodologySource), tests (via InMemorySource)
  * Co-designed: 2026-04-14 (S7)
  */

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * InMemorySource — Test MethodologySource for port substitutability proof.
  *
@@ -16,9 +17,9 @@ import type {
   MethodologySource,
   MethodologyChange,
 } from './methodology-source.js';
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
-import type { Method } from '@method/methodts';
-import type { Methodology } from '@method/methodts';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
+import type { Method } from '@methodts/methodts';
+import type { Methodology } from '@methodts/methodts';
 
 export class InMemorySource implements MethodologySource {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

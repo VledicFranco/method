@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SSE Parser — parses text/event-stream format into typed events.
  *

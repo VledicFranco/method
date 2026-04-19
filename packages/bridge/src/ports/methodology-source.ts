@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * MethodologySource — Port interface for methodology data access.
  *
@@ -5,7 +6,7 @@
  * with a single port interface. All consumers (bridge, MCP) access methodology
  * data exclusively through this port.
  *
- * First implementation: StdlibSource (wraps @method/methodts stdlib catalog).
+ * First implementation: StdlibSource (wraps @methodts/methodts stdlib catalog).
  * Test implementation: InMemorySource (proves port substitutability).
  *
  * PRD-064 / S7 (2026-04-14): port extended additively with four optional
@@ -16,9 +17,9 @@
  * The composition root (server-entry.ts) wires the concrete provider.
  */
 
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
-import type { Method } from '@method/methodts';
-import type { Methodology } from '@method/methodts';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
+import type { Method } from '@methodts/methodts';
+import type { Methodology } from '@methodts/methodts';
 
 // ── Port interface ──────────────────────────────────────────────
 

@@ -3,7 +3,7 @@
 **Session:** realize-20260327-prd-029-bridge-resilience
 **PRD:** docs/prds/029-bridge-resilience.md
 **Date:** 2026-03-27
-**Packages:** @method/pacta, @method/pacta-provider-claude-cli, @method/bridge
+**Packages:** @methodts/pacta, @methodts/pacta-provider-claude-cli, @methodts/bridge
 
 ---
 

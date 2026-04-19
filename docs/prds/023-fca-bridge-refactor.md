@@ -13,7 +13,7 @@ status: implemented
 **Complexity:** High — structural reorganization of the largest package, zero API behavioral change
 **Design reference:** `docs/fractal-component-architecture/` (Fractal Component Architecture methodology)
 **Review:** 4-advisor adversarial review, 4-synthesizer consensus. Action plan: `tmp/action-plan-prd023-fca-bridge-refactor-2026-03-23.md`
-**Scope:** Reorganize `@method/bridge` from artifact-type directories to domain-co-located directories following FCA Principle 8 (co-locate all artifacts), with server domains under `src/domains/` and client domains under `frontend/src/domains/`
+**Scope:** Reorganize `@methodts/bridge` from artifact-type directories to domain-co-located directories following FCA Principle 8 (co-locate all artifacts), with server domains under `src/domains/` and client domains under `frontend/src/domains/`
 
 ---
 
@@ -21,7 +21,7 @@ status: implemented
 
 ### The bridge organizes by artifact type, not by domain
 
-`@method/bridge` is the largest package in the monorepo: 26 root source files, 95 nested source files, 74 frontend files, and 50 test files. It contains 8 distinct domains whose artifacts are scattered across four parallel directory trees:
+`@methodts/bridge` is the largest package in the monorepo: 26 root source files, 95 nested source files, 74 frontend files, and 50 test files. It contains 8 distinct domains whose artifacts are scattered across four parallel directory trees:
 
 ```
 packages/bridge/
@@ -51,7 +51,7 @@ packages/bridge/
 
 ### What this PRD delivers
 
-A structural reorganization of `@method/bridge` into domain-co-located directories. Server domain code goes to `src/domains/`, client domain code goes to `frontend/src/domains/`, and shared types live in `src/domains/*/types.ts` (importable by both runtimes as type-only). **Zero API behavioral change** — the same endpoints, same UI, same tests, same functionality. File locations and import paths change. Some phases involve structural extraction (splitting chimera files, rewriting the composition layer) which are internal reorganizations, not API changes.
+A structural reorganization of `@methodts/bridge` into domain-co-located directories. Server domain code goes to `src/domains/`, client domain code goes to `frontend/src/domains/`, and shared types live in `src/domains/*/types.ts` (importable by both runtimes as type-only). **Zero API behavioral change** — the same endpoints, same UI, same tests, same functionality. File locations and import paths change. Some phases involve structural extraction (splitting chimera files, rewriting the composition layer) which are internal reorganizations, not API changes.
 
 ---
 
@@ -606,8 +606,8 @@ No change needed. The frontend `tsconfig.json` has `include: ["src"]`, which cov
 
 - **API behavioral changes.** This PRD restructures files and imports. No endpoint, response, or UI behavior changes.
 - **File renaming.** PascalCase → kebab-case or other naming convention changes are a separate decision.
-- **Package extraction.** Domains stay within `@method/bridge`. Extracting to separate packages is future work.
-- **Core package refactoring.** `@method/core`'s provider pattern violations are separate work.
+- **Package extraction.** Domains stay within `@methodts/bridge`. Extracting to separate packages is future work.
+- **Core package refactoring.** `@methodts/core`'s provider pattern violations are separate work.
 - **Effect library adoption.** FCA recommends Effect for L0 port formalization, but that's a separate PRD.
 - **Renaming `src/` to `source/`.** Deferred — affects all packages.
 - **Client-side testing framework.** No `vitest` or client test infrastructure is added. Client tests are future work.

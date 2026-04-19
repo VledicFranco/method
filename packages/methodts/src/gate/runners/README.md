@@ -17,7 +17,7 @@ Concrete `Gate<S>` implementations for common verification patterns. Each runner
 Runners are constructed as gate instances and registered in a `GateSuite<S>`:
 
 ```typescript
-import { scriptGate, testRunner } from '@method/methodts';
+import { scriptGate, testRunner } from '@methodts/methodts';
 
 const suite: GateSuite<S> = {
   pre: [scriptGate({ command: 'npm run lint' })],

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Code Agent — pre-assembled reference agent for coding tasks.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * suggest command — generate FCA compliance stubs for a component.
  *

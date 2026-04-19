@@ -3,8 +3,8 @@ type: co-design-record
 surface: "CortexAgentConformance (S8)"
 slug: "conformance-testkit"
 date: "2026-04-14"
-owner: "@method/pacta-testkit (conformance/ subpath extension)"
-producer: "@method/pacta-testkit — conformance extension package (L3)"
+owner: "@methodts/pacta-testkit (conformance/ subpath extension)"
+producer: "@methodts/pacta-testkit — conformance extension package (L3)"
 consumer: "Cortex tenant apps (category: agent) running in their own CI"
 direction: "producer → consumer (import assertion suite + MockCortexCtx); consumer → Cortex platform (upload compliance-report artifact)"
 status: frozen
@@ -80,14 +80,14 @@ Every Cortex tenant app of `category: agent` declares in its manifest:
 ```yaml
 category: agent
 consumes:
-  - "@method/agent-runtime"
+  - "@methodts/agent-runtime"
 ```
 
 Cortex needs a mechanical way to answer: *does this app actually satisfy
 `MethodAgentPort`, or is it just claiming to?* Six things must hold:
 
 1. **Port entry** — the app creates agents via `createMethodAgent`, not
-   by instantiating `@method/pacta` directly. (G-BOUNDARY-ENTRY.)
+   by instantiating `@methodts/pacta` directly. (G-BOUNDARY-ENTRY.)
 2. **Budget handlers** — if any pact declares `requires.llm`, the app
    registers all three `LlmBudgetHandlers` (warning / critical / exceeded).
    PRD-068 §5.4.
@@ -103,7 +103,7 @@ Cortex needs a mechanical way to answer: *does this app actually satisfy
    can suspend mid-invocation, serialize a `Resumption`, and re-enter
    via `agent.resume(resumption)` with equivalent terminal state.
 
-The existing `@method/pacta-testkit` already has `RecordingProvider`,
+The existing `@methodts/pacta-testkit` already has `RecordingProvider`,
 `MockToolProvider`, builders, and assertions. It tests pacta agents.
 This surface extends it to test **Cortex-composed** pacta agents — i.e.,
 `createMethodAgent`-produced agents against a mock `ctx`.
@@ -112,7 +112,7 @@ This surface extends it to test **Cortex-composed** pacta agents — i.e.,
 
 ## 2. Why This is an Extension, Not a New Package
 
-`@method/pacta-testkit` already exports:
+`@methodts/pacta-testkit` already exports:
 
 - `RecordingProvider`, `MockToolProvider`
 - `pactBuilder()`, `agentRequestBuilder()`
@@ -159,8 +159,8 @@ The `conformance/` subpath is exported via `package.json#exports`:
 }
 ```
 
-Consumers import `from '@method/pacta-testkit/conformance'` — the
-existing `from '@method/pacta-testkit'` surface is untouched.
+Consumers import `from '@methodts/pacta-testkit/conformance'` — the
+existing `from '@methodts/pacta-testkit'` surface is untouched.
 
 ---
 
@@ -180,7 +180,7 @@ existing `from '@method/pacta-testkit'` surface is untouched.
 
 ## 4. Ownership
 
-**Owner:** `@method/pacta-testkit` (producer of the `conformance/`
+**Owner:** `@methodts/pacta-testkit` (producer of the `conformance/`
 subpath). Same package, same versioning as the core testkit so that
 canonical fixtures and the main assertion vocabulary stay in lockstep.
 When pacta adds an `AgentEvent` variant, the same PR updates fixtures.
@@ -212,7 +212,7 @@ versioned `requiredPlugins` manifest.
  * Typical usage in the app's own test file (samples/cortex-incident-triage-agent/test/conformance.test.ts):
  *
  *   import { describe, it } from 'vitest';
- *   import { runCortexAgentConformance } from '@method/pacta-testkit/conformance';
+ *   import { runCortexAgentConformance } from '@methodts/pacta-testkit/conformance';
  *   import app from '../src/agent.js';  // default export receives ctx
  *
  *   describe('Cortex agent conformance', () => {
@@ -340,7 +340,7 @@ export interface MockCortexCtx extends CortexCtx {
 
 export interface ScriptedLlmResponse {
   readonly text: string;
-  readonly usage: TokenUsage;           // from @method/pacta
+  readonly usage: TokenUsage;           // from @methodts/pacta
   readonly costUsd: number;
   readonly model?: string;              // default 'mock-claude-sonnet'
   readonly simulateBudget?:             // fires handlers if registered
@@ -407,7 +407,7 @@ asserts `max(delegationDepth) ≤ 2`.
 export interface ConformanceFixture {
   readonly id: FixtureId;
   readonly displayName: string;
-  readonly pact: Pact<unknown>;                 // from @method/pacta
+  readonly pact: Pact<unknown>;                 // from @methodts/pacta
   readonly request: AgentRequest;               // the prompt the suite invokes with
   readonly script: ReadonlyArray<ScriptedResponse>;   // from RecordingProvider
   readonly scriptedLlm: ReadonlyArray<ScriptedLlmResponse>;  // mock-ctx.llm responses
@@ -695,7 +695,7 @@ this mode requires no API change — only a Cortex-side harness.
 
 ### 8.1 Producer
 
-- **Package:** `@method/pacta-testkit` (L3, existing) — `conformance/`
+- **Package:** `@methodts/pacta-testkit` (L3, existing) — `conformance/`
   subpath is new.
 - **Entry file:** `packages/pacta-testkit/src/conformance/index.ts`
 - **Runner:** `packages/pacta-testkit/src/conformance/conformance-runner.ts`
@@ -703,8 +703,8 @@ this mode requires no API change — only a Cortex-side harness.
 - **Report schema + writer:** `packages/pacta-testkit/src/conformance/compliance-report.ts`
 - **Fixtures:** `packages/pacta-testkit/src/conformance/fixtures/*.ts`
 - **Built-in plugins:** `packages/pacta-testkit/src/conformance/plugins/*.ts`
-- **Dependencies:** `@method/pacta` (types + `createAgent`),
-  `@method/agent-runtime` (peer — needed for the `MethodAgentPort`
+- **Dependencies:** `@methodts/pacta` (types + `createAgent`),
+  `@methodts/agent-runtime` (peer — needed for the `MethodAgentPort`
   type shape the mock implements). The peer dep is version-ranged; a
   mismatched agent-runtime throws `ConformanceRunError`.
 
@@ -726,7 +726,7 @@ this mode requires no API change — only a Cortex-side harness.
 ```typescript
 // samples/cortex-incident-triage-agent/test/conformance.test.ts
 import { describe, it } from 'vitest';
-import { runCortexAgentConformance, incidentTriageFixture } from '@method/pacta-testkit/conformance';
+import { runCortexAgentConformance, incidentTriageFixture } from '@methodts/pacta-testkit/conformance';
 import app from '../src/agent.js';
 
 describe('Cortex agent conformance', () => {
@@ -774,7 +774,7 @@ export const s4SessionStorePlugin: ConformancePlugin = {
 Tenant apps register it in `opts.plugins`:
 
 ```typescript
-import { DEFAULT_PLUGINS, s4SessionStorePlugin } from '@method/pacta-testkit/conformance';
+import { DEFAULT_PLUGINS, s4SessionStorePlugin } from '@methodts/pacta-testkit/conformance';
 // ...
 plugins: [...DEFAULT_PLUGINS, s4SessionStorePlugin],
 ```
@@ -801,7 +801,7 @@ also shows in the report).
 
 ## 10. Compatibility Guarantees (semver)
 
-`@method/pacta-testkit` is semver-versioned as one unit (core + conformance).
+`@methodts/pacta-testkit` is semver-versioned as one unit (core + conformance).
 
 | Change | Semver bump |
 |---|---|
@@ -816,7 +816,7 @@ also shows in the report).
 | Narrow `MockCortexCtx` shape (remove a facade) | **major** |
 | Widen `MockCortexCtx` (add a facade) | minor |
 
-`@method/agent-runtime` is a **peer dependency** of this package. The
+`@methodts/agent-runtime` is a **peer dependency** of this package. The
 testkit declares a range; a mismatched runtime produces
 `ConformanceRunError('PLUGIN_CRASH')` with actionable detail.
 
@@ -828,9 +828,9 @@ Added to `packages/pacta-testkit/src/conformance/__tests__/gates.test.ts`
 (new file, mirrors existing testkit test pattern).
 
 ```typescript
-// G-BOUNDARY: conformance/ does NOT import from @method/agent-runtime at runtime
+// G-BOUNDARY: conformance/ does NOT import from @methodts/agent-runtime at runtime
 describe('G-BOUNDARY: conformance extension stays pacta-testkit-only for value imports', () => {
-  it('no value import from @method/agent-runtime in conformance/', () => {
+  it('no value import from @methodts/agent-runtime in conformance/', () => {
     const files = glob('packages/pacta-testkit/src/conformance/**/*.ts');
     const violations: string[] = [];
     for (const file of files) {
@@ -847,7 +847,7 @@ describe('G-BOUNDARY: conformance extension stays pacta-testkit-only for value i
 // G-PORT: the conformance subpath exports the frozen entry-point set
 describe('G-PORT: conformance surface is stable', () => {
   it('exports expected symbols', async () => {
-    const mod = await import('@method/pacta-testkit/conformance');
+    const mod = await import('@methodts/pacta-testkit/conformance');
     const expected = [
       'runCortexAgentConformance',
       'createMockCortexCtx',
@@ -860,7 +860,7 @@ describe('G-PORT: conformance surface is stable', () => {
   });
 });
 
-// G-LAYER: pacta-testkit remains L3 — no imports from @method/bridge
+// G-LAYER: pacta-testkit remains L3 — no imports from @methodts/bridge
 describe('G-LAYER: conformance does not reach to L4', () => {
   it('no bridge imports', () => {
     const violations = scanImports('packages/pacta-testkit/src/conformance', /^@method\/bridge/);
@@ -889,7 +889,7 @@ describe('G-SCHEMA: ComplianceReport is schema-valid', () => {
 
 | # | Question | Resolution |
 |---|---|---|
-| Q1 | Separate package or subpath of pacta-testkit? | **Subpath (`@method/pacta-testkit/conformance`).** Avoids duplicate infrastructure; the shared recording primitives belong in one place. §2. |
+| Q1 | Separate package or subpath of pacta-testkit? | **Subpath (`@methodts/pacta-testkit/conformance`).** Avoids duplicate infrastructure; the shared recording primitives belong in one place. §2. |
 | Q2 | Does the platform call the testkit, or only read the report? | **Only read (v1).** Self-certification. Wave 2 may add sandboxed platform-side re-runs — same entry point. §7. |
 | Q3 | Schema format — JSON, protobuf, or YAML? | **JSON.** Matches Cortex artifact convention; trivial to sign; no compile step. `ComplianceReport` is a plain TS interface with runtime shape matching. §5.4. |
 | Q4 | Required audit event set — exhaustive or minimum? | **Minimum (3 kinds + 1 terminal).** Apps that emit more always pass; apps that emit fewer fail C3. Exhaustive would over-constrain pacta variation. §6. |
@@ -914,7 +914,7 @@ No questions remain open. **Status: frozen.**
   Performance gates are a sibling suite.
 - **Security adversarial testing.** Structural checks (depth ≤ 2), not
   penetration (crafting pacts to reach depth 3).
-- **Compatibility across multiple `@method/agent-runtime` majors.** The
+- **Compatibility across multiple `@methodts/agent-runtime` majors.** The
   testkit version's peer range pins one major; cross-major testing
   belongs in an integration-test project.
 - **Running conformance against non-Cortex hosts.** `MockCortexCtx`
@@ -926,7 +926,7 @@ No questions remain open. **Status: frozen.**
 ## 14. Agreement
 
 **Frozen:** 2026-04-14
-**Owner:** `@method/pacta-testkit` (conformance/ subpath)
+**Owner:** `@methodts/pacta-testkit` (conformance/ subpath)
 **Unblocks:** PRD-065 implementation, sample app CI integration
 (`samples/cortex-incident-triage-agent/test/conformance.test.ts`),
 Cortex `certified: boolean` flag, roadmap B8 closeout.

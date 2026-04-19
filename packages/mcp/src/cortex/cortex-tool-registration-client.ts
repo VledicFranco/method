@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/mcp — `CortexToolRegistrationClient` (PRD-066 Track A, S9 §5.2).
+ * @methodts/mcp — `CortexToolRegistrationClient` (PRD-066 Track A, S9 §5.2).
  *
  * Typed HTTP client for Cortex's platform tool registry. The client owns
  * the HTTP envelope (URL composition, auth header, retry budget) and

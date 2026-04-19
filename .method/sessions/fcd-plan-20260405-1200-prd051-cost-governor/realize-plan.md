@@ -54,10 +54,10 @@ Both blockers must resolve before their dependent items can begin. Wave 0 can st
 
 **No commissions.** All items applied by the orchestrator before any implementation wave begins.
 
-### W0.1 — Canonical Entities (@method/types L0)
+### W0.1 — Canonical Entities (@methodts/types L0)
 **File (NEW):** `packages/types/src/cost-governor.ts`
 **Exports:** `InvocationSignature`, `ProviderClass`, `CostBand`, `AccountCapacity`, `AccountUtilization`, `AccountId` (branded), `SlotId` (branded), `AppendToken` (opaque).
-**Verification:** `@method/types` builds; bridge, pacta, mcp import without error.
+**Verification:** `@methodts/types` builds; bridge, pacta, mcp import without error.
 
 ### W0.2 — Bridge Cross-Domain Ports
 **Files (NEW):**

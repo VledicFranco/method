@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M4_ADVREV — Adversarial Review Pipeline Method (M4-ADVREV v0.1, trial).
  *

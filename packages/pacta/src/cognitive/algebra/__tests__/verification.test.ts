@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for verification types and check primitives (PRD 048 Wave 0+1).
  *

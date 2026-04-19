@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for CognitiveSink (PRD 041 C-1).
  *
@@ -20,8 +21,8 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { CognitiveEventBusSink as CognitiveSink } from '../cognitive-sink.js';
 import type { RuntimeEvent as BridgeEvent, RuntimeEventInput as BridgeEventInput, EventBus, EventFilter, EventSubscription } from '../../ports/event-bus.js';
-import type { CognitiveEvent, MonitorMonitoring } from '@method/pacta';
-import { moduleId } from '@method/pacta';
+import type { CognitiveEvent, MonitorMonitoring } from '@methodts/pacta';
+import { moduleId } from '@methodts/pacta';
 
 // ── Test helpers ───────────────────────────────────────────────────
 

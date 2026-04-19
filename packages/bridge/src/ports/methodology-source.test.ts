@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * MethodologySource port tests.
  *
  * Tests both implementations:
- * 1. StdlibSource — production implementation backed by @method/methodts stdlib
+ * 1. StdlibSource — production implementation backed by @methodts/methodts stdlib
  * 2. InMemorySource — test implementation proving port substitutability (WS-1 SC-6)
  *
  * The key test: any consumer code that takes a MethodologySource can work with
@@ -14,7 +15,7 @@ import assert from 'node:assert/strict';
 import type { MethodologySource } from './methodology-source.js';
 import { StdlibSource } from './stdlib-source.js';
 import { InMemorySource } from './in-memory-source.js';
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
 
 // ── Shared contract tests (run against any MethodologySource) ──
 
@@ -81,7 +82,7 @@ describe('StdlibSource — production specifics', () => {
 
   it('StdlibSource returns same data as direct stdlib calls', async () => {
     // Equivalence test: StdlibSource must return identical data to direct imports
-    const { getStdlibCatalog, getMethod, getMethodology } = await import('@method/methodts/stdlib');
+    const { getStdlibCatalog, getMethod, getMethodology } = await import('@methodts/methodts/stdlib');
     const source = new StdlibSource();
 
     const directCatalog = getStdlibCatalog();

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Adapter-agnostic resume algorithm — PRD-061 §6.3 / S4 §6.
  *
@@ -24,7 +25,7 @@ import type {
 import { SessionStoreError } from '../../ports/session-store-errors.js';
 
 /** Minimal budget enforcer contract used by resume. Defined locally to avoid
- * a circular dep with `@method/pacta`; the real implementation lives there.
+ * a circular dep with `@methodts/pacta`; the real implementation lives there.
  */
 export interface BudgetEnforcer {
   /**

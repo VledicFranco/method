@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 020 Phase 2A: Genesis HTTP Routes
  *
@@ -24,7 +25,7 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { SessionPool, SessionStatusInfo } from '@method/runtime/sessions';
+import type { SessionPool, SessionStatusInfo } from '@methodts/runtime/sessions';
 import { randomBytes } from 'crypto';
 import {
   projectListTool,

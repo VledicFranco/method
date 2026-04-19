@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * detail command — retrieve full component detail from the FCA index.
  */

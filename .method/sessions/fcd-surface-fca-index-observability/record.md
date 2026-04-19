@@ -2,9 +2,9 @@
 type: co-design-record
 surface: "ObservabilityPort"
 date: "2026-04-13"
-owner: "@method/fca-index"
-producer: "@method/fca-index/cli (StderrObservabilitySink), @method/fca-index/testkit (RecordingObservabilitySink)"
-consumer: "@method/fca-index/query, @method/fca-index/index-store (future: scanner, coverage, compliance)"
+owner: "@methodts/fca-index"
+producer: "@methodts/fca-index/cli (StderrObservabilitySink), @methodts/fca-index/testkit (RecordingObservabilitySink)"
+consumer: "@methodts/fca-index/query, @methodts/fca-index/index-store (future: scanner, coverage, compliance)"
 direction: "fca-index domains → sink (unidirectional, fire-and-forget)"
 status: frozen
 mode: "new"

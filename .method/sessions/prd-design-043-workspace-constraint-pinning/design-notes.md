@@ -24,7 +24,7 @@
 
 ### Layer 3: HOW
 
-- Q11 (Dependencies): None — all within @method/pacta, experiment infra exists
+- Q11 (Dependencies): None — all within @methodts/pacta, experiment infra exists
 - Q12 (Risks):
   1. Pin flag works (constraint in context) but Reasoner still ignores it — deeper LLM compliance problem, not workspace architecture
   2. Keyword classifier false negatives on non-obvious constraints ("avoid side effects" vs "must NOT import")

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { DiscoveryProvider } from '../ports/discovery-provider.js';
 import type { PeerAddress, NodeIdentity } from '../types.js';
 

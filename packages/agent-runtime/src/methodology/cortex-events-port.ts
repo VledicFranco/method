@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Structural shim for the subset of PRD-072 `ctx.events` used by
  * `CortexMethodologySource`.

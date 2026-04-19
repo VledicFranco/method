@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * MonitorV2 — meta-level cognitive module with prediction-error tracking,
  * metacognitive taxonomy, precision weighting, and adaptive thresholds.

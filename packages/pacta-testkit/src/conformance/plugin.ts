@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Plugin interface for conformance checks — S8 §5.5 frozen.
  *

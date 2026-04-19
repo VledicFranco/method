@@ -15,7 +15,7 @@ domains_affected: [sessions, shared/event-bus, pacta-core, pacta-provider-claude
 **Status:** Implemented (Phases 1-2, 2026-03-29) — Phase 3 deferred per spec
 **Author:** Council Team (Kael, Solene, Rune, Vex, Mira, Lysander) + PO
 **Date:** 2026-03-27
-**Packages:** `@method/pacta`, `@method/pacta-provider-claude-cli`, `@method/bridge`
+**Packages:** `@methodts/pacta`, `@methodts/pacta-provider-claude-cli`, `@methodts/bridge`
 **Depends on:** PRD 027 (Pacta SDK), PRD 028 (Print-Mode Convergence), PRD 026 (Universal Event Bus)
 **Organization:** Vidtecci — vida, ciencia y tecnologia
 **Council session:** `.method/council/memory/bridge-resilience.yaml`
@@ -150,17 +150,17 @@ L4  Bridge application
         ├── SessionSidebar.tsx               MOD — health indicator
         └── App.tsx                          MOD — /sessions/:id? route
 
-L3  Pacta SDK (@method/pacta)
+L3  Pacta SDK (@methodts/pacta)
     ├── src/
     │   ├── pact.ts                          MOD — RecoveryIntent type, recovery field on Pact
     │   ├── agent.ts                         MOD — AgentState, Agent.state, Agent.dispose()
     │   └── engine/create-agent.ts           MOD — state accumulation wrapper
 
-    Pacta CLI Provider (@method/pacta-provider-claude-cli)
+    Pacta CLI Provider (@methodts/pacta-provider-claude-cli)
     └── src/claude-cli-provider.ts           UNCHANGED — existing resumeSessionId path suffices
 
-L2  MethodTS (@method/methodts)              UNCHANGED
-L0  Types (@method/types)                    UNCHANGED
+L2  MethodTS (@methodts/methodts)              UNCHANGED
+L0  Types (@methodts/types)                    UNCHANGED
 ```
 
 Dependencies flow downward only (L4→L3→L2→L0). No upward dependencies introduced.

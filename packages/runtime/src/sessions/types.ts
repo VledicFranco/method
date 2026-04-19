@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Sessions domain — collected type re-exports (PRD-057 / S2 §3.3 / C5).
  *
  * Transcript reader, routes, and `SessionsConfig` types live in
- * `@method/bridge` — this barrel now re-exports only the types that
+ * `@methodts/bridge` — this barrel now re-exports only the types that
  * belong to the runtime subpath. Bridge-internal code that needs the
  * full historical bundle should import the specific modules directly.
  */

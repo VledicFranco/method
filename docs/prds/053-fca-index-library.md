@@ -1,7 +1,7 @@
 ---
 type: prd
 id: "053"
-title: "@method/fca-index — FCA-Indexed Context Library"
+title: "@methodts/fca-index — FCA-Indexed Context Library"
 date: "2026-04-08"
 status: complete
 completed: "2026-04-08"
@@ -16,7 +16,7 @@ co-design-records:
 debate: .method/sessions/fcd-debate-fca-index/decision.md
 ---
 
-# PRD 053 — @method/fca-index: FCA-Indexed Context Library
+# PRD 053 — @methodts/fca-index: FCA-Indexed Context Library
 
 ## Problem
 
@@ -29,14 +29,14 @@ FCA solves this structurally: co-located documentation is a first-class requirem
 8-part component model produces a predictable, machine-readable map of every codebase. If
 documentation coverage is complete, the documentation IS the architectural map.
 
-`@method/fca-index` exploits this property: it indexes FCA-compliant projects using a hybrid
+`@methodts/fca-index` exploits this property: it indexes FCA-compliant projects using a hybrid
 SQLite + embedding store over co-located documentation. An agent that previously spent 8K
 tokens searching for the right 4 files can retrieve them with a single typed query for
 under 200 tokens.
 
 ## Constraints
 
-- New L3 package — zero dependencies on `@method/methodts`, `@method/mcp`, or `@method/bridge`
+- New L3 package — zero dependencies on `@methodts/methodts`, `@methodts/mcp`, or `@methodts/bridge`
 - Universal: works for any FCA-compliant project, not just the method monorepo
 - Two operating modes: discovery (partial coverage, safe) and production (threshold met, trusted)
 - Coverage scores are library-computed — never self-certified by consuming projects
@@ -270,7 +270,7 @@ external API throughput.
 CLI commands (`scan`, `coverage`), testkit, architecture gates, `.fca-index.yaml` config schema.
 
 **Out:** MCP tool wrappers (PRD 054), cross-project federation, real-time index updates
-(file-watch triggered re-scan), integration with `@method/bridge` event bus, IDE plugins.
+(file-watch triggered re-scan), integration with `@methodts/bridge` event bus, IDE plugins.
 
 ---
 
@@ -302,7 +302,7 @@ consuming project
      │ ContextQueryPort    │ CoverageReportPort
      │                     │
      ▼                     ▼
- @method/mcp           CLI / @method/mcp
+ @methodts/mcp           CLI / @methodts/mcp
  (PRD 054)             (coverage_check)
 ```
 
@@ -330,7 +330,7 @@ export interface ContextQueryPort {
 // Record: .method/sessions/fcd-surface-fca-index-mcp/record.md
 ```
 
-Owner: `@method/fca-index` | Consumer: `@method/mcp` | Direction: fca-index → mcp
+Owner: `@methodts/fca-index` | Consumer: `@methodts/mcp` | Direction: fca-index → mcp
 
 ### ManifestReaderPort ← frozen
 
@@ -342,7 +342,7 @@ export interface ManifestReaderPort {
 // Record: .method/sessions/fcd-surface-fca-index-project/record.md
 ```
 
-Owner: `@method/fca-index` | Consumer: fca-index scanner (internal) + consuming project (config file)
+Owner: `@methodts/fca-index` | Consumer: fca-index scanner (internal) + consuming project (config file)
 
 ### CoverageReportPort ← frozen
 
@@ -354,7 +354,7 @@ export interface CoverageReportPort {
 // Record: .method/sessions/fcd-surface-fca-index-cli/record.md
 ```
 
-Owner: `@method/fca-index` | Consumers: CLI, `@method/mcp` | Direction: fca-index → both
+Owner: `@methodts/fca-index` | Consumers: CLI, `@methodts/mcp` | Direction: fca-index → both
 
 ### Internal ports (no external co-design required)
 
@@ -388,7 +388,7 @@ interface IndexStorePort {
 `ProjectScanConfig` — defined in `ports/manifest-reader.ts`, exported from `index.ts`.
 `CoverageReport`, `CoverageSummary`, `ComponentCoverageEntry` — defined in `ports/coverage-report.ts`.
 
-No duplication of these types in `@method/mcp` or CLI — they import from `@method/fca-index`.
+No duplication of these types in `@methodts/mcp` or CLI — they import from `@methodts/fca-index`.
 
 ---
 
@@ -587,10 +587,10 @@ it('cli does not import domain internals', () => {
   expect(violations).toEqual([]);
 });
 
-// G-LAYER: fca-index does not import @method/mcp or @method/bridge
+// G-LAYER: fca-index does not import @methodts/mcp or @methodts/bridge
 it('fca-index is layer-independent', () => {
   const violations = scanImports('src/**', {
-    forbidden: ['@method/mcp', '@method/bridge', '@method/methodts']
+    forbidden: ['@methodts/mcp', '@methodts/bridge', '@methodts/methodts']
   });
   expect(violations).toEqual([]);
 });
@@ -600,7 +600,7 @@ it('fca-index is layer-independent', () => {
 
 ## Testkit
 
-`packages/fca-index/src/testkit/` (exported at `@method/fca-index/testkit`):
+`packages/fca-index/src/testkit/` (exported at `@methodts/fca-index/testkit`):
 
 ```typescript
 // Test doubles
@@ -676,7 +676,7 @@ CoverageReportPort passes contract test. Mode detection is correct at threshold 
 - `src/cli/` — scan, coverage, query commands
 - `src/testkit/` — RecordingContextQueryPort, RecordingCoverageReportPort, InMemoryIndexStore, builders
 - `src/architecture.test.ts` — all 4 gate tests
-- `package.json` — `@method/fca-index` package config, bin: `fca-index`
+- `package.json` — `@methodts/fca-index` package config, bin: `fca-index`
 - Integration test: scan method-2 monorepo, query, verify results (SC-1, SC-5)
 
 **Acceptance gate:** All 4 architecture gates passing. Integration scan completes ≤ 60s.

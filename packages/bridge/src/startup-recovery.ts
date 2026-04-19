@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Startup Recovery — Three-phase session recovery on bridge restart.
  *

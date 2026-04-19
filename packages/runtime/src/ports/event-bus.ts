@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * EventBus — Port interface for the Universal Event Bus (PRD 026).
  *
@@ -6,7 +7,7 @@
  * subscribe through the same interface. Neither producers nor consumers
  * know about each other.
  *
- * PRD-057: Moved from @method/bridge/ports/event-bus.ts. The type was
+ * PRD-057: Moved from @methodts/bridge/ports/event-bus.ts. The type was
  * renamed `BridgeEvent` → `RuntimeEvent` to reflect that the bus now serves
  * multiple consumers (bridge, agent-runtime, future SLM server). Event
  * `type` strings (wire format) are unchanged.
@@ -40,7 +41,7 @@ export type EventSeverity = 'info' | 'warning' | 'error' | 'critical';
  * as a RuntimeEvent. Bus assigns id, timestamp, and sequence on emit.
  *
  * Renamed from `BridgeEvent` per PRD-057 / S2 §4. A back-compat alias lives in
- * `@method/bridge/ports/event-bus.ts`.
+ * `@methodts/bridge/ports/event-bus.ts`.
  */
 export interface RuntimeEvent {
   /** UUID, globally unique. Assigned by the bus. */

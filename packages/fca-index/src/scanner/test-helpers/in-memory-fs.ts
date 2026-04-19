@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * InMemoryFileSystem — Test helper implementing FileSystemPort backed by a plain object tree.
  *

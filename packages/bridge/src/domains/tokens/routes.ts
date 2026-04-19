@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import type { FastifyInstance } from 'fastify';
 import type { TokenTracker } from './tracker.js';
 import type { UsagePoller } from './usage-poller.js';

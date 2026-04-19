@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for composition operators and tower (PRD 030, C-2).
  */

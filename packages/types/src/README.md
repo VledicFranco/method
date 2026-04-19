@@ -1,4 +1,4 @@
-# @method/types — Canonical Shared Types
+# @methodts/types — Canonical Shared Types
 
 L3 package. Canonical TypeScript type definitions shared across all method packages. Import shared types from here — never redefine them locally.
 

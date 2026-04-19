@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import type {
@@ -5,8 +6,8 @@ import type {
   ControlDirective,
   ModuleId,
   StepResult,
-} from '@method/pacta';
-import { moduleId } from '@method/pacta';
+} from '@methodts/pacta';
+import { moduleId } from '@methodts/pacta';
 import { RecordingModule } from './recording-module.js';
 
 // ── Helpers ─────────────────────────────────────────────────────

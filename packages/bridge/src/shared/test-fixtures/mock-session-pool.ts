@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Shared MockSessionPool for tests that need a SessionPool implementation.
  *
@@ -5,7 +6,7 @@
  * domains that test against the SessionPool interface.
  */
 
-import type { SessionPool, SessionStatusInfo } from '@method/runtime/sessions';
+import type { SessionPool, SessionStatusInfo } from '@methodts/runtime/sessions';
 
 export class MockSessionPool implements SessionPool {
   private sessions = new Map<string, SessionStatusInfo>();

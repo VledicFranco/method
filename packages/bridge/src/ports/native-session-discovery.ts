@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * NativeSessionDiscovery — Port interface for discovering live Claude CLI sessions.
  *

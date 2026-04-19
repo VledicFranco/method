@@ -5,20 +5,20 @@ A 5-minute tour of the typed methodology SDK. Each section builds on the previou
 ## 1. Install
 
 ```bash
-npm install @method/methodts
+npm install @methodts/methodts
 ```
 
 MethodTS has two entry points:
 
-- `@method/methodts` -- core SDK (prompts, predicates, domains, methods, runtime)
-- `@method/methodts/stdlib` -- standard library (P0-META, reusable predicates, prompts, gates)
+- `@methodts/methodts` -- core SDK (prompts, predicates, domains, methods, runtime)
+- `@methodts/methodts/stdlib` -- standard library (P0-META, reusable predicates, prompts, gates)
 
 ## 2. Compose Prompts
 
 A `Prompt<A>` is a pure function from context `A` to instruction text. Prompts are the typed form of *guidance* from the formal theory.
 
 ```typescript
-import { Prompt, constant, sequence } from "@method/methodts";
+import { Prompt, constant, sequence } from "@methodts/methodts";
 
 // A constant prompt ignores context
 const header = constant<{ project: string }>("You are a task planner.");
@@ -55,7 +55,7 @@ Key operations:
 A `Predicate<A>` is a first-order logic expression over TypeScript values. Predicates serve as preconditions, postconditions, axioms, and objectives.
 
 ```typescript
-import { check, and, or, not, evaluate } from "@method/methodts";
+import { check, and, or, not, evaluate } from "@methodts/methodts";
 
 type TaskState = {
   tasks: string[];
@@ -108,7 +108,7 @@ import {
   and,
   validateAxioms,
   validateSignature,
-} from "@method/methodts";
+} from "@methodts/methodts";
 
 type TaskState = {
   tasks: string[];
@@ -175,7 +175,7 @@ import {
   check,
   and,
   TRUE,
-} from "@method/methodts";
+} from "@methodts/methodts";
 import { Effect } from "effect";
 
 type TaskState = {
@@ -275,7 +275,7 @@ const taskMethod: Method<TaskState> = {
 `compileMethod` runs the method through six compilation gates (G1-G6) and produces a report.
 
 ```typescript
-import { compileMethod } from "@method/methodts";
+import { compileMethod } from "@methodts/methodts";
 
 // Test states for axiom and composability checking
 const testStates: TaskState[] = [
@@ -322,7 +322,7 @@ Use `assertCompiled` for a throwing variant that fails on any gate failure.
 A `Commission<A>` bundles a rendered prompt with bridge spawn parameters. This is how you deploy sub-agents.
 
 ```typescript
-import { commission, Prompt, constant, sequence } from "@method/methodts";
+import { commission, Prompt, constant, sequence } from "@methodts/methodts";
 
 type TaskContext = {
   project: string;
@@ -358,7 +358,7 @@ For batch deployments, use `batchCommission` to render one commission per contex
 Built-in templates are available for common patterns:
 
 ```typescript
-import { templates } from "@method/methodts";
+import { templates } from "@methodts/methodts";
 
 const implPrompt = templates.implementation();
 const reviewPrompt = templates.review();
@@ -376,7 +376,7 @@ import {
   runMethodology,
   MockAgentProvider,
   type WorldState,
-} from "@method/methodts";
+} from "@methodts/methodts";
 import { Effect } from "effect";
 
 // Wrap the method as a trivial one-arm methodology
@@ -420,7 +420,7 @@ The runtime loop:
 ## 9. Next Steps
 
 - **[Theory Mapping](./theory-mapping.md)** -- how MethodTS types map to F1-FTH formal definitions
-- **stdlib** -- `import { ... } from "@method/methodts/stdlib"` for P0-META, reusable predicates, prompts, and compilation gates
+- **stdlib** -- `import { ... } from "@methodts/methodts/stdlib"` for P0-META, reusable predicates, prompts, and compilation gates
 - **Gate runners** -- `scriptGate`, `testRunner`, `httpChecker`, `checklistGate` for quality gates
 - **Strategy layer** -- `StrategyController` for multi-run methodology orchestration with adaptive decisions
 - **EventBus** -- `createEventBus` for runtime event subscriptions and hooks

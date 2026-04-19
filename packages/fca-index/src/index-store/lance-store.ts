@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * LanceStore — internal vector store for FCA component embeddings.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Anthropic Messages API types — minimal subset needed for the provider.
  *

@@ -12,11 +12,11 @@
 
 **Acceptance Criteria:** AC-01 through AC-12 (all automatable — Given/When/Then with test locations)
 
-**Domains Affected:** `@method/pacta` (cognitive/), `@method/pacta-testkit`
+**Domains Affected:** `@methodts/pacta` (cognitive/), `@methodts/pacta-testkit`
 
 ## FCA Partition
 
-The PRD operates entirely within `@method/pacta` (L3 library) and `@method/pacta-testkit` (L2 testing). Within pacta's cognitive domain, the sub-layers are:
+The PRD operates entirely within `@methodts/pacta` (L3 library) and `@methodts/pacta-testkit` (L2 testing). Within pacta's cognitive domain, the sub-layers are:
 
 ```
 Commissionable sub-domains (independent — parallel when in different sub-domains):

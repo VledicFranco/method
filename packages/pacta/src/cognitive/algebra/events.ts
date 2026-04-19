@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cognitive Events — typed lifecycle signals for the cognitive composition system.
  *

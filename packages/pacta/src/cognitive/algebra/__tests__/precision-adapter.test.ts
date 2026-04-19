@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Precision Adapter Tests — 6 scenarios per PRD 035 Phase 2.
  *

@@ -1,5 +1,5 @@
 id: TOPIC-FCA-INDEX
-name: "@method/fca-index — FCA-Indexed Context Library for Token-Efficient Agent Retrieval"
+name: "@methodts/fca-index — FCA-Indexed Context Library for Token-Efficient Agent Retrieval"
 status: active
 sessions:
   - date: "2026-04-08"
@@ -21,15 +21,15 @@ sessions:
     topic: "SC-1 improvement — top-1 result enrichment, engine-side variant"
 
 decision_summary: >
-  Build @method/fca-index as a universal L3 library. Hybrid SQLite + embedding index
+  Build @methodts/fca-index as a universal L3 library. Hybrid SQLite + embedding index
   over FCA co-located documentation. Two modes (discovery / production) with
   library-computed coverage scores in every query response. Two consumer surfaces:
-  structured API for @method/mcp, human-readable CLI. ComponentContext is the
+  structured API for @methodts/mcp, human-readable CLI. ComponentContext is the
   primary canonical type and must be Wave 0 co-designed first.
 
 ports_frozen:
   - name: ObservabilityPort
-    producer: "@method/fca-index/cli (StderrObservabilitySink), @method/fca-index/testkit (RecordingObservabilitySink); future: bridge adapter"
+    producer: "@methodts/fca-index/cli (StderrObservabilitySink), @methodts/fca-index/testkit (RecordingObservabilitySink); future: bridge adapter"
     consumer: "fca-index domain code (query, index-store, future: scanner/coverage/compliance)"
     file: "packages/fca-index/src/ports/observability.ts"
     frozen: "2026-04-13"
@@ -38,35 +38,35 @@ ports_frozen:
     gate: "G-PORT-OBSERVABILITY (in architecture.test.ts)"
 
   - name: ContextQueryPort
-    producer: "@method/fca-index query engine"
-    consumer: "@method/mcp, CLI"
+    producer: "@methodts/fca-index query engine"
+    consumer: "@methodts/mcp, CLI"
     file: "packages/fca-index/src/ports/context-query.ts"
     frozen: "2026-04-08"
     record: ".method/sessions/fcd-surface-fca-index-mcp/record.md"
 
   - name: CoverageReportPort
-    producer: "@method/fca-index coverage engine"
-    consumer: "@method/mcp, CLI"
+    producer: "@methodts/fca-index coverage engine"
+    consumer: "@methodts/mcp, CLI"
     file: "packages/fca-index/src/ports/coverage-report.ts"
     frozen: "2026-04-08"
     record: ".method/sessions/fcd-surface-fca-index-cli/record.md"
 
   - name: ManifestReaderPort
     producer: "consuming project (FCA directory structure)"
-    consumer: "@method/fca-index scanner"
+    consumer: "@methodts/fca-index scanner"
     file: "packages/fca-index/src/ports/manifest-reader.ts"
     frozen: "2026-04-08"
     record: ".method/sessions/fcd-surface-fca-index-project/record.md"
 
   - name: ComponentDetailPort
-    producer: "@method/fca-index query domain (ComponentDetailEngine)"
-    consumer: "@method/mcp (context_detail tool)"
+    producer: "@methodts/fca-index query domain (ComponentDetailEngine)"
+    consumer: "@methodts/mcp (context_detail tool)"
     file: "packages/fca-index/src/ports/component-detail.ts"
     frozen: "2026-04-09"
     record: ".method/sessions/fcd-surface-component-detail/record.md"
 
   - name: ComplianceSuggestionPort
-    producer: "@method/fca-index compliance domain (ComplianceEngine)"
+    producer: "@methodts/fca-index compliance domain (ComplianceEngine)"
     consumer: "CLI (fca-index suggest command)"
     file: "packages/fca-index/src/ports/compliance-suggestion.ts"
     frozen: "2026-04-09"
@@ -196,17 +196,17 @@ architecture_gates:
     status: passing
 
   - id: G-BOUNDARY-DETAIL
-    description: "query/ does not import cli/ or @method/mcp"
+    description: "query/ does not import cli/ or @methodts/mcp"
     status: passing
     added: "2026-04-09 (Feature Set B)"
 
   - id: G-BOUNDARY-COMPLIANCE
-    description: "compliance/ does not import cli/ or @method/mcp"
+    description: "compliance/ does not import cli/ or @methodts/mcp"
     status: passing
     added: "2026-04-09 (Feature Set C)"
 
   - id: G-LAYER
-    description: "fca-index does not import @method/mcp or @method/bridge"
+    description: "fca-index does not import @methodts/mcp or @methodts/bridge"
     status: passing
 
 test_counts:

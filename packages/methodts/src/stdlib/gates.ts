@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Compilation gates G1-G6 for M1-MDES.
  *

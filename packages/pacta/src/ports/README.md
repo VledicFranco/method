@@ -1,6 +1,6 @@
 # ports/ — Pacta Port Interfaces
 
-Port interfaces that isolate `@method/pacta` from external infrastructure. All external dependencies (LLM providers, embeddings, memory persistence, rate governors) enter through these interfaces.
+Port interfaces that isolate `@methodts/pacta` from external infrastructure. All external dependencies (LLM providers, embeddings, memory persistence, rate governors) enter through these interfaces.
 
 ## Ports
 

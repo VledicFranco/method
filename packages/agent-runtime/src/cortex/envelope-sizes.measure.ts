@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * O8 measurement harness — PRD-063 §Tests / N4 / S6 §8.1.
  *
@@ -18,7 +19,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { RuntimeEvent } from '@method/runtime/ports';
+import type { RuntimeEvent } from '@methodts/runtime/ports';
 
 import {
   mapRuntimeEventToEnvelope,

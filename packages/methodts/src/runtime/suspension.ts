@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Suspension, resolution, and suspended-state types.
  *

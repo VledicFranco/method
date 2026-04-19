@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * LLM Task Assessment — pre-task difficulty estimation and phase planning.
  *

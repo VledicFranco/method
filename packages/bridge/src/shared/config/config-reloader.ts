@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Config Reloader — Atomic config reload with validation and audit logging
  *

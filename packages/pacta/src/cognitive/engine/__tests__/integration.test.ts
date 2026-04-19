@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Integration tests for cognitive engine (PRD 030, C-5).
  *

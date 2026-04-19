@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Predicate<A> — First-order logic over TypeScript values.
  *

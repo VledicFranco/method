@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/pacta-provider-cortex — Cortex service adapters for Pacta.
+ * @methodts/pacta-provider-cortex — Cortex service adapters for Pacta.
  *
  * Public surface (PRD-059 §5.1):
  *   - cortexLLMProvider            — AgentProvider over ctx.llm (PRD-068)
@@ -7,7 +8,7 @@
  *   - cortexTokenExchangeMiddleware — RFC-8693 exchange + depth cap (PRD-061 / RFC-005 §4.1.5)
  *   - CortexServiceAdapter<> pattern (shared shape; S3 §1)
  *
- * This package is the single seam between `@method/pacta` and
+ * This package is the single seam between `@methodts/pacta` and
  * `@t1/cortex-sdk` — gate `G-CORTEX-ONLY-PATH` forbids any other
  * source from importing the SDK (allow-list: ctx-types.ts).
  */

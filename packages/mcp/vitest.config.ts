@@ -4,9 +4,9 @@ import { resolve } from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@method/fca-index/testkit': resolve(__dirname, '../fca-index/src/testkit/index.ts'),
-      '@method/fca-index': resolve(__dirname, '../fca-index/src/index.ts'),
-      '@method/methodts': resolve(__dirname, '../methodts/src/index.ts'),
+      '@methodts/fca-index/testkit': resolve(__dirname, '../fca-index/src/testkit/index.ts'),
+      '@methodts/fca-index': resolve(__dirname, '../fca-index/src/index.ts'),
+      '@methodts/methodts': resolve(__dirname, '../methodts/src/index.ts'),
     },
   },
   test: {

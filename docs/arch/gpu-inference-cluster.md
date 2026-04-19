@@ -66,10 +66,10 @@ ssh atfm0@chobits "schtasks /End /TN OllamaServe"    # stop
 
 ## Provider Package
 
-`@method/pacta-provider-ollama` — AgentProvider implementation using the OpenAI-compatible API.
+`@methodts/pacta-provider-ollama` — AgentProvider implementation using the OpenAI-compatible API.
 
 ```typescript
-import { ollamaProvider } from '@method/pacta-provider-ollama';
+import { ollamaProvider } from '@methodts/pacta-provider-ollama';
 
 const provider = ollamaProvider({ baseUrl: 'http://chobits:11434' });
 await provider.init();  // discovers available models
@@ -92,8 +92,8 @@ await provider.init();  // discovers available models
 The provider implements `AgentProvider` and plugs into `createProviderAdapter()`:
 
 ```typescript
-import { ollamaProvider } from '@method/pacta-provider-ollama';
-import { createProviderAdapter } from '@method/pacta';
+import { ollamaProvider } from '@methodts/pacta-provider-ollama';
+import { createProviderAdapter } from '@methodts/pacta';
 
 const ollama = ollamaProvider({ baseUrl: 'http://chobits:11434' });
 const adapter = createProviderAdapter(ollama, {

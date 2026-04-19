@@ -1,6 +1,6 @@
 /**
  * Frontend types for Cost Governor API responses (PRD 051).
- * Mirrors backend types in @method/types + bridge/ports.
+ * Mirrors backend types in @methodts/types + bridge/ports.
  */
 
 export type InvocationSignature = {

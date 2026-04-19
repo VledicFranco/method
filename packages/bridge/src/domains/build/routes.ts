@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Build Orchestrator REST routes — PRD 047 C-3.
  *

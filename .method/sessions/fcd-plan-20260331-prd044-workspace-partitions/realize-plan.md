@@ -14,7 +14,7 @@
 ## FCA Partition Map
 
 ```
-Package: @method/pacta (packages/pacta/)
+Package: @methodts/pacta (packages/pacta/)
 
 Cognitive sub-domains (packages/pacta/src/cognitive/):
   algebra/      L2  Pure types, composition operators, workspace engine
@@ -137,7 +137,7 @@ export type { ConstraintViolation } from './constraint-utils.js';
 After Wave 0:
 - `npm run build` passes (TypeScript compiles)
 - `npm test` passes (no behavior changes, only type additions + re-exports)
-- All new types importable from `@method/pacta`
+- All new types importable from `@methodts/pacta`
 
 ---
 

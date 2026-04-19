@@ -28,10 +28,10 @@ Strategy pipeline execution engine (PRD 017). Strategies are DAG-structured mult
 | Module | Purpose |
 |--------|---------|
 | [index.ts](index.ts) | Barrel exports for all strategy types and implementations |
-| [types.ts](types.ts) | Type-only re-exports from @method/methodts |
+| [types.ts](types.ts) | Type-only re-exports from @methodts/methodts |
 | [config.ts](config.ts) | Zod-validated configuration schema and env var loader |
 | [strategy-parser.ts](strategy-parser.ts) | Parses strategy YAML into StrategyDAG and validates acyclicity, reference integrity, and unique IDs |
-| [strategy-executor.ts](strategy-executor.ts) | DAG executor adapter — wraps @method/methodts DagStrategyExecutor with Pacta AgentProvider |
+| [strategy-executor.ts](strategy-executor.ts) | DAG executor adapter — wraps @methodts/methodts DagStrategyExecutor with Pacta AgentProvider |
 | [gates.ts](gates.ts) | Gate framework — sandboxed expression evaluation for algorithmic, observation, and human approval gates |
 | [artifact-store.ts](artifact-store.ts) | Immutable versioned store for pipeline artifacts with snapshot bundles passed between nodes |
 | [pacta-strategy.ts](pacta-strategy.ts) | Pact constraint builder for strategy steps — budget, scope, reasoning config |

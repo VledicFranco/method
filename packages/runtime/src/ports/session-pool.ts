@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SessionPool Port — Cross-domain interface for session pool access.
  *
- * PRD-057 / S2 §6: Session-pool port types migrated to @method/runtime. The
+ * PRD-057 / S2 §6: Session-pool port types migrated to @methodts/runtime. The
  * full `SessionPool` interface is defined here along with the new
- * `SessionProviderFactory` port that both @method/bridge (PTY factory) and
- * @method/agent-runtime (Cortex factory) will implement.
+ * `SessionProviderFactory` port that both @methodts/bridge (PTY factory) and
+ * @methodts/agent-runtime (Cortex factory) will implement.
  *
  * Design: DR-15 compliant — domains accept the port via injection.
  * The composition root wires the real pool implementation to consumers.
@@ -113,11 +114,11 @@ export interface SessionSnapshot {
 
 /**
  * Minimal handle returned by the SessionProviderFactory. Mirrors the
- * shape of `PtySession` (defined in `@method/runtime/sessions`) with
+ * shape of `PtySession` (defined in `@methodts/runtime/sessions`) with
  * only the attributes the pool needs to route lifecycle calls.
  *
  * C5 completes the sessions subpath migration; the concrete `PtySession`
- * interface in `@method/runtime/sessions/print-session.ts` is assignable
+ * interface in `@methodts/runtime/sessions/print-session.ts` is assignable
  * to `PtySessionHandle` structurally — the pool stores the factory's
  * result directly as a `PtySession`.
  */

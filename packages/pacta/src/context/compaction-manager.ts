@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Compaction Manager — monitors token usage and triggers context compaction.
  *

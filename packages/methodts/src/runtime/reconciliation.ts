@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { Effect } from "effect";
 import { diff, type Diff } from "../state/world-state.js";
 

@@ -1,4 +1,4 @@
-# CLI Command Runners — @method/fca-index
+# CLI Command Runners — @methodts/fca-index
 
 Pure command runner functions. Each runner receives an injected port + parsed options, performs its operation, writes to stdout/stderr, and exits with the appropriate code. No argument parsing lives here — that's handled by `cli/index.ts`.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reflector — meta-level cognitive module for lesson extraction and memory consolidation.
  *

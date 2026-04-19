@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M3_FULLAUTO — Unattended Dispatch Method (M3-FULLAUTO v1.0).
  *

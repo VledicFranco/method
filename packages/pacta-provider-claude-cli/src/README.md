@@ -1,11 +1,11 @@
-# @method/pacta-provider-claude-cli
+# @methodts/pacta-provider-claude-cli
 
-Claude Code CLI subprocess provider for `@method/pacta`. Implements `AgentProvider` by spawning `claude` CLI processes — enabling full tool access (file read/write, bash, MCP tools) within a sandboxed session.
+Claude Code CLI subprocess provider for `@methodts/pacta`. Implements `AgentProvider` by spawning `claude` CLI processes — enabling full tool access (file read/write, bash, MCP tools) within a sandboxed session.
 
 ## Usage
 
 ```typescript
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 
 const provider = claudeCliProvider({
   cwd: '/path/to/project',
@@ -30,4 +30,4 @@ const provider = claudeCliProvider({
 
 ## When to Use
 
-Use this provider when the agent needs full filesystem and tool access — build tasks, code generation, test execution. For API-only usage without a CLI dependency, prefer `@method/pacta-provider-anthropic`.
+Use this provider when the agent needs full filesystem and tool access — build tasks, code generation, test execution. For API-only usage without a CLI dependency, prefer `@methodts/pacta-provider-anthropic`.

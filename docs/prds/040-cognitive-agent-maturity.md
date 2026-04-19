@@ -15,7 +15,7 @@ domains_affected: [bridge/sessions, pacta, pacta-provider-ollama, bridge/fronten
 **Status:** Implemented (all 4 phases — Edit tool, cognitive engine v2, pool wiring, lifecycle+genesis)
 **Author:** PO + Lysica
 **Date:** 2026-03-29
-**Packages:** `@method/bridge` (L4), `@method/pacta` (L3), `@method/pacta-provider-ollama` (L3)
+**Packages:** `@methodts/bridge` (L4), `@methodts/pacta` (L3), `@methodts/pacta-provider-ollama` (L3)
 **Depends on:** PRD 033 (Cognitive Session UX), PRD 035 (Monitoring & Control v2), PRD 037 (Affect & Curiosity)
 **Organization:** Vidtecci — vida, ciencia y tecnologia
 
@@ -35,7 +35,7 @@ Cognitive agent sessions (PRD 033) demonstrated that observable reasoning cycles
 
 6. **No model selection.** The spawn modal has an LLM Provider toggle (Anthropic / Ollama) but no model picker. Anthropic now offers `claude-opus-4-6` (best reasoning), `claude-sonnet-4-6` (balanced), and `claude-haiku-4-5` (fast/cheap). Ollama exposes whatever models are pulled locally. Users should choose.
 
-7. **Ollama untested end-to-end.** The `@method/pacta-provider-ollama` package exists and the bridge pool wires it, but no production smoke test has verified that cognitive sessions work with Ollama. The provider defaults to `http://chobits:11434` (Tailscale GPU machine) but connection handling, timeouts, and error UX are unvalidated.
+7. **Ollama untested end-to-end.** The `@methodts/pacta-provider-ollama` package exists and the bridge pool wires it, but no production smoke test has verified that cognitive sessions work with Ollama. The provider defaults to `http://chobits:11434` (Tailscale GPU machine) but connection handling, timeouts, and error UX are unvalidated.
 
 8. **Stale session ghosts.** Cognitive sessions are in-memory only. When the bridge restarts, old session IDs persist in the frontend cache but route to print sessions (which fail). There's no cleanup mechanism — users must manually delete ghost sessions.
 

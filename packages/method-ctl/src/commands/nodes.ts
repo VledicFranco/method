@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── method-ctl nodes ────────────────────────────────────────────
 //
 // Without name: GET /cluster/nodes — list all nodes.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Feature registry — catalog of every smoke-testable capability in the
  * method runtime, grouped into 8 clusters across 4 layers.

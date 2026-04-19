@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Health endpoint — instance_name field tests (PRD 038 C-2).
  *

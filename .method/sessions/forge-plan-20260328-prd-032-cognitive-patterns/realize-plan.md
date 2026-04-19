@@ -2,7 +2,7 @@
 
 ## PRD Summary
 
-**Objective:** Implement 8 advanced cognitive patterns (P1-P8) as composable modules within `@method/pacta`. All patterns compose within the existing `CognitiveModule<I,O,S,Mu,Kappa>` algebra — no new primitive types, only new module factories, port interfaces, and config files.
+**Objective:** Implement 8 advanced cognitive patterns (P1-P8) as composable modules within `@methodts/pacta`. All patterns compose within the existing `CognitiveModule<I,O,S,Mu,Kappa>` algebra — no new primitive types, only new module factories, port interfaces, and config files.
 
 **Phases:** 7 (reflection+patterns, adaptive load, concurrent, personas, affect, attention, wandering)
 **Patterns:** P1 (concurrent), P2 (adaptive), P3 (affect), P4 (personas), P5 (thought patterns), P6 (reflection), P7 (wandering), P8 (attention)

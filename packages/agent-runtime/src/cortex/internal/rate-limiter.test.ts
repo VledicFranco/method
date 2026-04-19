@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for the sliding-window rate limiter — PRD-063 §Tests.
  * Maps to N2 (rate cap respected).

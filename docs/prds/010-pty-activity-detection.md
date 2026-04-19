@@ -535,7 +535,7 @@ Per-session overrides take precedence over environment variables. This allows an
 
 ### Architectural Note
 
-PRD 010 is entirely within the `@method/bridge` package. It does not touch `@method/core` (no transport deps — DR-03) or `@method/mcp` (no tool surface changes — DR-04). The pattern matchers are pure functions. The watcher is a bridge-internal subscriber. The auto-retro generator writes files to disk. All within bridge's existing boundaries.
+PRD 010 is entirely within the `@methodts/bridge` package. It does not touch `@methodts/core` (no transport deps — DR-03) or `@methodts/mcp` (no tool surface changes — DR-04). The pattern matchers are pure functions. The watcher is a bridge-internal subscriber. The auto-retro generator writes files to disk. All within bridge's existing boundaries.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "@method/pacta-provider-claude-cli"
+title: "@methodts/pacta-provider-claude-cli"
 scope: package
 layer: L3
 contents:
@@ -8,7 +8,7 @@ contents:
   - src/simple-code-agent.ts
 ---
 
-# @method/pacta-provider-claude-cli
+# @methodts/pacta-provider-claude-cli
 
 AgentProvider implementation for Claude Code CLI -- wraps `claude --print` and `claude --resume`.
 
@@ -26,7 +26,7 @@ Also includes `simpleCodeAgent` -- a ready-to-use agent that combines `claudeCli
 ## Install
 
 ```bash
-npm install @method/pacta-provider-claude-cli
+npm install @methodts/pacta-provider-claude-cli
 ```
 
 Requires the `claude` CLI to be installed and available on `PATH`.
@@ -34,9 +34,9 @@ Requires the `claude` CLI to be installed and available on `PATH`.
 ## Layer Position
 
 ```
-L4  @method/bridge                      Uses providers to deploy agents
-L3  @method/pacta-provider-claude-cli   This package
-    @method/pacta                       Core SDK (peer dependency)
+L4  @methodts/bridge                      Uses providers to deploy agents
+L3  @methodts/pacta-provider-claude-cli   This package
+    @methodts/pacta                       Core SDK (peer dependency)
 ```
 
 ## Usage
@@ -44,8 +44,8 @@ L3  @method/pacta-provider-claude-cli   This package
 ### Basic Provider
 
 ```typescript
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
-import { createAgent } from '@method/pacta';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
+import { createAgent } from '@methodts/pacta';
 
 const provider = claudeCliProvider();
 
@@ -102,7 +102,7 @@ const result2 = await provider.resume(sessionId, agent.pact, {
 A one-liner for common coding tasks:
 
 ```typescript
-import { simpleCodeAgent } from '@method/pacta-provider-claude-cli';
+import { simpleCodeAgent } from '@methodts/pacta-provider-claude-cli';
 
 const agent = simpleCodeAgent();
 
@@ -119,7 +119,7 @@ Default pact: oneshot mode, tools limited to Read/Grep/Glob/Edit/Write.
 For custom provider implementations or direct CLI invocation:
 
 ```typescript
-import { executeCli, buildCliArgs } from '@method/pacta-provider-claude-cli';
+import { executeCli, buildCliArgs } from '@methodts/pacta-provider-claude-cli';
 
 const args = buildCliArgs({
   prompt: 'Explain this code',

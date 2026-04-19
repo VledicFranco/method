@@ -21,13 +21,13 @@ touches:
 
 When an agent navigates a codebase, file-search heuristics — recursive greps, directory listings, manifest reads — consume 30–60% of the context window before any real work begins. In a 50-component FCA project, finding the right three components for a task can require 30+ file reads.
 
-`@method/fca-index` solves this with a semantic index. After a one-time scan, a single typed query returns ranked component descriptors — paths, part file locations, and excerpts — without reading any source files. The agent selects which files to read from the results. Token cost drops below 20% of grep-based search.
+`@methodts/fca-index` solves this with a semantic index. After a one-time scan, a single typed query returns ranked component descriptors — paths, part file locations, and excerpts — without reading any source files. The agent selects which files to read from the results. Token cost drops below 20% of grep-based search.
 
 ## Prerequisites
 
 - An FCA-compliant project. Components must follow the FCA directory and naming conventions — the scanner detects components by structure, not by config file.
 - `VOYAGE_API_KEY` environment variable set. The Voyage AI API is required for embedding during scan and query. Get a key at voyageai.com.
-- `better-sqlite3` native module. This installs automatically with `npm install @method/fca-index` if your platform has Node.js native build tools. On Windows, install Visual Studio Build Tools first.
+- `better-sqlite3` native module. This installs automatically with `npm install @methodts/fca-index` if your platform has Node.js native build tools. On Windows, install Visual Studio Build Tools first.
 
 ## Installation
 
@@ -36,7 +36,7 @@ In a workspace:
 ```json
 {
   "dependencies": {
-    "@method/fca-index": "workspace:*"
+    "@methodts/fca-index": "workspace:*"
   }
 }
 ```
@@ -44,7 +44,7 @@ In a workspace:
 Or from npm:
 
 ```bash
-npm install @method/fca-index
+npm install @methodts/fca-index
 ```
 
 The CLI is available after build as `fca-index`:
@@ -54,7 +54,7 @@ npm run build
 npx fca-index --help
 ```
 
-A standalone MCP server is also bundled as `fca-index-mcp`, which any MCP-compatible client (Claude Code, etc.) can consume directly — no `@method/mcp` needed. See Guide 39 for `.mcp.json` config.
+A standalone MCP server is also bundled as `fca-index-mcp`, which any MCP-compatible client (Claude Code, etc.) can consume directly — no `@methodts/mcp` needed. See Guide 39 for `.mcp.json` config.
 
 ## Step 1: Scan your project
 
@@ -71,7 +71,7 @@ fca-index scan /path/to/project
 **Programmatic:**
 
 ```typescript
-import { createDefaultFcaIndex } from '@method/fca-index';
+import { createDefaultFcaIndex } from '@methodts/fca-index';
 
 const fca = await createDefaultFcaIndex({
   projectRoot: '/path/to/project',
@@ -185,11 +185,11 @@ By default, only `interface` and `documentation` are required for a component to
 `createFcaIndex()` is the ports-injected factory. Use it when you need custom wiring (tests, custom stores, custom embedders):
 
 ```typescript
-import { createFcaIndex } from '@method/fca-index';
-import { InMemoryIndexStore } from '@method/fca-index/index-store';
-import { NodeFileSystem } from '@method/fca-index/cli';
-import { DefaultManifestReader } from '@method/fca-index/cli';
-import { VoyageEmbeddingClient } from '@method/fca-index/index-store';
+import { createFcaIndex } from '@methodts/fca-index';
+import { InMemoryIndexStore } from '@methodts/fca-index/index-store';
+import { NodeFileSystem } from '@methodts/fca-index/cli';
+import { DefaultManifestReader } from '@methodts/fca-index/cli';
+import { VoyageEmbeddingClient } from '@methodts/fca-index/index-store';
 
 const store = new InMemoryIndexStore();
 const fs = new NodeFileSystem();
@@ -211,8 +211,8 @@ const fca = createFcaIndex(
 For fast unit tests that don't need a real filesystem or embedding service:
 
 ```typescript
-import { createFcaIndex } from '@method/fca-index';
-import { InMemoryIndexStore } from '@method/fca-index/index-store';
+import { createFcaIndex } from '@methodts/fca-index';
+import { InMemoryIndexStore } from '@methodts/fca-index/index-store';
 
 const store = new InMemoryIndexStore();
 
@@ -234,7 +234,7 @@ const fca = createFcaIndex(
 );
 ```
 
-For testing consumers of the external ports (not internals), use `RecordingContextQueryPort` from `@method/fca-index/testkit` — see `src/testkit/README.md`.
+For testing consumers of the external ports (not internals), use `RecordingContextQueryPort` from `@methodts/fca-index/testkit` — see `src/testkit/README.md`.
 
 ## Configuration
 

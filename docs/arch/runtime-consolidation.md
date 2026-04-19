@@ -61,7 +61,7 @@ executeStructured<T>(commission: StructuredCommission) → Effect<StructuredResu
 
 ## Layer Compliance
 
-All new surfaces live in L2 (`@method/methodts`). No transport dependencies. The bridge (L4) consumes via port injection at the composition root (`server-entry.ts`). Dependency flows downward only:
+All new surfaces live in L2 (`@methodts/methodts`). No transport dependencies. The bridge (L4) consumes via port injection at the composition root (`server-entry.ts`). Dependency flows downward only:
 
 ```
 L4  bridge → wires ports at composition root

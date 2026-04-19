@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Strategy DAG Executor — core execution engine for Strategy DAGs.
  *
@@ -15,7 +16,7 @@
  * @see DR-03 — Core has zero transport dependencies
  */
 
-import { Effect } from "effect";
+import { Cause, Effect, Option } from "effect";
 import type {
   StrategyDAG,
   StrategyNode,
@@ -88,11 +89,11 @@ export interface DagNodeExecutor {
  *
  * A context-load node retrieves relevant FCA components from fca-index
  * before downstream methodology nodes execute. The bridge wires a concrete
- * ContextLoadExecutorImpl that imports @method/fca-index. methodts never
+ * ContextLoadExecutorImpl that imports @methodts/fca-index. methodts never
  * knows about the index internals — only this interface.
  *
- * Owner:    @method/methodts (defines contract)
- * Producer: @method/bridge (ContextLoadExecutorImpl)
+ * Owner:    @methodts/methodts (defines contract)
+ * Producer: @methodts/bridge (ContextLoadExecutorImpl)
  * Consumer: DagStrategyExecutor (calls it for context-load nodes)
  * Co-designed: 2026-04-09
  * Status:   frozen
@@ -156,12 +157,12 @@ export class ContextLoadError extends Error {
  * CrossAppNodeExecutor — Port for dispatching cross-app-invoke DAG nodes.
  *
  * PRD-067 §7.3: a cross-app-invoke node targets an operation on another
- * Cortex tenant app. methodts cannot import `@method/runtime` (lower layer
+ * Cortex tenant app. methodts cannot import `@methodts/runtime` (lower layer
  * can't see upper), so the runtime implements this port as a thin wrapper
  * over the `CrossAppInvoker` port and injects it at composition time.
  *
- * Owner:    @method/methodts (defines contract)
- * Producer: @method/runtime (CrossAppNodeExecutorImpl wrapping CrossAppInvoker)
+ * Owner:    @methodts/methodts (defines contract)
+ * Producer: @methodts/runtime (CrossAppNodeExecutorImpl wrapping CrossAppInvoker)
  * Consumer: DagStrategyExecutor (calls it for cross-app-invoke nodes)
  * Status:   frozen (Track A simulator surfaces — PRD-067 §6)
  *
@@ -694,14 +695,31 @@ export class DagStrategyExecutor {
     } catch (err) {
       const durationMs = Date.now() - startTime;
 
+      // Effect 3.x wraps typed errors in a FiberFailureImpl whose cause is
+      // stored under a Symbol-keyed property (description
+      // "effect/Runtime/FiberFailure/Cause"), not a public field. Extract
+      // the underlying RetryExhausted | Error via Cause.failureOption so
+      // the _tag check below works regardless of how Effect surfaced it.
+      let typedErr: unknown = err;
+      if (err && typeof err === "object") {
+        const causeSym = Object.getOwnPropertySymbols(err).find(
+          (s) => s.description === "effect/Runtime/FiberFailure/Cause",
+        );
+        if (causeSym) {
+          const cause = (err as Record<symbol, unknown>)[causeSym] as Cause.Cause<unknown>;
+          const opt = Cause.failureOption(cause);
+          if (Option.isSome(opt)) typedErr = opt.value;
+        }
+      }
+
       // RetryExhausted: all attempts failed gate checks
       if (
-        err != null &&
-        typeof err === "object" &&
-        "_tag" in err &&
-        (err as RetryExhausted)._tag === "RetryExhausted"
+        typedErr != null &&
+        typeof typedErr === "object" &&
+        "_tag" in typedErr &&
+        (typedErr as RetryExhausted)._tag === "RetryExhausted"
       ) {
-        const exhausted = err as RetryExhausted;
+        const exhausted = typedErr as RetryExhausted;
         const retries = exhausted.attempts - 1;
 
         const nodeResult: NodeResult = {

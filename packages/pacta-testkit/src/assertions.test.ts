@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { AgentResult, TokenUsage, CostReport, SchemaDefinition } from '@method/pacta';
+import type { AgentResult, TokenUsage, CostReport, SchemaDefinition } from '@methodts/pacta';
 import type { Recording } from './recording-provider.js';
 import {
   assertToolsCalled,

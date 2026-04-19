@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method fixture: reflexion reasoning
  *
@@ -6,7 +7,7 @@
  * succeeds on retry.
  */
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 export const METHOD_ID = 'reasoning-reflexion';
 

@@ -1,4 +1,4 @@
-# Scanner Domain — @method/fca-index
+# Scanner Domain — @methodts/fca-index
 
 The scanner domain walks a project's source tree and produces `ScannedComponent[]` — a list of
 FCA components with their detected parts, coverage scores, and documentation text.

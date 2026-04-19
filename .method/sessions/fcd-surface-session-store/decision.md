@@ -3,9 +3,9 @@ type: co-design-record
 surface: "SessionStore + CheckpointSink"
 slug: "session-store"
 date: "2026-04-14"
-owner: "@method/runtime"
-producer: "@method/runtime (defines); @method/agent-runtime (Cortex impl), @method/bridge (FS impl) (implement)"
-consumer: "@method/pacta executors, @method/methodts runtime, @method/bridge sessions/strategies domains"
+owner: "@methodts/runtime"
+producer: "@methodts/runtime (defines); @methodts/agent-runtime (Cortex impl), @methodts/bridge (FS impl) (implement)"
+consumer: "@methodts/pacta executors, @methodts/methodts runtime, @methodts/bridge sessions/strategies domains"
 direction: "runtime → agent-runtime/bridge (port); producers → sinks (events)"
 status: frozen
 mode: "new"
@@ -23,8 +23,8 @@ related:
 # Co-Design Record — `SessionStore` + `CheckpointSink` (S4)
 
 > The persistence port for agent sessions and checkpoints. Owned by
-> `@method/runtime`. Implemented either against Cortex `ctx.storage` (per-app
-> MongoDB) in `@method/agent-runtime`, or against JSONL+FS in the bridge's
+> `@methodts/runtime`. Implemented either against Cortex `ctx.storage` (per-app
+> MongoDB) in `@methodts/agent-runtime`, or against JSONL+FS in the bridge's
 > existing persistence domain. The port must not leak backend semantics.
 
 ## 0. Decision Summary
@@ -42,7 +42,7 @@ related:
 | D-9 | **Port knows nothing about Mongo, JSONL, or filesystems.** Implementations are free to use bulk writes, indexes, change streams — the port contract is backend-neutral. Forbidden: any operator-specific type (`BSONValue`, `Stats`, file handles) in the port signatures. |
 | D-10 | **Schema versioning is explicit.** Every persisted envelope carries `schemaVersion: 1`. Adapters refuse to read a snapshot with a future `schemaVersion` (`SessionStoreError.SCHEMA_INCOMPATIBLE`). Migration is out of scope — this is how we catch silent drift at port boundaries. |
 | D-11 | **Error taxonomy is a discriminated union, not subclasses.** The port defines `SessionStoreErrorCode` as a string literal union; implementations throw `SessionStoreError` instances with a `code` field. Error codes survive serialization across the HTTP boundary to a Cortex app. |
-| D-12 | **`@method/pacta`'s `ResumableMode` is the user-facing trigger.** `pact.mode = { type: 'resumable', sessionId }` causes the runtime to look up the session via `SessionStore.load(sessionId)` on every invocation. If absent → fresh start. If present → resume algorithm runs. |
+| D-12 | **`@methodts/pacta`'s `ResumableMode` is the user-facing trigger.** `pact.mode = { type: 'resumable', sessionId }` causes the runtime to look up the session via `SessionStore.load(sessionId)` on every invocation. If absent → fresh start. If present → resume algorithm runs. |
 
 ---
 
@@ -79,16 +79,16 @@ related:
 
 ## 3. Ownership
 
-**Owner:** `@method/runtime` — defines the ports and the canonical `SessionSnapshot` / `Checkpoint` types.
+**Owner:** `@methodts/runtime` — defines the ports and the canonical `SessionSnapshot` / `Checkpoint` types.
 
 **Producers (implementations):**
-- `@method/agent-runtime` → `CortexSessionStore` (over `ctx.storage`)
-- `@method/bridge` → `FsSessionStore` (over JSONL + `FileSystemProvider`); wraps the existing `SessionPersistenceStore` + extends it with checkpoint/lease semantics.
+- `@methodts/agent-runtime` → `CortexSessionStore` (over `ctx.storage`)
+- `@methodts/bridge` → `FsSessionStore` (over JSONL + `FileSystemProvider`); wraps the existing `SessionPersistenceStore` + extends it with checkpoint/lease semantics.
 
 **Consumers:**
-- `@method/pacta`: composition engine calls `SessionStore` at `ResumableMode` entry/exit.
-- `@method/methodts`: strategy executor's `CheckpointPort` consumer migrates onto `SessionStore` (deprecating `CheckpointPort`, or wrapping it).
-- `@method/bridge`: `domains/sessions` owns one `FsSessionStore`; `domains/strategies` uses another (or the same, keyed by `sessionKind`).
+- `@methodts/pacta`: composition engine calls `SessionStore` at `ResumableMode` entry/exit.
+- `@methodts/methodts`: strategy executor's `CheckpointPort` consumer migrates onto `SessionStore` (deprecating `CheckpointPort`, or wrapping it).
+- `@methodts/bridge`: `domains/sessions` owns one `FsSessionStore`; `domains/strategies` uses another (or the same, keyed by `sessionKind`).
 - `CheckpointSink` is registered by the composition root against `EventBus.registerSink(sink)`.
 
 ---
@@ -103,9 +103,9 @@ related:
 /**
  * SessionStore — persistence port for agent sessions and checkpoints.
  *
- * Owner: @method/runtime
- * Consumers: @method/pacta (ResumableMode), @method/methodts (strategy executor),
- *            @method/bridge (sessions + strategies domains), @method/agent-runtime
+ * Owner: @methodts/runtime
+ * Consumers: @methodts/pacta (ResumableMode), @methodts/methodts (strategy executor),
+ *            @methodts/bridge (sessions + strategies domains), @methodts/agent-runtime
  * Producers: FsSessionStore (bridge JSONL+FS), CortexSessionStore (ctx.storage)
  * Direction: runtime ↔ adapter (CRUD + lease)
  * Co-designed: 2026-04-14 (FCD surface session `fcd-surface-session-store`)
@@ -195,8 +195,8 @@ export interface SessionStore {
 ```typescript
 // packages/runtime/src/ports/checkpoint-sink.ts
 
-import type { BridgeEvent, EventSink, EventFilter } from '@method/bridge/ports/event-bus';
-// (in practice re-exported from @method/runtime/ports/event-bus once the bus moves)
+import type { BridgeEvent, EventSink, EventFilter } from '@methodts/bridge/ports/event-bus';
+// (in practice re-exported from @methodts/runtime/ports/event-bus once the bus moves)
 
 /**
  * CheckpointSink — adapts session-scoped BridgeEvents into SessionStore
@@ -207,7 +207,7 @@ import type { BridgeEvent, EventSink, EventFilter } from '@method/bridge/ports/e
  *   1. writes go to SessionStore.appendCheckpoint, not save(PersistedSession)
  *   2. supports per-event opt-in via additional filters (D-3)
  *
- * Owner: @method/runtime
+ * Owner: @methodts/runtime
  * Producer: composition root (bridge server-entry, agent-runtime bootstrap)
  * Consumer: EventBus (via registerSink)
  */
@@ -519,7 +519,7 @@ On successful resume, the runtime dispatches `snapshot.nextAction`:
 - **Atomic acquisition:** adapter's responsibility. In Mongo: `findOneAndUpdate` with a filter `{ _id: sessionId, $or: [ { _lease: null }, { '_lease.expiresAt': { $lt: now } }, { '_lease.workerId': workerId } ] }` and `$set` of the new lease. In FS: lockfile via `fs.open(..., 'wx')` + lease JSON; PID-based stale detection via `kill -0` / equivalent.
 - **All mutating calls check the token.** `appendCheckpoint`, `renewLease`, `releaseLease`, `finalize` all require `fencingToken` and reject stale/mismatched tokens with `FENCED`.
 - **Tool-call idempotency:** tools invoked during a resumed turn receive the `fencingToken` as part of their invocation metadata. Side-effecting tools (notify, audit, external API) MUST persist a mark keyed on `(fencingToken, toolCallId)` before execution and short-circuit on replay. This is a *contract with tools*, not enforced by the port — the port guarantees at most one active worker; tools guarantee at most once per invocation id.
-- **No distributed consensus required.** The Cortex adapter leans on Mongo's single-document atomicity. The FS adapter is single-host only (documented limitation; federated bridge nodes use `@method/cluster` for session pinning).
+- **No distributed consensus required.** The Cortex adapter leans on Mongo's single-document atomicity. The FS adapter is single-host only (documented limitation; federated bridge nodes use `@methodts/cluster` for session pinning).
 
 **Failure modes:**
 - Worker crashes holding a lease → lease expires after `leaseTtlMs`; next `resume()` acquires cleanly.
@@ -549,7 +549,7 @@ HTTP boundary mapping: `FENCED`/`LEASE_EXPIRED` → 409; `NOT_FOUND` → 404; `Q
 
 ## 9. Adapter Sketches (signatures only)
 
-### 9.1 `CortexSessionStore` (@method/agent-runtime)
+### 9.1 `CortexSessionStore` (@methodts/agent-runtime)
 
 Backed by `ctx.storage` per PRD-064. Two collections per app: `session_snapshots` and `session_checkpoints`.
 
@@ -560,7 +560,7 @@ import type { CortexContext } from '@t1/cortex-sdk';   // ctx.storage.collection
 import type {
   SessionStore, SessionSnapshot, Checkpoint, CheckpointMeta,
   ResumeContext, ResumeOptions, SessionStatus,
-} from '@method/runtime/ports/session-store';
+} from '@methodts/runtime/ports/session-store';
 
 export interface CortexSessionStoreOptions {
   readonly ctx: Pick<CortexContext, 'storage'>;
@@ -589,7 +589,7 @@ export declare function createCortexSessionStore(
 
 Atomicity: single-doc `findOneAndUpdate` on snapshot for lease CAS. Checkpoint append is a two-step compound: insert into checkpoints, then update `snapshot.latestCheckpointSequence` — acceptable because concurrent appends are impossible under the lease invariant.
 
-### 9.2 `FsSessionStore` (@method/bridge / existing persistence)
+### 9.2 `FsSessionStore` (@methodts/bridge / existing persistence)
 
 Thin wrapper over the existing `SessionPersistenceStore` + new per-session checkpoint JSONL. Lives at `.method/sessions/<sessionId>/`:
 - `snapshot.json` (atomic write via `.tmp` + rename)
@@ -600,7 +600,7 @@ Thin wrapper over the existing `SessionPersistenceStore` + new per-session check
 // packages/bridge/src/domains/sessions/fs-session-store.ts
 
 import type { FileSystemProvider } from '../../ports/file-system.js';
-import type { SessionStore } from '@method/runtime/ports/session-store';
+import type { SessionStore } from '@methodts/runtime/ports/session-store';
 
 export interface FsSessionStoreOptions {
   readonly baseDir: string;                 // e.g., <projectRoot>/.method
@@ -644,28 +644,28 @@ Migration: existing `SessionPersistenceStore` stays in place for non-checkpoint 
 | `packages/bridge/src/shared/event-bus/session-checkpoint-sink.ts` (`SessionCheckpointSink`) | **Superseded** by the new `CheckpointSink` port implementation. Existing debounce semantics are preserved. |
 | `packages/bridge/src/ports/checkpoint.ts` (`CheckpointPort` — Build Orchestrator) | **Overlap, kept for now.** `CheckpointPort` is a higher-level, pipeline-specific port (PipelineCheckpoint, Phase enum). It will be re-implemented *on top of* `SessionStore` in PRD-062; the Build Orchestrator's caller surface does not change. |
 | `packages/pacta/src/modes/execution-mode.ts` (`ResumableMode`) | **Trigger.** `pact.mode = { type: 'resumable', sessionId }` is what causes a runtime to call `SessionStore.resume()`. No change to the mode type. |
-| `@method/bridge` event bus (`EventBus` in `packages/bridge/src/ports/event-bus.ts`) | **Dependency.** `CheckpointSink` is an `EventSink`. Event bus must move (or be re-exported) to `@method/runtime` as part of PRD-057. |
+| `@methodts/bridge` event bus (`EventBus` in `packages/bridge/src/ports/event-bus.ts`) | **Dependency.** `CheckpointSink` is an `EventSink`. Event bus must move (or be re-exported) to `@methodts/runtime` as part of PRD-057. |
 
 ---
 
 ## 11. Producer / Consumer Map
 
-**Producer (owner, types):** `@method/runtime`
+**Producer (owner, types):** `@methodts/runtime`
 - `packages/runtime/src/ports/session-store.ts` (planned — post PRD-057 extraction)
 - `packages/runtime/src/ports/checkpoint-sink.ts`
 - `packages/runtime/src/ports/session-store-types.ts`
 - `packages/runtime/src/ports/session-store-errors.ts`
 
 **Producers (implementations):**
-- `@method/agent-runtime` → `packages/agent-runtime/src/adapters/cortex-session-store.ts` (CortexSessionStore)
-- `@method/bridge` → `packages/bridge/src/domains/sessions/fs-session-store.ts` (FsSessionStore)
-- `@method/runtime` → `packages/runtime/src/sinks/checkpoint-sink-impl.ts` (default CheckpointSink)
+- `@methodts/agent-runtime` → `packages/agent-runtime/src/adapters/cortex-session-store.ts` (CortexSessionStore)
+- `@methodts/bridge` → `packages/bridge/src/domains/sessions/fs-session-store.ts` (FsSessionStore)
+- `@methodts/runtime` → `packages/runtime/src/sinks/checkpoint-sink-impl.ts` (default CheckpointSink)
 
 **Consumers:**
-- `@method/pacta` composition engine — at `ResumableMode` entry/exit and after every `step()`.
-- `@method/methodts` strategy executor — checkpointing between strategy phases (migrates from `CheckpointPort`).
-- `@method/bridge` composition root — wires `FsSessionStore` + registers `CheckpointSink` on the bus.
-- `@method/agent-runtime` composition root — wires `CortexSessionStore` + registers `CheckpointSink`.
+- `@methodts/pacta` composition engine — at `ResumableMode` entry/exit and after every `step()`.
+- `@methodts/methodts` strategy executor — checkpointing between strategy phases (migrates from `CheckpointPort`).
+- `@methodts/bridge` composition root — wires `FsSessionStore` + registers `CheckpointSink` on the bus.
+- `@methodts/agent-runtime` composition root — wires `CortexSessionStore` + registers `CheckpointSink`.
 
 Wiring pattern: constructor injection from the composition root; no package imports the adapter directly.
 
@@ -677,7 +677,7 @@ Wiring pattern: constructor injection from the composition root; no package impo
 // In architecture.test.ts — SessionStore co-design assertion
 
 describe('G-BOUNDARY / G-PORT — SessionStore', () => {
-  it('consumers import SessionStore only from @method/runtime ports', () => {
+  it('consumers import SessionStore only from @methodts/runtime ports', () => {
     const violations = scanImports(
       ['packages/pacta/src', 'packages/methodts/src', 'packages/bridge/src', 'packages/agent-runtime/src'],
       // disallow: direct imports of the concrete adapters from non-composition-root files
@@ -711,4 +711,4 @@ describe('G-BOUNDARY / G-PORT — SessionStore', () => {
 - **Frozen:** 2026-04-14
 - **Changes require:** a new `/fcd-surface` session (additive) or a breaking-change co-design with migration plan
 - **Related PRD:** 061 (`CortexSessionStore` + checkpoint resume contract) — this record is the port grammar 061 implements.
-- **Depends on (sibling surfaces):** `MethodAgentPort` (fcd-surface-method-agent-port), `@method/runtime` package boundary (fcd-surface-runtime-package-boundary), Cortex `AppStorage` Surface 12.7 (already frozen).
+- **Depends on (sibling surfaces):** `MethodAgentPort` (fcd-surface-method-agent-port), `@methodts/runtime` package boundary (fcd-surface-runtime-package-boundary), Cortex `AppStorage` Surface 12.7 (already frozen).

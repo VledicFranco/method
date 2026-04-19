@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Bridge Cognitive Modules — CognitiveModule implementations extracted from
  * the monolithic cognitive-provider.ts inline loop.
@@ -22,8 +23,8 @@ import type {
   WorkspaceReadPort,
   WorkspaceWritePort,
   ToolProvider,
-} from '@method/pacta';
-import { moduleId } from '@method/pacta';
+} from '@methodts/pacta';
+import { moduleId } from '@methodts/pacta';
 import type { StreamEvent } from './pool.js';
 import type { StreamChunkCallback } from './print-session.js';
 import type { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';

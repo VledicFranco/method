@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * tla/ — TLA+ compiler for formal methodology verification.
  *

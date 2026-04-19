@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Centralized Zod input schemas and shared schema helpers for MCP tools.
  *

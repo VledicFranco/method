@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Step middleware framework — composable pre/post processing for step execution.
  *

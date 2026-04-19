@@ -2,9 +2,9 @@
 type: co-design-record
 surface: CoverageReportPort
 date: "2026-04-08"
-owner: "@method/fca-index"
-producer: "@method/fca-index"
-consumers: ["CLI (method-ctl / fca-index binary)", "@method/mcp"]
+owner: "@methodts/fca-index"
+producer: "@methodts/fca-index"
+consumers: ["CLI (method-ctl / fca-index binary)", "@methodts/mcp"]
 direction: "fca-index → CLI, fca-index → mcp (unidirectional to both)"
 status: frozen
 mode: new
@@ -71,35 +71,35 @@ export interface ComponentCoverageEntry {
 - **Usage file:** `packages/fca-index/src/cli/coverage-command.ts` (planned)
 - **Injection:** `CoverageReportPort` implementation constructed in CLI entry point
 
-### @method/mcp
+### @methodts/mcp
 - **Tool:** `coverage_check` (new MCP tool)
 - **Usage file:** `packages/mcp/src/context-tools.ts` (planned — same file as context_query)
 - **Injection:** same `CoverageReportPort` instance as `ContextQueryPort` (same library instance)
 
 ## Producer
 
-- **Package:** `@method/fca-index`
+- **Package:** `@methodts/fca-index`
 - **Implementation:** `packages/fca-index/src/coverage/coverage-engine.ts` (planned)
 - **Reads from:** the SQLite index (coverage scores computed during scan, not at report time)
 
 ## Gate Assertions
 
 ```typescript
-// G-BOUNDARY: CLI imports CoverageReportPort from @method/fca-index public API only
-it('CLI does not import @method/fca-index internals', () => {
+// G-BOUNDARY: CLI imports CoverageReportPort from @methodts/fca-index public API only
+it('CLI does not import @methodts/fca-index internals', () => {
   const violations = scanImports('packages/fca-index/src/cli/**', {
     forbidden: ['packages/fca-index/src/coverage', 'packages/fca-index/src/scanner',
                 'packages/fca-index/src/index-store'],
-    allowed: ['../ports', '@method/fca-index'],
+    allowed: ['../ports', '@methodts/fca-index'],
   });
   expect(violations).toEqual([]);
 });
 
-// G-BOUNDARY: mcp coverage_check tool imports from @method/fca-index public API only
-it('mcp coverage_check does not import @method/fca-index internals', () => {
+// G-BOUNDARY: mcp coverage_check tool imports from @methodts/fca-index public API only
+it('mcp coverage_check does not import @methodts/fca-index internals', () => {
   const violations = scanImports('packages/mcp/src/context-tools.ts', {
     forbidden: ['packages/fca-index/src/coverage', 'packages/fca-index/src/scanner'],
-    allowed: ['@method/fca-index'],
+    allowed: ['@methodts/fca-index'],
   });
   expect(violations).toEqual([]);
 });

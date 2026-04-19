@@ -20,7 +20,7 @@ How to compose cognitive modules using the four algebraic operators.
 
 The cognitive algebra defines four operators that combine `CognitiveModule` instances into larger modules. The key property: every composed module is itself a `CognitiveModule`, so composition works at every scale. You can compose composed modules, nest hierarchies inside parallel branches, or build towers of self-monitoring modules.
 
-All four operators live in `packages/pacta/src/cognitive/algebra/composition.ts` and are exported from `@method/pacta`:
+All four operators live in `packages/pacta/src/cognitive/algebra/composition.ts` and are exported from `@methodts/pacta`:
 
 ```typescript
 import {
@@ -28,7 +28,7 @@ import {
   parallel,
   competitive,
   hierarchical,
-} from '@method/pacta';
+} from '@methodts/pacta';
 ```
 
 ## The CognitiveModule Interface
@@ -88,8 +88,8 @@ function sequential<I, Mid, O, SA, SB, MuA, MuB, KappaA, KappaB>(
 ### Example
 
 ```typescript
-import { sequential, moduleId } from '@method/pacta';
-import type { CognitiveModule, MonitoringSignal, ControlDirective } from '@method/pacta';
+import { sequential, moduleId } from '@methodts/pacta';
+import type { CognitiveModule, MonitoringSignal, ControlDirective } from '@methodts/pacta';
 
 // A module that uppercases its input
 const upper: CognitiveModule<string, string, number, MonitoringSignal, ControlDirective> = {
@@ -146,7 +146,7 @@ function parallel<I, OA, OB, O, SA, SB, MuA, MuB, KappaA, KappaB>(
 ### Example
 
 ```typescript
-import { parallel, moduleId } from '@method/pacta';
+import { parallel, moduleId } from '@methodts/pacta';
 
 const analyzerA = createAnalysisModule('fast-heuristic');
 const analyzerB = createAnalysisModule('thorough-search');
@@ -192,7 +192,7 @@ function competitive<I, OA, OB, SA, SB, MuA, MuB, KappaA, KappaB>(
 ### Example
 
 ```typescript
-import { competitive, moduleId } from '@method/pacta';
+import { competitive, moduleId } from '@methodts/pacta';
 
 const creative = createReasoningModule('creative');
 const analytical = createReasoningModule('analytical');
@@ -239,8 +239,8 @@ function hierarchical<I, OTarget, OMonitor, STarget, SMonitor, MuTarget, MuMonit
 ### Example
 
 ```typescript
-import { hierarchical, moduleId } from '@method/pacta';
-import type { CognitiveModule, MonitoringSignal, ControlDirective } from '@method/pacta';
+import { hierarchical, moduleId } from '@methodts/pacta';
+import type { CognitiveModule, MonitoringSignal, ControlDirective } from '@methodts/pacta';
 
 // Target: does the actual work, reports confidence
 const worker = createWorkerModule('task-executor');
@@ -312,7 +312,7 @@ const supervised = hierarchical(monitor, racingPair);
 The `tower(M, n)` helper builds n-level hierarchical self-monitoring stacks. Depth is bounded by `MAX_TOWER_DEPTH` (default: 5) to prevent runaway recursion:
 
 ```typescript
-import { tower, MAX_TOWER_DEPTH } from '@method/pacta';
+import { tower, MAX_TOWER_DEPTH } from '@methodts/pacta';
 
 // 3-level self-monitoring tower
 const selfMonitoring = tower(myModule, 3);

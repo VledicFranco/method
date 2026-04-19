@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Enriched Signal Types — v2 monitoring signals with metacognitive taxonomy,
  * prediction-error tracking, and precision weighting.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Stub sample app — exercises every canonical conformance fixture end-to-end
  * so the testkit's own tests can validate the runner without depending on

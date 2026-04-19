@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexMethodologySource — Cortex-backed MethodologySource (PRD-064 / S7).
  *
@@ -20,16 +21,16 @@
 import type {
   MethodologySource,
   MethodologyChange,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 import type {
   CatalogMethodologyEntry,
-} from '@method/methodts/stdlib';
-import type { Method, Methodology } from '@method/methodts';
+} from '@methodts/methodts/stdlib';
+import type { Method, Methodology } from '@methodts/methodts';
 import {
   getStdlibCatalog,
   getMethod as getStdlibMethod,
   getMethodology as getStdlibMethodology,
-} from '@method/methodts/stdlib';
+} from '@methodts/methodts/stdlib';
 
 import type {
   MethodologyDocument,
@@ -102,9 +103,9 @@ export class CortexMethodologyError extends Error {
 
 /**
  * Minimal stdlib-backed MethodologySource used inside the inheritance
- * resolver. We avoid importing `StdlibSource` from `@method/bridge`
+ * resolver. We avoid importing `StdlibSource` from `@methodts/bridge`
  * (would break layering); the stdlib catalog is a pure function in
- * `@method/methodts`.
+ * `@methodts/methodts`.
  */
 class InternalStdlibSource implements MethodologySource {
   list(): CatalogMethodologyEntry[] {

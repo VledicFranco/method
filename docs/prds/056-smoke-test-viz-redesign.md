@@ -2,7 +2,7 @@
 
 **Status:** draft
 **Date:** 2026-04-12
-**Domains:** `@method/smoke-test` (internal sub-module redesign — no cross-package surface changes)
+**Domains:** `@methodts/smoke-test` (internal sub-module redesign — no cross-package surface changes)
 **Prior art:** PRD 055 (smoke test suite, implemented); branch `feat/smoke-test-viz-redesign` commit `311d325` (starter — layer tags + methodology/method cases added)
 **Design reference:** `method-1/tmp/smoke-test-viz-mock.html`, `method-1/tmp/smoke-test-visualization-design.md`, `method-1/tmp/smoke-test-methodology-gap.md`
 

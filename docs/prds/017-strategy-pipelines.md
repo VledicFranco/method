@@ -20,11 +20,11 @@ status: implemented
 
 ### Methodology execution is manual and sequential
 
-The methodology runtime (`@method/core`) guides a single agent through a single method's step DAG. Multi-method workflows require a human or orchestrator agent to manually: start a methodology session, evaluate routing, spawn an agent, monitor progress, validate output, transition to the next method, and repeat. This works for 2-3 method sequences but breaks down for complex delivery workflows (PRD sectioning → architecture → planning → parallel implementation → review → PR creation) that should run autonomously.
+The methodology runtime (`@methodts/core`) guides a single agent through a single method's step DAG. Multi-method workflows require a human or orchestrator agent to manually: start a methodology session, evaluate routing, spawn an agent, monitor progress, validate output, transition to the next method, and repeat. This works for 2-3 method sequences but breaks down for complex delivery workflows (PRD sectioning → architecture → planning → parallel implementation → review → PR creation) that should run autonomously.
 
 ### The bridge can spawn agents but can't orchestrate workflows
 
-The bridge (`@method/bridge`) manages a pool of PTY sessions and provides channels for visibility. But it has no concept of workflow — it can't execute a sequence of methodology invocations with gates between them, automatically parallelize independent steps, or retry failed steps with feedback. Every orchestration decision requires either a human or a purpose-built orchestrator agent.
+The bridge (`@methodts/bridge`) manages a pool of PTY sessions and provides channels for visibility. But it has no concept of workflow — it can't execute a sequence of methodology invocations with gates between them, automatically parallelize independent steps, or retry failed steps with feedback. Every orchestration decision requires either a human or a purpose-built orchestrator agent.
 
 ### What this PRD delivers
 
@@ -121,7 +121,7 @@ strategy:
 
 ### Component 2: DAG Executor
 
-A TypeScript DAG execution engine in `@method/bridge` that runs Strategy DAGs.
+A TypeScript DAG execution engine in `@methodts/bridge` that runs Strategy DAGs.
 
 **Type model** (Constellation-compatible):
 
@@ -454,7 +454,7 @@ All deferred items are documented in [docs/vision/strategy-pipelines.md](../visi
 | PRD | Relationship |
 |-----|-------------|
 | **PRD 004** (Methodology Runtime) | Strategy executor uses the methodology runtime for method loading, step advancement, and routing evaluation within each methodology node. |
-| **PRD 005** (Bridge) | Strategy executor lives in `@method/bridge`. Uses existing session management, channel infrastructure, and dashboard. |
+| **PRD 005** (Bridge) | Strategy executor lives in `@methodts/bridge`. Uses existing session management, channel infrastructure, and dashboard. |
 | **PRD 008** (Agent Visibility) | Strategy execution emits progress and events to bridge channels. Strategy gates and node completions appear in the event feed. |
 | **PRD 010** (PTY Auto-Detection) | Not used for print-mode sessions. PTY watcher remains for any PTY-mode admin sessions. |
 | **PRD 012** (Session Reliability) | Phase 4 (print-mode sessions) is a prerequisite. Strategy execution uses the `ClaudeCodeProvider` wrapping `claude --print`. Adaptive settle and diagnostics apply to PTY sessions only. |
@@ -462,4 +462,4 @@ All deferred items are documented in [docs/vision/strategy-pipelines.md](../visi
 
 ### Architectural Note
 
-The Strategy executor is a new module in `@method/bridge` at `packages/bridge/src/strategy/`. It does NOT touch `@method/core` (DR-03 — no transport deps in core). The methodology runtime is invoked via the existing core API (`loadMethodology`, `startMethodologySession`, etc.) from within the executor. The LLM provider interface abstracts the Claude CLI — future providers (Claude API, other LLMs) implement the same interface.
+The Strategy executor is a new module in `@methodts/bridge` at `packages/bridge/src/strategy/`. It does NOT touch `@methodts/core` (DR-03 — no transport deps in core). The methodology runtime is invoked via the existing core API (`loadMethodology`, `startMethodologySession`, etc.) from within the executor. The LLM provider interface abstracts the Claude CLI — future providers (Claude API, other LLMs) implement the same interface.

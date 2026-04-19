@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Cluster Domain Config ────────────────────────────────────────
 //
 // Zod-validated configuration for the bridge cluster domain.

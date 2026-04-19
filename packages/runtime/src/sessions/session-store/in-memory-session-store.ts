@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * In-memory reference `SessionStore` — PRD-061 test support.
  *
- * Lives inside `@method/runtime` so both the conformance testkit and
+ * Lives inside `@methodts/runtime` so both the conformance testkit and
  * adapter unit tests can use it without pulling a full FS or Mongo
  * dependency. Implements the full S4 surface including lease semantics.
  *
- * NOT intended for production. Durable adapters live in `@method/bridge`
- * (FS) and `@method/agent-runtime` (Cortex ctx.storage).
+ * NOT intended for production. Durable adapters live in `@methodts/bridge`
+ * (FS) and `@methodts/agent-runtime` (Cortex ctx.storage).
  */
 
 import type { SessionStore } from '../../ports/session-store.js';

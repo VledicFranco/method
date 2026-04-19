@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Ollama AgentProvider — connects to local or remote Ollama instances via
  * the OpenAI-compatible /v1/chat/completions endpoint.
@@ -16,7 +17,7 @@ import type {
   AgentResult,
   TokenUsage,
   CostReport,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import type { OllamaChatRequest, OllamaChatResponse, OllamaTagsResponse } from './types.js';
 
 // ── Options ──────────────────────────────────────────────────────

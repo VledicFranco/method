@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RecordingProvider — an AgentProvider that records all interactions.
  *
@@ -15,7 +16,7 @@ import type {
   TokenUsage,
   CostReport,
   AgentEvent,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // ── Recorded data structures ────────────────────────────────────
 

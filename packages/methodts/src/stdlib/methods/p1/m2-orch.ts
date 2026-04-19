@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M2_ORCH — Orchestrator Execution Method (M2-ORCH v1.0).
  *

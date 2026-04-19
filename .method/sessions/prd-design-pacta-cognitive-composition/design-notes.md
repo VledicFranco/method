@@ -36,7 +36,7 @@
 
 ### Layer 3: HOW
 
-- Q11 (Dependencies): @method/pacta (PRD 027), @method/pacta-testkit, @method/pacta-playground. No external deps (G-PORT gate).
+- Q11 (Dependencies): @methodts/pacta (PRD 027), @methodts/pacta-testkit, @methodts/pacta-playground. No external deps (G-PORT gate).
 - Q12 (Risks):
   1. R1 (High): Cognitive module step() semantics don't compose cleanly with stateless invoke() — provider mapping gap
   2. R2 (High): Workspace salience heuristics produce degenerate eviction without LLM-scored salience
@@ -52,7 +52,7 @@
 - Q16 (Appetite): Ambitious, unconstrained. Research priority. Time and token budget not limiting factors.
 - Q17 (NFRs):
   - Cognitive cycle amortized cost target: <1.5x ReAct for routine turns (from RFC)
-  - Zero runtime dependencies in @method/pacta (G-PORT gate preserved)
+  - Zero runtime dependencies in @methodts/pacta (G-PORT gate preserved)
   - Composition operators must be type-safe (TypeScript generics, not any)
 - Q18 (Cross-cutting):
   - Observability: every module step emits structured traces (RFC Part IV)

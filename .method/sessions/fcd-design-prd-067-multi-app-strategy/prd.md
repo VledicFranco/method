@@ -15,17 +15,17 @@ summary: >
   surface is designed now so implementation can start the day PRD-080 thaws.
 audience: [cto, method-team, cortex-team]
 domains:
-  - "@method/runtime/strategies"
-  - "@method/runtime/ports"
-  - "@method/agent-runtime/cortex"
-  - "@method/methodts/strategy"
+  - "@methodts/runtime/strategies"
+  - "@methodts/runtime/ports"
+  - "@methodts/agent-runtime/cortex"
+  - "@methodts/methodts/strategy"
 surfaces:
   - CrossAppInvoker
   - CrossAppInvokeNode
   - MultiAppContinuationEnvelopeExtension
 depends_on_method:
-  - PRD-057 (@method/runtime carve-out — owns strategy executor)
-  - PRD-058 (@method/agent-runtime — owns CortexCtx)
+  - PRD-057 (@methodts/runtime carve-out — owns strategy executor)
+  - PRD-058 (@methodts/agent-runtime — owns CortexCtx)
   - PRD-059 (CortexLLMProvider + CortexTokenExchangeMiddleware — token exchange primitive)
   - PRD-062 (JobBackedExecutor + ContinuationEnvelope — extended here)
   - PRD-063 (CortexEventConnector — RuntimeEvent emission for cross-app signals)
@@ -122,9 +122,9 @@ PRD-067 answers that Method-side question.
 
 ### 2.2 From Method (inherited from earlier surfaces)
 
-- **Zero `@cortex/*` runtime imports in `@method/runtime`.** Cross-app
+- **Zero `@cortex/*` runtime imports in `@methodts/runtime`.** Cross-app
   invocation must reach Cortex only through a port implemented by an
-  adapter in `@method/agent-runtime` (parallels S6 CortexEventConnector).
+  adapter in `@methodts/agent-runtime` (parallels S6 CortexEventConnector).
 - **Continuation envelope `version: 1` is frozen (S5).** Cross-app routing
   MUST fit as optional fields on v1 — any shape that requires `version: 2`
   breaks the S5 freeze without a new surface session.
@@ -172,7 +172,7 @@ Once PRD-080 ships:
    completes: `incidents-bot` classifies → DAG walks to the cross-app node
    → `ctx.apps.invoke` dispatches → callee returns → calling strategy
    consumes the output in a downstream node. Verified by an E2E fixture
-   in `@method/smoke-test`.
+   in `@methodts/smoke-test`.
 2. **Depth-2 cap enforced.** A DAG attempting a third hop
    (`A.strategy → B.strategy → C.strategy → D.strategy`) fails at the
    third hop with `CortexDelegationDepthExceededError`; the strategy
@@ -203,9 +203,9 @@ Once PRD-080 ships:
 
 ### 4.1 In scope
 
-- **`CrossAppInvoker` port** (in `@method/runtime/ports/`) — the abstract
+- **`CrossAppInvoker` port** (in `@methodts/runtime/ports/`) — the abstract
   contract method's strategy executor calls. Transport-free.
-- **`CortexCrossAppInvoker` adapter** (in `@method/agent-runtime/cortex/`)
+- **`CortexCrossAppInvoker` adapter** (in `@methodts/agent-runtime/cortex/`)
   — implements the port by calling `ctx.apps.invoke` (PRD-080's SDK API).
 - **`cross-app-invoke` strategy DAG node type** — a new `StrategyNode`
   kind parsed by `strategy-parser.ts` and executed by
@@ -223,7 +223,7 @@ Once PRD-080 ships:
   to `method.*` topics from another app) are a **separate** concern
   handled by S6 CortexEventConnector + `ctx.events.subscribeFromApp`,
   already in scope there — NOT reopened here.
-- **Manifest generator extension** — `@method/agent-runtime` ships a
+- **Manifest generator extension** — `@methodts/agent-runtime` ships a
   helper that, given a strategy DAG with `cross-app-invoke` nodes,
   generates the `requires.apps[]` block for the tenant app's
   `cortex-app.yaml`.
@@ -236,7 +236,7 @@ Once PRD-080 ships:
 - **Transactional multi-app DAGs.** No two-phase commit, no rollback
   semantics. A partially-executed cross-app DAG is a resumable pact with
   a failed node, nothing more.
-- **Cross-cluster / federated method clusters.** `@method/cluster` covers
+- **Cross-cluster / federated method clusters.** `@methodts/cluster` covers
   same-cluster federation; multi-cluster cross-app is v2+.
 - **Runtime dependency discovery.** A strategy cannot invoke an app that
   isn't declared in the manifest at deploy time. Dynamic `appId` strings
@@ -257,15 +257,15 @@ Once PRD-080 ships:
 ## 5. Domain Map
 
 ```
-@method/runtime/strategies     ── (existing) DAG executor, gates, retros
+@methodts/runtime/strategies     ── (existing) DAG executor, gates, retros
          │
          │  consumes
          ▼
-@method/runtime/ports          ── CrossAppInvoker port (NEW, this PRD)
+@methodts/runtime/ports          ── CrossAppInvoker port (NEW, this PRD)
          ▲
          │  implements (Cortex adapter)
          │
-@method/agent-runtime/cortex   ── CortexCrossAppInvoker (NEW, this PRD)
+@methodts/agent-runtime/cortex   ── CortexCrossAppInvoker (NEW, this PRD)
          │
          │  calls ctx.apps.invoke()
          ▼
@@ -297,13 +297,13 @@ PRD-057/058 carve-outs.
 ```typescript
 /**
  * CrossAppInvoker — the transport-free port the strategy DAG executor
- * calls to dispatch a `cross-app-invoke` node. The @method/runtime layer
- * knows nothing about Cortex; the adapter in @method/agent-runtime/cortex
+ * calls to dispatch a `cross-app-invoke` node. The @methodts/runtime layer
+ * knows nothing about Cortex; the adapter in @methodts/agent-runtime/cortex
  * implements this port by calling ctx.apps.invoke (PRD-080).
  *
- * Owner:    @method/runtime (defines port)
- * Producer: @method/agent-runtime/cortex (CortexCrossAppInvoker impl)
- * Consumer: @method/runtime/strategies (DagStrategyExecutor node dispatch)
+ * Owner:    @methodts/runtime (defines port)
+ * Producer: @methodts/agent-runtime/cortex (CortexCrossAppInvoker impl)
+ * Consumer: @methodts/runtime/strategies (DagStrategyExecutor node dispatch)
  *
  * Gate: G-BOUNDARY — no @cortex/* imports in runtime; only the port.
  */
@@ -416,7 +416,7 @@ export class CrossAppTargetNotDeclaredError extends Error {
   constructor(readonly targetAppId: string, readonly allowedTargetAppIds: ReadonlySet<string>);
 }
 
-/** Re-exported from @method/agent-runtime when dispatched through Cortex.
+/** Re-exported from @methodts/agent-runtime when dispatched through Cortex.
  *  Surfaces Cortex PRD-080's cross_app_scope_missing as a typed error. */
 export class CrossAppScopeMissingError extends Error {
   readonly code: 'CROSS_APP_SCOPE_MISSING';
@@ -442,7 +442,7 @@ Extension to `StrategyNode` parsed by `strategy-parser.ts` (methodts
 territory, consumed by `DagStrategyExecutor`).
 
 ```typescript
-// In @method/methodts/strategy/dag-types.ts — adds a new node kind
+// In @methodts/methodts/strategy/dag-types.ts — adds a new node kind
 export type StrategyNode =
   | MethodologyNode
   | GateNode
@@ -524,7 +524,7 @@ S5 freezes `version: 1`. PRD-067 adds two **optional** fields — additive
 only, no wire-format break, no `version: 2`.
 
 ```typescript
-// @method/runtime/src/ports/continuation-envelope.ts (extension)
+// @methodts/runtime/src/ports/continuation-envelope.ts (extension)
 export interface ContinuationEnvelope {
   version: 1;                    // unchanged
   sessionId: string;             // unchanged
@@ -586,7 +586,7 @@ add optional fields only."* This PRD is exactly that case.**
 ### 6.4 Entity identification
 
 - `CrossAppInvokeRequest` / `CrossAppInvokeResult` — port-local types,
-  owned by `@method/runtime/ports/cross-app-invoker.ts`. Not promoted to
+  owned by `@methodts/runtime/ports/cross-app-invoker.ts`. Not promoted to
   a shared entities package; only the port consumes them.
 - `CrossAppContinuationContext` — lives on the envelope, owned by
   `continuation-envelope.ts`. Reuses existing `CheckpointRef` / `BudgetRef`
@@ -601,15 +601,15 @@ No new canonical business entity. No shared-types package update required.
 
 | Surface | Owner | Producer → Consumer | Status | Gate |
 |---------|-------|---------------------|--------|------|
-| `CrossAppInvoker` port | `@method/runtime` | `agent-runtime/cortex` → `runtime/strategies` | frozen (pending §10) | G-BOUNDARY, G-PORT |
-| `cross-app-invoke` node type | `@method/methodts/strategy` | parser → DagStrategyExecutor | frozen (pending §10) | G-PARSER-NODE-KIND |
-| `CrossAppContinuationContext` (envelope ext.) | `@method/runtime` | caller executor → callee-aware resume | frozen (additive ext. of S5) | G-ENVELOPE-BACKWARD-COMPAT |
+| `CrossAppInvoker` port | `@methodts/runtime` | `agent-runtime/cortex` → `runtime/strategies` | frozen (pending §10) | G-BOUNDARY, G-PORT |
+| `cross-app-invoke` node type | `@methodts/methodts/strategy` | parser → DagStrategyExecutor | frozen (pending §10) | G-PARSER-NODE-KIND |
+| `CrossAppContinuationContext` (envelope ext.) | `@methodts/runtime` | caller executor → callee-aware resume | frozen (additive ext. of S5) | G-ENVELOPE-BACKWARD-COMPAT |
 
 ---
 
 ## 7. Per-Domain Architecture
 
-### 7.1 `@method/runtime/strategies`
+### 7.1 `@methodts/runtime/strategies`
 
 - Extend `DagStrategyExecutor` to dispatch nodes of kind
   `cross-app-invoke` via the injected `CrossAppInvoker` port.
@@ -626,7 +626,7 @@ No new canonical business entity. No shared-types package update required.
 - **Layer:** L3 (existing). No new component — extension of
   `DagStrategyExecutor`.
 
-### 7.2 `@method/agent-runtime/cortex`
+### 7.2 `@methodts/agent-runtime/cortex`
 
 - New file `packages/agent-runtime/src/cortex/cross-app-invoker.ts`
   implementing `CortexCrossAppInvoker implements CrossAppInvoker`.
@@ -646,7 +646,7 @@ No new canonical business entity. No shared-types package update required.
   `targetDecisionId`, `targetAppId`, `operation`, `callerCostUsd`.
 - **Layer:** L3 (existing agent-runtime). No new package.
 
-### 7.3 `@method/methodts/strategy`
+### 7.3 `@methodts/methodts/strategy`
 
 - Extend `strategy-parser.ts` (bridge-side) to accept `type:
   cross-app-invoke` and validate `config` shape via zod schema.
@@ -655,7 +655,7 @@ No new canonical business entity. No shared-types package update required.
 - No runtime change in methodts — the executor delegates dispatch
   through the port via a new `NodeExecutor` branch owned by the bridge
   adapter (same pattern as `PactaNodeExecutor`). A `CrossAppNodeExecutor`
-  class in `@method/runtime/strategies` implements the dispatch.
+  class in `@methodts/runtime/strategies` implements the dispatch.
 - **Layer:** L2 (methodts parser + types). L3 adapter in runtime.
 
 ### 7.4 Event-bus additions (S6-compatible)
@@ -676,7 +676,7 @@ registration — no S6 contract change, just registry entries. Gate
 
 | Gate | Scope | Check |
 |------|-------|-------|
-| G-BOUNDARY | `@method/runtime/ports/cross-app-invoker.ts` | No `@cortex/*` imports; only port-local types |
+| G-BOUNDARY | `@methodts/runtime/ports/cross-app-invoker.ts` | No `@cortex/*` imports; only port-local types |
 | G-PORT | `runtime/strategies` dispatch path | Calls `CrossAppInvoker.invoke`, never `ctx.apps` directly |
 | G-PARSER-NODE-KIND | `strategy-parser.ts` | `cross-app-invoke` node parses and round-trips YAML identically |
 | G-ENVELOPE-BACKWARD-COMPAT | `continuation-envelope.ts` | Pre-PRD-067 fixture envelope deserialises; re-serialised bytes identical when `crossApp` absent |
@@ -698,7 +698,7 @@ and build a simulator now; live integration waits.
 2. Create `packages/runtime/src/ports/cross-app-invoker.ts` with the
    port + error classes + `NullCrossAppInvoker` default.
 3. Extend `continuation-envelope.ts` with optional `crossApp` field.
-4. Ship `InProcessCrossAppInvoker` for `@method/smoke-test` — routes to
+4. Ship `InProcessCrossAppInvoker` for `@methodts/smoke-test` — routes to
    a sibling runtime instance simulating "another app" with a stub
    `ctx.apps` shape that matches our §10 assumptions. This lets us E2E
    test the whole DAG flow without waiting for PRD-080.
@@ -711,7 +711,7 @@ strategy running on `InProcessCrossAppInvoker`; bridge E2E test green.
 
 ### Wave 1 — Parser, executor, events (can start immediately, parallel to Wave 0 tail)
 
-1. `CrossAppNodeExecutor` in `@method/runtime/strategies`.
+1. `CrossAppNodeExecutor` in `@methodts/runtime/strategies`.
 2. `DagStrategyExecutor` dispatch branch.
 3. Two new `RuntimeEvent` types + registry entries.
 4. E2E: incidents-bot-sim → feature-dev-agent-sim in `smoke-test`.
@@ -721,7 +721,7 @@ simulator; audit events correlate via synthetic `decisionId`.
 
 ### Wave 2 — Cortex adapter (BLOCKED ON PRD-080 ship)
 
-1. `CortexCrossAppInvoker` in `@method/agent-runtime/cortex/`.
+1. `CortexCrossAppInvoker` in `@methodts/agent-runtime/cortex/`.
 2. Wire into `createMethodAgent` composition root when `ctx.apps` is
    present.
 3. Manifest helper: strategy DAG → `requires.apps[]` generator.
@@ -855,7 +855,7 @@ it's transport-free).
 |------|----------|
 | Compile | All packages build with the port + node type additions |
 | Wave 0 | `InProcessCrossAppInvoker` smoke test green; envelope round-trip snapshot passes |
-| G-BOUNDARY | `@method/runtime` imports zero `@cortex/*` at runtime |
+| G-BOUNDARY | `@methodts/runtime` imports zero `@cortex/*` at runtime |
 | G-PORT | Strategy executor dispatches through `CrossAppInvoker`, never directly |
 | G-PARSER-NODE-KIND | YAML round-trip for `cross-app-invoke` node identical pre/post |
 | G-ENVELOPE-BACKWARD-COMPAT | Pre-PRD-067 envelope fixture round-trips byte-identical |

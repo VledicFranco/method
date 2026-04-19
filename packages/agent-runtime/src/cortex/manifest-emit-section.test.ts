@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for generate-manifest-emit-section — PRD-063 §Tests.
  *
@@ -45,7 +46,7 @@ describe('generateManifestEmitSection', () => {
       topics: new Set(['method.session.started']),
       schemaRefMode: 'node_modules',
     });
-    assert.match(entries[0].schema, /node_modules\/@method\/agent-runtime/);
+    assert.match(entries[0].schema, /node_modules\/@methodts\/agent-runtime/);
   });
 
   it('copied mode uses copied prefix', () => {

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Pacta-Strategy Integration (Spike)
  *
@@ -8,7 +9,7 @@
  *
  * This is ADDITIVE — the existing strategy executor is not modified.
  *
- * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
+ * PRD-057 / S2 §3.2 / C2: moved from @methodts/bridge/domains/strategies/.
  */
 
 import type {
@@ -16,7 +17,7 @@ import type {
   BudgetContract,
   ScopeContract,
   ReasoningPolicy,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // ── Strategy Step Pact Configuration ────────────────────────────
 

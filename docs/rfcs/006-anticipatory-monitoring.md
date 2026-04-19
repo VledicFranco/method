@@ -4,7 +4,7 @@
 **Author:** PO + Lysica
 **Date:** 2026-04-03
 **Extends:** RFC 001 (Calculus of Cognitive Composition), RFC 004 (Goal-State Monitoring)
-**Applies to:** `@method/pacta` cognitive algebra, Planner module, Evaluator module
+**Applies to:** `@methodts/pacta` cognitive algebra, Planner module, Evaluator module
 **Organization:** Vidtecci
 
 ---

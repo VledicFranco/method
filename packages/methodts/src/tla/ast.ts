@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * TLA+ AST types — structural representation of TLA+ specifications.
  *

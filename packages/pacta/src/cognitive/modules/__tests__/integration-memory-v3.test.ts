@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Integration tests for MemoryV3 + Consolidator end-to-end (PRD 036 C-5).
  *

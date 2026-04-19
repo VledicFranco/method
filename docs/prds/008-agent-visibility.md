@@ -316,7 +316,7 @@ Channels are in-memory (same as the rest of the bridge state). No persistence ne
 
 ### New MCP Tools (4)
 
-Added to `@method/mcp`:
+Added to `@methodts/mcp`:
 
 | Tool | Direction | Purpose |
 |---|---|---|

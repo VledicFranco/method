@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Architecture gate tests for @method/pacta-provider-cortex
+ * Architecture gate tests for @methodts/pacta-provider-cortex
  * (PRD-059 §Gates, S3 §7).
  *
  * Gates enforced here (build-time / test-time, not runtime):
@@ -72,7 +73,7 @@ function stripTypeOnlyImports(content: string): string {
     .replace(/import\s+type\s*\{[^}]*\}\s*from\s+['"][^'"]+['"]\s*;?/g, '');
 }
 
-describe('@method/pacta-provider-cortex — architecture gates', () => {
+describe('@methodts/pacta-provider-cortex — architecture gates', () => {
   const files = walkTsFiles(SRC_DIR);
 
   it('G-CORTEX-ONLY-PATH: no runtime @t1/cortex-sdk import outside ctx-types.ts', () => {

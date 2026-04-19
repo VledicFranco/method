@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CLI Executor — spawns the `claude` process and captures output.
  *
@@ -11,7 +12,7 @@ import {
   CliSpawnError as PactaCliSpawnError,
   CliExecutionError as PactaCliExecutionError,
   CliAbortError as PactaCliAbortError,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -393,7 +394,7 @@ export async function executeCliStream(
 }
 
 // ── Errors ───────────────────────────────────────────────────────
-// Migrated to @method/pacta error taxonomy (PRD 051 S9).
+// Migrated to @methodts/pacta error taxonomy (PRD 051 S9).
 // Re-exported here for backward compatibility.
 
 const CLI_PROVIDER_CLASS = 'claude-cli' as const;
@@ -403,7 +404,7 @@ export { PactaCliExecutionError as CliExecutionError };
 export { PactaCliAbortError as CliAbortError };
 
 /**
- * @deprecated Use `TimeoutError` from `@method/pacta` instead.
+ * @deprecated Use `TimeoutError` from `@methodts/pacta` instead.
  * Kept for backward compatibility — will be removed in a future version.
  */
 export const CliTimeoutError = TimeoutError;

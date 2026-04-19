@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Domain evolution utilities — evidence aggregation and domain theory diffing.
  *

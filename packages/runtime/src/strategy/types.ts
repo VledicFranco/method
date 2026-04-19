@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /** Strategy subpath — collected type re-exports.
  *
- * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
- * The legacy `StrategiesConfig` type now lives in @method/runtime/config (C6),
+ * PRD-057 / S2 §3.2 / C2: moved from @methodts/bridge/domains/strategies/.
+ * The legacy `StrategiesConfig` type now lives in @methodts/runtime/config (C6),
  * so it is no longer re-exported from this barrel.
  */
 

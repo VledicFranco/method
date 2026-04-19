@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Note-Taking Manager — uses MemoryPort to store and retrieve notes.
  *

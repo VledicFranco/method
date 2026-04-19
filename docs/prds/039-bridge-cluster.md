@@ -49,26 +49,26 @@ L5  System       The cluster (multiple bridges + CLI + protocol)
                   Observable via method-ctl and federated dashboards
                   No code at this level — emergent from L4 coordination
 
-L4  @method/bridge     Application — gains domains/cluster/ domain
+L4  @methodts/bridge     Application — gains domains/cluster/ domain
     method-ctl         Application — CLI management tool (new binary)
                        Both are composition roots: wire ports, no domain logic
 
-L3  @method/cluster    Package — cluster protocol, membership, routing (NEW)
+L3  @methodts/cluster    Package — cluster protocol, membership, routing (NEW)
                        Zero transport dependencies (FCA P7, DR-03 spirit)
                        Port interfaces for network, discovery, resources
-    @method/mcp        Protocol adapter — unchanged
-    @method/pacta       Agent SDK — unchanged
+    @methodts/mcp        Protocol adapter — unchanged
+    @methodts/pacta       Agent SDK — unchanged
 
-L2  @method/methodts   Domain extensions — unchanged
+L2  @methodts/methodts   Domain extensions — unchanged
 ```
 
 **Dependency rule (downward only):**
-- `@method/bridge` depends on `@method/cluster` (L4 → L3)
-- `method-ctl` depends on `@method/cluster` (L4 → L3)
-- `@method/cluster` has no dependency on `@method/methodts` — cluster types are self-contained
-- `@method/cluster` has zero transport deps — no HTTP, no WebSocket, no Tailscale SDK
+- `@methodts/bridge` depends on `@methodts/cluster` (L4 → L3)
+- `method-ctl` depends on `@methodts/cluster` (L4 → L3)
+- `@methodts/cluster` has no dependency on `@methodts/methodts` — cluster types are self-contained
+- `@methodts/cluster` has zero transport deps — no HTTP, no WebSocket, no Tailscale SDK
 
-### 3.2 — `@method/cluster` Package (L3 — New)
+### 3.2 — `@methodts/cluster` Package (L3 — New)
 
 This is the domain logic package. It defines the cluster protocol, membership state machine, and routing algorithm — all transport-agnostic. External dependencies enter through ports.
 
@@ -202,7 +202,7 @@ Nodes with status `draining` have score 0 and are never selected. Highest score 
 
 ### 3.3 — Bridge `domains/cluster/` Domain (L4 — New)
 
-A new FCA domain in the bridge that integrates `@method/cluster` with the bridge's composition root.
+A new FCA domain in the bridge that integrates `@methodts/cluster` with the bridge's composition root.
 
 ```
 packages/bridge/src/domains/cluster/
@@ -414,7 +414,7 @@ This provides sub-second failure detection without O(n^2) polling. Implementatio
 
 ### In-Scope
 
-- `@method/cluster` L3 package with port interfaces, membership, routing, federation
+- `@methodts/cluster` L3 package with port interfaces, membership, routing, federation
 - Bridge `domains/cluster/` domain with Tailscale discovery, HTTP networking, OS resource reporting
 - `method-ctl` CLI with status, nodes, projects, route, drain commands
 - Event federation via `ClusterFederationSink` on the event bus
@@ -452,7 +452,7 @@ This provides sub-second failure detection without O(n^2) polling. Implementatio
 **Deliverables:**
 
 Files:
-- `packages/cluster/package.json` — new — `@method/cluster`, zero transport deps
+- `packages/cluster/package.json` — new — `@methodts/cluster`, zero transport deps
 - `packages/cluster/tsconfig.json` — new — extends root tsconfig
 - `packages/cluster/src/index.ts` — new — public API barrel
 - `packages/cluster/src/types.ts` — new — `ClusterState`, `ClusterNode`, `ClusterMessage`, `PeerAddress`, `NodeIdentity`, `FederatedEvent`
@@ -476,19 +476,19 @@ Files:
 - `packages/cluster/src/resources/resource-schema.test.ts` — new — 2 scenarios
 - `packages/cluster/src/resources/README.md` — new
 - `packages/cluster/README.md` — new — package documentation
-- `packages/cluster/src/test-doubles/` — new — `FakeDiscovery`, `FakeNetwork`, `FakeResources` test doubles, co-located with the cluster package (FCA P4/P8). Note: `@method/pacta-testkit` is Pacta-scoped and should not gain cluster concerns.
+- `packages/cluster/src/test-doubles/` — new — `FakeDiscovery`, `FakeNetwork`, `FakeResources` test doubles, co-located with the cluster package (FCA P4/P8). Note: `@methodts/pacta-testkit` is Pacta-scoped and should not gain cluster concerns.
 - Root `tsconfig.json` — modified — add `packages/cluster` to project references
 
 Tests:
 - All tests listed above are co-located (FCA P8)
-- Test doubles ship with `@method/cluster` in `src/test-doubles/` (FCA P4)
+- Test doubles ship with `@methodts/cluster` in `src/test-doubles/` (FCA P4)
 
 Configuration:
 - None at this phase — config lives in the bridge domain (Phase 2)
 
 **Dependencies:** None.
 
-**Checkpoint:** `npm run build` passes. `npm test` passes. `@method/cluster` exports `MembershipManager`, port interfaces, and types. All 10+ unit tests pass using test doubles only.
+**Checkpoint:** `npm run build` passes. `npm test` passes. `@methodts/cluster` exports `MembershipManager`, port interfaces, and types. All 10+ unit tests pass using test doubles only.
 
 ### Phase 2: Bridge Cluster Domain + Tailscale Discovery
 
@@ -512,7 +512,7 @@ Files:
 - `packages/bridge/src/domains/cluster/adapters/node-resource.test.ts` — new — 1 scenario
 - `packages/bridge/src/domains/cluster/README.md` — new
 - `packages/bridge/src/server-entry.ts` — modified — wire `ClusterDomain` at composition root (port injection, sink registration, route registration), add cluster info to `/health`
-- `packages/bridge/package.json` — modified — add `@method/cluster` dependency
+- `packages/bridge/package.json` — modified — add `@methodts/cluster` dependency
 
 Tests: All listed above, co-located.
 
@@ -613,9 +613,9 @@ Replaces Tailscale polling with autonomous SWIM-based failure detection (see Sec
 
 | Gate | Impact | Details |
 |------|--------|---------|
-| G-PORT | New ports | 3 new port interfaces in `@method/cluster` (`DiscoveryProvider`, `NetworkProvider`, `ResourceProvider`). All follow FCA P3 — minimal interface, test double under 20 lines. |
+| G-PORT | New ports | 3 new port interfaces in `@methodts/cluster` (`DiscoveryProvider`, `NetworkProvider`, `ResourceProvider`). All follow FCA P3 — minimal interface, test double under 20 lines. |
 | G-BOUNDARY | New domain | `domains/cluster/` added to bridge with clear boundary. No direct imports from other domains — communicates via event bus and composition root wiring. |
-| G-LAYER | New L3 package | `@method/cluster` at L3 with zero transport deps. Bridge (L4) depends on it, not the reverse. |
+| G-LAYER | New L3 package | `@methodts/cluster` at L3 with zero transport deps. Bridge (L4) depends on it, not the reverse. |
 
 ## 8. Acceptance Criteria
 
@@ -754,7 +754,7 @@ Replaces Tailscale polling with autonomous SWIM-based failure detection (see Sec
 ### AC-15: Port interfaces are testable with sub-20-line doubles
 
 **Given** the port interfaces `DiscoveryProvider`, `NetworkProvider`, `ResourceProvider`
-**When** test doubles are implemented in `@method/testkit`
+**When** test doubles are implemented in `@methodts/testkit`
 **Then** each test double is under 20 lines of code (FCA P3 port width check)
 
 **Test location:** `packages/cluster/src/test-doubles/` — verify line count
@@ -768,7 +768,7 @@ Replaces Tailscale polling with autonomous SWIM-based failure detection (see Sec
 | Network partition between bridges | High | Low | Split-brain — two halves of cluster unaware of each other | No automatic failover in this PRD. Cluster state is advisory, not authoritative. `method-ctl` shows partition status. Human decides. |
 | Event federation loop (A→B→A→B...) | Critical | Medium | Infinite event amplification, resource exhaustion | `federated: true` flag on relayed events. `ClusterFederationSink` never relays events with `federated: true`. Tested in AC-7. |
 | Resource reporting overhead | Medium | Low | `os.cpus()` and `process.memoryUsage()` add latency to heartbeat | Cache resource snapshots for 5s. Heartbeat loop runs asynchronously. |
-| `@method/cluster` accumulates transport deps | High | Medium | Violates FCA L3 constraint | Port pattern enforced: all network/discovery/resource access through injected providers. CI lint rule: `@method/cluster` may not import `node:http`, `node:net`, or any HTTP library. |
+| `@methodts/cluster` accumulates transport deps | High | Medium | Violates FCA L3 constraint | Port pattern enforced: all network/discovery/resource access through injected providers. CI lint rule: `@methodts/cluster` may not import `node:http`, `node:net`, or any HTTP library. |
 | method-ctl config drift (stale known_bridges) | Medium | High | CLI shows stale data or can't reach bridges | `method-ctl status` probes all known bridges and marks unreachable ones. `method-ctl discover` refreshes the list from any reachable bridge's `/cluster/state`. |
 
 ## 10. Dependencies & Cross-Domain Impact
@@ -788,7 +788,7 @@ Replaces Tailscale polling with autonomous SWIM-based failure detection (see Sec
 
 | Domain | Change Type | Files Affected | Port Changes | Test Impact | Doc Impact |
 |--------|------------|----------------|--------------|-------------|------------|
-| NEW: `@method/cluster` | New package | ~20 files | 3 new port interfaces | ~30 test scenarios | New package README + per-module READMEs |
+| NEW: `@methodts/cluster` | New package | ~20 files | 3 new port interfaces | ~30 test scenarios | New package README + per-module READMEs |
 | NEW: `domains/cluster/` | New domain | ~12 files | None (uses cluster ports) | ~16 test scenarios | New domain README |
 | NEW: `method-ctl` | New package | ~12 files | None | ~5 test scenarios | New package README |
 | `server-entry.ts` | Modified | 1 file | None | None | Updated bridge arch doc |
@@ -800,7 +800,7 @@ Replaces Tailscale polling with autonomous SWIM-based failure detection (see Sec
 
 | Document | Action | Content to Add/Change |
 |----------|--------|-----------------------|
-| `CLAUDE.md` | Update | **Architecture section:** Add `@method/cluster` to layer stack at L3. Add `method-ctl` to L4. Add `domains/cluster/` to bridge domain list. **Commands section:** Add `method-ctl status`, `method-ctl nodes`, `method-ctl route`, `method-ctl drain`. Add cluster env vars to bridge config reference. **Key Directories:** Add `packages/cluster/` and `packages/method-ctl/`. |
+| `CLAUDE.md` | Update | **Architecture section:** Add `@methodts/cluster` to layer stack at L3. Add `method-ctl` to L4. Add `domains/cluster/` to bridge domain list. **Commands section:** Add `method-ctl status`, `method-ctl nodes`, `method-ctl route`, `method-ctl drain`. Add cluster env vars to bridge config reference. **Key Directories:** Add `packages/cluster/` and `packages/method-ctl/`. |
 | `docs/arch/bridge.md` | Update | **Configuration table:** Add all `CLUSTER_*` env vars. **New section "Cluster Integration":** How the cluster domain is wired, event federation flow, routing endpoint. |
 | `docs/arch/event-bus.md` | Update | **BridgeEvent schema:** Add `sourceNodeId` and `federated` fields. **New sink:** Document `ClusterFederationSink` — purpose, filter config, loop prevention. |
 | `docs/arch/cluster.md` | Create | **New arch doc.** Cluster protocol spec: membership state machine, discovery mechanisms (Tailscale + seeds + future gossip), heartbeat protocol, resource reporting schema, routing algorithm with scoring function, event federation model with loop prevention, `method-ctl` CLI design. |
@@ -825,13 +825,13 @@ PRD designed with FCA compliance as primary architectural constraint. Key FCA al
 
 | FCA Principle | How Applied |
 |---------------|-------------|
-| P1 (Every layer produces a component) | New L3 package (`@method/cluster`), new L4 domain (`domains/cluster/`), new L4 app (`method-ctl`) |
-| P2 (Interface discipline) | `@method/cluster` exports a minimal public API barrel. Port interfaces are contracts. |
+| P1 (Every layer produces a component) | New L3 package (`@methodts/cluster`), new L4 domain (`domains/cluster/`), new L4 app (`method-ctl`) |
+| P2 (Interface discipline) | `@methodts/cluster` exports a minimal public API barrel. Port interfaces are contracts. |
 | P3 (Port pattern) | 3 port interfaces with sub-20-line test doubles (AC-15). All external deps injected. |
 | P4 (Verification affordances) | Test doubles ship co-located in `packages/cluster/src/test-doubles/`. Every module has co-located tests. |
 | P5 (Highest component is composition) | Bridge `server-entry.ts` wires cluster ports. `method-ctl` dispatches commands. No domain logic in composition roots. |
-| P6 (Verify independently) | `@method/cluster` tests use only test doubles. Bridge domain tests use mocked providers. No cross-domain test deps. |
-| P7 (Boundaries through structure) | `@method/cluster` has zero transport deps (enforced by CI lint). Domains don't import each other. |
+| P6 (Verify independently) | `@methodts/cluster` tests use only test doubles. Bridge domain tests use mocked providers. No cross-domain test deps. |
+| P7 (Boundaries through structure) | `@methodts/cluster` has zero transport deps (enforced by CI lint). Domains don't import each other. |
 | P8 (Co-locate artifacts) | Tests, config, README co-located in every domain directory. |
 | P9 (Observable) | Cluster metrics in `/health`, `/cluster/state`, `/cluster/nodes`. Event bus emits `cluster.peer_joined`, `cluster.peer_suspect`, `cluster.peer_dead`. |
 | P10 (README indexing) | Every directory with >1 file has a README. Package-level README indexes modules. |
@@ -840,7 +840,7 @@ Adversarial review completed 2026-03-29: 5 advisors (FCA Purist, Coherence Analy
 
 | Finding | Severity | Resolution |
 |---------|----------|------------|
-| F-A1-1: @method/testkit phantom | CRITICAL | Fixed: test doubles co-located in packages/cluster/src/test-doubles/ |
+| F-A1-1: @methodts/testkit phantom | CRITICAL | Fixed: test doubles co-located in packages/cluster/src/test-doubles/ |
 | F-A5-6: drain has no backend | CRITICAL | Fixed: added POST /cluster/drain endpoint, draining status, router exclusion |
 | F-A5-7: upgrade unimplementable | CRITICAL | Fixed: removed upgrade command, added to Out of Scope |
 | F-A4-2: PRD premature | CRITICAL | Addressed: added implementation gate gated on 038 P1 + OQ-1 validation |
@@ -855,8 +855,8 @@ Full review: `tmp/review-report-prd038-039-2026-03-29.md`, `tmp/action-plan-prd0
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Cluster Package + Ports | Implemented | @method/cluster L3 — types, ports, membership, resources, test-doubles (2026-03-29) |
+| Phase 1: Cluster Package + Ports | Implemented | @methodts/cluster L3 — types, ports, membership, resources, test-doubles (2026-03-29) |
 | Phase 2: Bridge Domain + Tailscale Discovery | Implemented | domains/cluster/ — core, routes, config, adapters + composition root wiring (2026-03-29) |
 | Phase 3: Work Routing + Event Federation | Implemented | CapacityWeightedRouter, EventRelay, ClusterFederationSink, POST /cluster/route (2026-03-29) |
-| Phase 4: method-ctl CLI | Implemented | @method/method-ctl — status, nodes, projects commands (2026-03-29) |
+| Phase 4: method-ctl CLI | Implemented | @methodts/method-ctl — status, nodes, projects commands (2026-03-29) |
 | Phase 5: SWIM-Lite Gossip | Not scheduled | Future — when >5 nodes or Tailscale API insufficient |

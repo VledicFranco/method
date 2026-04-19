@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * `@method/pacta-testkit/conformance` — Cortex Agent Conformance Testkit.
+ * `@methodts/pacta-testkit/conformance` — Cortex Agent Conformance Testkit.
  *
  * Public surface frozen by S8 (`.method/sessions/fcd-surface-conformance-testkit/decision.md`).
  * Implements PRD-065.
@@ -76,7 +77,7 @@ export type {
   FixtureExpectations,
 } from './fixtures/index.js';
 
-// ── Cortex type mirrors (structural — must stay in sync with @method/agent-runtime) ──
+// ── Cortex type mirrors (structural — must stay in sync with @methodts/agent-runtime) ──
 export type {
   CortexCtx,
   CortexAppFacade,

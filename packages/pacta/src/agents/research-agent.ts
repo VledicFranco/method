@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Research Agent — pre-assembled reference agent for research tasks.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Integration tests for CortexEventConnector — PRD-063 §Tests.
  *
@@ -13,7 +14,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { RuntimeEvent } from '@method/runtime/ports';
+import type { RuntimeEvent } from '@methodts/runtime/ports';
 
 import {
   CortexEventConnector,

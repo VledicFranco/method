@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Test suite for Genesis HTTP Routes
  * Covers: GET /genesis/status, POST /genesis/prompt, DELETE /genesis/prompt
@@ -10,8 +11,8 @@ import { describe } from 'node:test';
 import type { FastifyInstance } from 'fastify';
 import fastify from 'fastify';
 import { registerGenesisRoutes, type GenesisRouteContext } from './routes.js';
-import type { SessionPool, SessionStatusInfo } from '@method/runtime/sessions';
-import type { PtySession } from '@method/runtime/sessions';
+import type { SessionPool, SessionStatusInfo } from '@methodts/runtime/sessions';
+import type { PtySession } from '@methodts/runtime/sessions';
 import type { GenesisToolsContext } from './tools.js';
 import { NodeFileSystemProvider } from '../../ports/file-system.js';
 

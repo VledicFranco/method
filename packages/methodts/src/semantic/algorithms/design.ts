@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * design — FCA-recursive surface-first design algorithm.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Test suite for Genesis MCP Tools
  * Covers: project_list, project_get, project_read_events, genesis_report, privilege enforcement

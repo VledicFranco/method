@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Anthropic Messages API Provider — AgentProvider + Streamable implementation.
  *
@@ -18,13 +19,13 @@ import type {
   TokenUsage,
   ToolProvider,
   ToolDefinition,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import {
   RateLimitError,
   AuthError,
   InvalidRequestError,
   NetworkError,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 import { calculateCost } from './pricing.js';
 
@@ -37,7 +38,7 @@ export interface AnthropicProviderOptions {
   /** API key (defaults to ANTHROPIC_API_KEY env var) */
   apiKey?: string;
 
-  /** Model to use (defaults to 'claude-sonnet-4-20250514') */
+  /** Model to use (defaults to 'claude-sonnet-4-6') */
   model?: string;
 
   /** Base URL for the API (defaults to 'https://api.anthropic.com') */
@@ -76,10 +77,15 @@ const CAPABILITIES: ProviderCapabilities = {
 
 // ── Model Aliases ────────────────────────────────────────────────
 
-/** Map short aliases to real API model IDs */
+/**
+ * Map short aliases to real API model IDs.
+ *
+ * Modern Claude 4 model IDs (`claude-opus-4-7`, `claude-sonnet-4-6`,
+ * `claude-haiku-4-5-20251001`) are accepted directly by the Anthropic
+ * API and do not need aliasing — they pass through unchanged. This map
+ * preserves backwards-compat for older alias forms only.
+ */
 const MODEL_ALIASES: Record<string, string> = {
-  'claude-opus-4-6': 'claude-opus-4-20250514',
-  'claude-sonnet-4-6': 'claude-sonnet-4-20250514',
   'claude-sonnet-4-5': 'claude-sonnet-4-5-20241022',
   'claude-haiku-4-5': 'claude-haiku-4-5-20241022',
 };
@@ -101,7 +107,7 @@ export function anthropicProvider(
 ): AnthropicProvider {
   const {
     apiKey,
-    model: defaultModel = 'claude-sonnet-4-20250514',
+    model: defaultModel = 'claude-sonnet-4-6',
     baseUrl,
     maxOutputTokens = 8192,
     toolProvider,
@@ -564,7 +570,7 @@ function classifyAnthropicError(err: unknown): never {
 }
 
 /**
- * @deprecated Use typed errors from `@method/pacta` instead.
+ * @deprecated Use typed errors from `@methodts/pacta` instead.
  * Kept for backward compatibility during migration period.
  */
 export class AnthropicApiError extends Error {

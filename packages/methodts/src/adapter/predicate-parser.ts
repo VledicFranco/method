@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Predicate parser — converts natural-language YAML predicate strings into Predicate<S>.
  *

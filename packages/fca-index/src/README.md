@@ -1,4 +1,4 @@
-# @method/fca-index — FCA Index Library
+# @methodts/fca-index — FCA Index Library
 
 L3 hybrid-index library for FCA-compliant TypeScript projects. Indexes co-located component documentation using SQLite (metadata + filters) and LanceDB (vector embeddings), enabling token-efficient semantic search over a codebase's architecture.
 
@@ -13,7 +13,7 @@ Two operating modes:
 ## Public API
 
 ```typescript
-import { createFcaIndex, createDefaultFcaIndex } from '@method/fca-index';
+import { createFcaIndex, createDefaultFcaIndex } from '@methodts/fca-index';
 
 // Production use — wires NodeFileSystem, SqliteLanceIndexStore, VoyageEmbeddingClient
 const index = await createDefaultFcaIndex({ projectRoot, voyageApiKey });

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
 import { compileMethod, assertCompiled, compileMethodAsync, assertCompiledAsync } from "../compile.js";
 import type { CommandService } from "../../extractor/services/command.js";

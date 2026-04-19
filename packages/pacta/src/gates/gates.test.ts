@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Gate Tests — FCA architectural invariants for @method/pacta.
+ * Gate Tests — FCA architectural invariants for @methodts/pacta.
  *
- * G-PORT:     Zero runtime dependencies (only devDependencies in package.json)
+ * G-PORT:     Zero third-party runtime dependencies. Intra-monorepo
+ *             `@methodts/*` deps are allowed because they are part of the
+ *             same FCA layer-stack discipline (verified by their own
+ *             gates) and do not pull external code into pacta consumers.
  * G-BOUNDARY: No cross-domain imports (no imports from reasoning/, context/, agents/)
  * G-LAYER:    No upward layer violations (pacta must not import from bridge L4)
  */
@@ -45,15 +49,17 @@ function extractImports(filePath: string): string[] {
   return imports;
 }
 
-// ── G-PORT: Zero runtime dependencies ────────────────────────────
+// ── G-PORT: Zero third-party runtime dependencies ───────────────
 
-describe('G-PORT: Zero runtime dependencies', () => {
-  it('package.json has no "dependencies" field', () => {
+describe('G-PORT: Zero third-party runtime dependencies', () => {
+  it('package.json declares no third-party `dependencies` (intra-monorepo @methodts/* allowed)', () => {
     const pkg = readJson(path.join(PACTA_ROOT, 'package.json'));
-    const deps = pkg['dependencies'] as Record<string, unknown> | undefined;
-    assert.ok(
-      deps === undefined || Object.keys(deps).length === 0,
-      `Expected zero runtime dependencies, found: ${JSON.stringify(deps)}`,
+    const deps = (pkg['dependencies'] as Record<string, unknown> | undefined) ?? {};
+    const thirdParty = Object.keys(deps).filter((name) => !name.startsWith('@methodts/'));
+    assert.equal(
+      thirdParty.length,
+      0,
+      `Expected zero third-party runtime dependencies, found: ${JSON.stringify(thirdParty)}`,
     );
   });
 });
@@ -98,7 +104,7 @@ describe('G-BOUNDARY: No cross-domain imports within pacta', () => {
 // ── G-LAYER: No upward layer violations ──────────────────────────
 
 describe('G-LAYER: No upward layer violations', () => {
-  const FORBIDDEN_PACKAGES = ['@method/bridge'];
+  const FORBIDDEN_PACKAGES = ['@methodts/bridge'];
   const sourceFiles = getAllTsFiles(PACTA_SRC);
 
   for (const file of sourceFiles) {

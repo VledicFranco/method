@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * config/ — Agent personas and thought pattern presets.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * context-load-executor.test.ts
  *
@@ -13,16 +14,18 @@
  * - queryTime and mode are propagated
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { ContextLoadExecutorImpl } from './context-load-executor.js';
 import type {
   ContextQueryPort,
+  ContextQueryRequest,
   ContextQueryResult,
   ComponentContext,
-} from '@method/fca-index';
-import { ContextQueryError } from '@method/fca-index';
-import type { ContextLoadNodeConfig } from '@method/methodts/strategy/dag-types.js';
-import { ContextLoadError } from '@method/methodts/strategy/dag-executor.js';
+} from '@methodts/fca-index';
+import { ContextQueryError } from '@methodts/fca-index';
+import type { ContextLoadNodeConfig } from '@methodts/methodts/strategy/dag-types.js';
+import { ContextLoadError } from '@methodts/methodts/strategy/dag-executor.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,12 +39,27 @@ function makeConfig(overrides?: Partial<ContextLoadNodeConfig>): ContextLoadNode
   };
 }
 
-function makeMockPort(result: ContextQueryResult): ContextQueryPort {
-  return { query: vi.fn().mockResolvedValue(result) };
+interface RecordingPort extends ContextQueryPort {
+  calls: ContextQueryRequest[];
+}
+
+function makeMockPort(result: ContextQueryResult): RecordingPort {
+  const calls: ContextQueryRequest[] = [];
+  return {
+    calls,
+    query: async (req) => {
+      calls.push(req);
+      return result;
+    },
+  };
 }
 
 function makeMockPortRejecting(err: unknown): ContextQueryPort {
-  return { query: vi.fn().mockRejectedValue(err) };
+  return {
+    query: async () => {
+      throw err;
+    },
+  };
 }
 
 function makeComponent(
@@ -76,14 +94,14 @@ describe('ContextLoadExecutorImpl: mapping', () => {
     const impl = new ContextLoadExecutorImpl(port);
     const result = await impl.executeContextLoad(makeConfig(), '/root');
 
-    expect(result.mode).toBe('production');
-    expect(typeof result.queryTime).toBe('number');
-    expect(result.queryTime).toBeGreaterThanOrEqual(0);
-    expect(result.components).toHaveLength(1);
-    expect(result.components[0].path).toBe('packages/bridge/src/domains/strategies');
-    expect(result.components[0].level).toBe('L2');
-    expect(result.components[0].score).toBe(0.88);
-    expect(result.components[0].coverageScore).toBe(0.6);
+    assert.equal(result.mode, 'production');
+    assert.equal(typeof result.queryTime, 'number');
+    assert.ok(result.queryTime >= 0);
+    assert.equal(result.components.length, 1);
+    assert.equal(result.components[0].path, 'packages/bridge/src/domains/strategies');
+    assert.equal(result.components[0].level, 'L2');
+    assert.equal(result.components[0].score, 0.88);
+    assert.equal(result.components[0].coverageScore, 0.6);
   });
 
   it('forwards filterParts to queryPort as parts', async () => {
@@ -95,13 +113,11 @@ describe('ContextLoadExecutorImpl: mapping', () => {
       '/root',
     );
 
-    expect(port.query).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: 'strategy executor',
-        topK: 5,
-        parts: ['port', 'interface'],
-      }),
-    );
+    assert.equal(port.calls.length, 1);
+    const call = port.calls[0];
+    assert.equal(call.query, 'strategy executor');
+    assert.equal(call.topK, 5);
+    assert.deepEqual(call.parts, ['port', 'interface']);
   });
 });
 
@@ -126,12 +142,12 @@ describe('ContextLoadExecutorImpl: docText synthesis', () => {
     const ifaceIdx = docText.indexOf('INTERFACE-EXCERPT');
     const portIdx = docText.indexOf('PORT-EXCERPT');
 
-    expect(docIdx).toBeGreaterThanOrEqual(0);
-    expect(ifaceIdx).toBeGreaterThan(docIdx);
-    expect(portIdx).toBeGreaterThan(ifaceIdx);
-    expect(docText).toContain('[documentation]');
-    expect(docText).toContain('[interface]');
-    expect(docText).toContain('[port]');
+    assert.ok(docIdx >= 0);
+    assert.ok(ifaceIdx > docIdx);
+    assert.ok(portIdx > ifaceIdx);
+    assert.ok(docText.includes('[documentation]'));
+    assert.ok(docText.includes('[interface]'));
+    assert.ok(docText.includes('[port]'));
   });
 
   it('falls back to path when no parts have excerpts', async () => {
@@ -139,7 +155,7 @@ describe('ContextLoadExecutorImpl: docText synthesis', () => {
       mode: 'production',
       results: [
         makeComponent('packages/empty', [
-          { part: 'port', filePath: 'p.ts' }, // no excerpt
+          { part: 'port', filePath: 'p.ts' },
         ]),
       ],
     });
@@ -147,7 +163,7 @@ describe('ContextLoadExecutorImpl: docText synthesis', () => {
     const impl = new ContextLoadExecutorImpl(port);
     const result = await impl.executeContextLoad(makeConfig(), '/root');
 
-    expect(result.components[0].docText).toBe('packages/empty');
+    assert.equal(result.components[0].docText, 'packages/empty');
   });
 });
 
@@ -158,12 +174,14 @@ describe('ContextLoadExecutorImpl: error mapping', () => {
     );
     const impl = new ContextLoadExecutorImpl(port);
 
-    await expect(
-      impl.executeContextLoad(makeConfig({ output_key: 'ctx_foo' }), '/root'),
-    ).rejects.toMatchObject({
-      code: 'INDEX_NOT_FOUND',
-      nodeId: 'ctx_foo',
-    });
+    await assert.rejects(
+      () => impl.executeContextLoad(makeConfig({ output_key: 'ctx_foo' }), '/root'),
+      (err: ContextLoadError) => {
+        assert.equal(err.code, 'INDEX_NOT_FOUND');
+        assert.equal(err.nodeId, 'ctx_foo');
+        return true;
+      },
+    );
   });
 
   it('maps other ContextQueryError codes → ContextLoadError QUERY_FAILED', async () => {
@@ -172,12 +190,14 @@ describe('ContextLoadExecutorImpl: error mapping', () => {
     );
     const impl = new ContextLoadExecutorImpl(port);
 
-    await expect(
-      impl.executeContextLoad(makeConfig({ output_key: 'ctx_bar' }), '/root'),
-    ).rejects.toMatchObject({
-      code: 'QUERY_FAILED',
-      nodeId: 'ctx_bar',
-    });
+    await assert.rejects(
+      () => impl.executeContextLoad(makeConfig({ output_key: 'ctx_bar' }), '/root'),
+      (err: ContextLoadError) => {
+        assert.equal(err.code, 'QUERY_FAILED');
+        assert.equal(err.nodeId, 'ctx_bar');
+        return true;
+      },
+    );
   });
 
   it('wraps unknown errors as ContextLoadError QUERY_FAILED', async () => {
@@ -188,9 +208,9 @@ describe('ContextLoadExecutorImpl: error mapping', () => {
       .executeContextLoad(makeConfig({ output_key: 'ctx_baz' }), '/root')
       .catch((e) => e);
 
-    expect(err).toBeInstanceOf(ContextLoadError);
-    expect(err.code).toBe('QUERY_FAILED');
-    expect(err.nodeId).toBe('ctx_baz');
-    expect(err.message).toContain('network fried');
+    assert.ok(err instanceof ContextLoadError);
+    assert.equal(err.code, 'QUERY_FAILED');
+    assert.equal(err.nodeId, 'ctx_baz');
+    assert.ok(err.message.includes('network fried'));
   });
 });

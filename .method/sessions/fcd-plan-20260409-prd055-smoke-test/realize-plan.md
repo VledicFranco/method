@@ -2,7 +2,7 @@
 
 ## PRD Summary
 
-New `@method/smoke-test` package (L4) — web app + Playwright test suite validating all 35 features of the strategy, methodology, and method abstractions.
+New `@methodts/smoke-test` package (L4) — web app + Playwright test suite validating all 35 features of the strategy, methodology, and method abstractions.
 
 **Success criteria:**
 1. Every feature from the 35-category inventory has at least one smoke test case
@@ -25,11 +25,11 @@ Single new package. All commissions are same-domain, sequential.
 No shared surface changes (leaf consumer package). Wave 0 creates the package and all test fixtures.
 
 ### Consumed Ports (all existing, frozen)
-- `DagStrategyExecutor` — `@method/methodts/strategy/dag-executor.js`
-- `parseStrategyYaml` — `@method/methodts/strategy/dag-parser.js`
-- `createAgent` / `AgentProvider` — `@method/pacta`
-- `RecordingProvider` / `MockToolProvider` — `@method/pacta-testkit`
-- `anthropicProvider` — `@method/pacta-provider-anthropic`
+- `DagStrategyExecutor` — `@methodts/methodts/strategy/dag-executor.js`
+- `parseStrategyYaml` — `@methodts/methodts/strategy/dag-parser.js`
+- `createAgent` / `AgentProvider` — `@methodts/pacta`
+- `RecordingProvider` / `MockToolProvider` — `@methodts/pacta-testkit`
+- `anthropicProvider` — `@methodts/pacta-provider-anthropic`
 
 ### Verification
 - `npm run build` passes with new package in workspace
@@ -60,7 +60,7 @@ parallel_with: []
 consumed_ports:
   - name: "StrategyYaml (type)"
     status: frozen
-    source: "@method/methodts/strategy/dag-types.js"
+    source: "@methodts/methodts/strategy/dag-types.js"
 produced_ports: []
 deliverables:
   - "packages/smoke-test/package.json"
@@ -111,13 +111,13 @@ parallel_with: []
 consumed_ports:
   - name: "DagStrategyExecutor"
     status: frozen
-    source: "@method/methodts/strategy/dag-executor.js"
+    source: "@methodts/methodts/strategy/dag-executor.js"
   - name: "RecordingProvider"
     status: frozen
-    source: "@method/pacta-testkit"
+    source: "@methodts/pacta-testkit"
   - name: "anthropicProvider"
     status: frozen
-    source: "@method/pacta-provider-anthropic"
+    source: "@methodts/pacta-provider-anthropic"
 produced_ports: []
 deliverables:
   - "packages/smoke-test/src/executor/mock-executor.ts"

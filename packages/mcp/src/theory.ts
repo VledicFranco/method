@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * Theory Lookup — inlined from @method/core for WS-1 dependency elimination.
+ * Theory Lookup — inlined from @methodts/core for WS-1 dependency elimination.
  *
  * Searches formal theory files (F1-FTH, F4-PHI) for terms and definitions.
  * Three-pass lookup: label match > heading match > keyword search.
  *
- * This is the only piece of @method/core that MCP consumed. Inlining it here
- * allows @method/mcp to drop its @method/core dependency entirely.
+ * This is the only piece of @methodts/core that MCP consumed. Inlining it here
+ * allows @methodts/mcp to drop its @methodts/core dependency entirely.
  *
  * Accepts an optional TheoryFs parameter for testability (DR-15 port pattern).
  */

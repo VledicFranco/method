@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M4_DDAG — Drift Audit Method (M4-DDAG v1.0).
  *

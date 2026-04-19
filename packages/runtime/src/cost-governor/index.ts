@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/cost-governor — transport-free cost governor factory.
+ * @methodts/runtime/cost-governor — transport-free cost governor factory.
  *
- * PRD-057 / S2 §3.5, §8 / C4: moved from @method/bridge/domains/cost-governor.
+ * PRD-057 / S2 §3.5, §8 / C4: moved from @methodts/bridge/domains/cost-governor.
  *
  * Key differences from the prior bridge factory:
  *
@@ -35,7 +36,7 @@ import {
   emitObservationsCorrupted,
   emitSlotLeaked,
 } from './cost-events.js';
-import type { AccountId, ProviderClass } from '@method/types';
+import type { AccountId, ProviderClass } from '@methodts/types';
 
 // ── Re-exports (S2 §3.5) ────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export interface CreateCostGovernorOptions {
 /**
  * Primitives returned by `createCostGovernor`. Unlike the prior bridge
  * factory, this record does NOT contain `registerRoutes` — routes are a
- * transport concern that stays in `@method/bridge` per S2 §5.1. Bridge
+ * transport concern that stays in `@methodts/bridge` per S2 §5.1. Bridge
  * imports these primitives and mounts them via its own Fastify wrapper.
  */
 export interface CostGovernor {

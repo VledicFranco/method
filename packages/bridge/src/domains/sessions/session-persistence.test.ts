@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * WS-3: Unit tests for session persistence store.
  * Tests core logic paths: save, loadAll, loadById, markDead, cross-platform paths.

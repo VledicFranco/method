@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexTokenExchangeMiddleware — RFC 8693 token exchange for every
  * agent invocation, plus depth-capped sub-agent delegation per RFC-005
@@ -24,7 +25,7 @@
  *   - t1-cortex-1/docs/rfcs/RFC-005-app-platform-service-library.md §4.1.5
  */
 
-import type { Pact, AgentRequest, AgentResult } from '@method/pacta';
+import type { Pact, AgentRequest, AgentResult } from '@methodts/pacta';
 import {
   CortexAdapterComposeError,
   type ComposedAdapter,

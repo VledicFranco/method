@@ -10,10 +10,10 @@
 
 ```
 Packages touched:
-  @method/pacta-provider-claude-cli  → C-1 (CLI provider enrichment)
-  @method/bridge / sessions domain   → C-2 (PTY deprecation), C-3 (print-session migration), C-4 (PTY removal)
-  @method/bridge / strategies domain → C-5 (LlmProvider/ClaudeCodeProvider deletion)
-  @method/bridge / frontend          → C-6 (xterm + TerminalViewer removal)
+  @methodts/pacta-provider-claude-cli  → C-1 (CLI provider enrichment)
+  @methodts/bridge / sessions domain   → C-2 (PTY deprecation), C-3 (print-session migration), C-4 (PTY removal)
+  @methodts/bridge / strategies domain → C-5 (LlmProvider/ClaudeCodeProvider deletion)
+  @methodts/bridge / frontend          → C-6 (xterm + TerminalViewer removal)
 
 Shared surfaces (orchestrator-owned — never modified by sub-agents):
   packages/pacta/src/pact.ts               ← AgentRequest type — patched pre-wave-1
@@ -51,12 +51,12 @@ Build + test must pass after this change before Wave 1 is launched.
 
 | ID | Wave | Domain/Package | Title | Depends On | Status |
 |----|------|---------------|-------|------------|--------|
-| C-1 | 1 | `@method/pacta-provider-claude-cli` | CLI provider enrichment (JSON output, session tracking, abort, clearHistory + tests) | pre-wave-1 | done (PR #70) |
-| C-2 | 1 | `@method/bridge/sessions` | PTY deprecation (B1): warnings, force print default, resize → 410 | — | done (PR #69) |
-| C-3 | 2 | `@method/bridge/sessions` | Print-session migration (B2): migrate to AgentProvider, delete pacta-session spike | C-1, C-2 | done (PR #71) |
-| C-4 | 3 | `@method/bridge/sessions` | PTY backend removal (B4): delete pty-session, pty-watcher, adaptive-settle, parser, simplify pool/routes | C-3 | done (PR #72) |
-| C-5 | 3 | `@method/bridge/strategies` | LlmProvider cleanup (B3): delete claude-code-provider.ts + test, strategies/llm-provider.ts | C-3 | done (PR #73) |
-| C-6 | 4 | `@method/bridge/frontend` | Frontend cleanup (B5): remove TerminalViewer, xterm deps, mode selector | C-4, C-5 | done (PR #75) |
+| C-1 | 1 | `@methodts/pacta-provider-claude-cli` | CLI provider enrichment (JSON output, session tracking, abort, clearHistory + tests) | pre-wave-1 | done (PR #70) |
+| C-2 | 1 | `@methodts/bridge/sessions` | PTY deprecation (B1): warnings, force print default, resize → 410 | — | done (PR #69) |
+| C-3 | 2 | `@methodts/bridge/sessions` | Print-session migration (B2): migrate to AgentProvider, delete pacta-session spike | C-1, C-2 | done (PR #71) |
+| C-4 | 3 | `@methodts/bridge/sessions` | PTY backend removal (B4): delete pty-session, pty-watcher, adaptive-settle, parser, simplify pool/routes | C-3 | done (PR #72) |
+| C-5 | 3 | `@methodts/bridge/strategies` | LlmProvider cleanup (B3): delete claude-code-provider.ts + test, strategies/llm-provider.ts | C-3 | done (PR #73) |
+| C-6 | 4 | `@methodts/bridge/frontend` | Frontend cleanup (B5): remove TerminalViewer, xterm deps, mode selector | C-4, C-5 | done (PR #75) |
 
 ---
 
@@ -67,7 +67,7 @@ Build + test must pass after this change before Wave 1 is launched.
 id: C-1
 phase: P2 + P3 (Work Stream A)
 title: "Fix claudeCliProvider — JSON output, session tracking, abort, clearHistory, + tests"
-domain: "@method/pacta-provider-claude-cli"
+domain: "@methodts/pacta-provider-claude-cli"
 scope:
   allowed_paths:
     - "packages/pacta-provider-claude-cli/src/**"
@@ -101,7 +101,7 @@ status: pending
 id: C-2
 phase: P4 (Work Stream B1)
 title: "PTY deprecation warnings, force print default, resize → 410"
-domain: "@method/bridge / sessions domain"
+domain: "@methodts/bridge / sessions domain"
 scope:
   allowed_paths:
     - "packages/bridge/src/domains/sessions/pool.ts"
@@ -129,7 +129,7 @@ status: pending
 id: C-3
 phase: P5 (Work Stream B2)
 title: "Migrate print-session.ts to AgentProvider; delete pacta-session.ts spike"
-domain: "@method/bridge / sessions domain"
+domain: "@methodts/bridge / sessions domain"
 scope:
   allowed_paths:
     - "packages/bridge/src/domains/sessions/print-session.ts"
@@ -143,7 +143,7 @@ scope:
     - "packages/*/src/index.ts"
     - "packages/*/package.json"
 deliverables:
-  - "print-session.ts: replace LlmProvider dependency with createAgent() + claudeCliProvider from @method/pacta-provider-claude-cli; merge PactaSessionParams→Pact mapping from pacta-session.ts"
+  - "print-session.ts: replace LlmProvider dependency with createAgent() + claudeCliProvider from @methodts/pacta-provider-claude-cli; merge PactaSessionParams→Pact mapping from pacta-session.ts"
   - "pacta-session.ts + pacta-session.test.ts: deleted (logic absorbed into print-session.ts)"
   - "print-session.test.ts: updated to verify no LlmProvider imports"
 acceptance_criteria:
@@ -162,7 +162,7 @@ status: blocked
 id: C-4
 phase: P7 (Work Stream B4)
 title: "Delete all PTY backend infrastructure, simplify pool/routes"
-domain: "@method/bridge / sessions domain"
+domain: "@methodts/bridge / sessions domain"
 scope:
   allowed_paths:
     - "packages/bridge/src/domains/sessions/pty-session.ts"
@@ -201,7 +201,7 @@ status: blocked
 id: C-5
 phase: P6 (Work Stream B3)
 title: "Delete claude-code-provider.ts and strategies/llm-provider.ts"
-domain: "@method/bridge / strategies domain"
+domain: "@methodts/bridge / strategies domain"
 scope:
   allowed_paths:
     - "packages/bridge/src/domains/strategies/claude-code-provider.ts"
@@ -233,7 +233,7 @@ status: blocked
 id: C-6
 phase: P8 (Work Stream B5)
 title: "Remove TerminalViewer, xterm deps, mode selector from frontend"
-domain: "@method/bridge / frontend"
+domain: "@methodts/bridge / frontend"
 scope:
   allowed_paths:
     - "packages/bridge/frontend/src/domains/sessions/**"

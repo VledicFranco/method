@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * index-store/ — Hybrid SQLite + LanceDB storage layer.
  *

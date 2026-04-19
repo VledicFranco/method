@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Fixture catalog — three canonical pacts per PRD-065 §8.
  *
@@ -7,7 +8,7 @@
  * don't count toward core certification (S8 Q6).
  */
 
-import type { Pact, AgentRequest, TokenUsage } from '@method/pacta';
+import type { Pact, AgentRequest, TokenUsage } from '@methodts/pacta';
 import type { ScriptedResponse } from '../../recording-provider.js';
 import type { ScriptedLlmResponse } from '../mock-cortex-ctx.js';
 

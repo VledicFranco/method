@@ -90,7 +90,7 @@ type BridgeSession = {
 
 ### Core Function
 
-New `@method/core` function:
+New `@methodts/core` function:
 
 ```typescript
 export type SessionChain = {

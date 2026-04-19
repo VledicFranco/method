@@ -5,7 +5,7 @@
 `packages/bridge/` is a standalone HTTP server that manages a pool of Claude Code PTY sessions. It spawns Claude Code processes, sends prompts, extracts responses from PTY output, and exposes this as a REST API.
 
 **Key constraints:**
-- No dependency on `@method/core` or `@method/mcp` — the bridge is methodology-unaware
+- No dependency on `@methodts/core` or `@methodts/mcp` — the bridge is methodology-unaware
 - No MCP protocol — plain HTTP/JSON
 - Spawned agents pick up their MCP configuration from the workdir's `.mcp.json`
 
@@ -13,9 +13,9 @@
 
 ```
 Human's Claude Code session (P3-DISPATCH orchestrator)
-    ├── MCP tools ──→ @method/mcp (methodology intelligence)
+    ├── MCP tools ──→ @methodts/mcp (methodology intelligence)
     │                    └── reads registry/, theory/
-    └── HTTP API ──→ @method/bridge (agent spawning)
+    └── HTTP API ──→ @methodts/bridge (agent spawning)
                          └── spawns Claude Code agents via PTY
                                └── each agent has own MCP connection
 ```
@@ -37,7 +37,7 @@ packages/bridge/
 │   ├── dashboard.html      HTML template (Vidtecci OS design system)
 │   └── __tests__/
 │       └── parser.test.ts    Parser unit tests
-├── package.json            @method/bridge
+├── package.json            @methodts/bridge
 └── tsconfig.json
 ```
 
@@ -225,8 +225,8 @@ Two independent ID spaces:
 
 | ID | Managed by | Scope |
 |----|-----------|-------|
-| Methodology session ID | `@method/core` MethodologySessionManager | Persists across method transitions. Passed to all MCP tool calls via `session_id`. |
-| Bridge session ID | `@method/bridge` session pool | Ephemeral per spawned agent. Created via `POST /sessions`, destroyed after method completes. |
+| Methodology session ID | `@methodts/core` MethodologySessionManager | Persists across method transitions. Passed to all MCP tool calls via `session_id`. |
+| Bridge session ID | `@methodts/bridge` session pool | Ephemeral per spawned agent. Created via `POST /sessions`, destroyed after method completes. |
 
 The orchestrator maps between them. A single methodology session may spawn multiple bridge sessions (one per method execution). Bridge sessions are disposable; methodology sessions track durable state (completed methods, outputs, routing decisions).
 
@@ -256,7 +256,7 @@ When `methodology_load_method` is called for the second method, it calls `sessio
 
 ### Why the Bridge Stays Methodology-Unaware
 
-The bridge has no dependency on `@method/core`. This is intentional:
+The bridge has no dependency on `@methodts/core`. This is intentional:
 - The bridge spawns *any* Claude Code agent, not just methodology-following ones
 - Methodology intelligence lives in the MCP server, which the spawned agents access via their own MCP connections
 - The orchestrator is the integration point — it calls both systems and composes the workflow

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Affect Module — emotional metacognition from behavioral patterns (PRD 032, P3).
  *

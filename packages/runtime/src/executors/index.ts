@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/executors — PRD-062 / S5.
+ * @methodts/runtime/executors — PRD-062 / S5.
  *
  * Wave 1 ships `CortexJobBackedExecutor` (fresh-per-continuation only).
  * Wave 2 will add `InProcessExecutor` wrapping the existing StrategyExecutor.

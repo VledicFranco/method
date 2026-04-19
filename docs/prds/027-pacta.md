@@ -8,7 +8,7 @@ status: implemented
 **Status:** Implemented (2026-03-25)
 **Author:** PO + Lysica
 **Date:** 2026-03-25
-**Package:** `@method/pacta` (L3 — library)
+**Package:** `@methodts/pacta` (L3 — library)
 **Depends on:** None (standalone L3 library)
 **Organization:** Vidtecci — vida, ciencia y tecnología
 
@@ -38,7 +38,7 @@ Pacta's value: **unify agent contracts that other frameworks scatter across inco
 
 ## Objective
 
-Create `@method/pacta` — a modular Agent SDK where agents are assembled from typed, composable parts. Pacta provides the frame (pact contracts), a library of functional parts (reasoning strategies, context policies, budget enforcers, output validators, provider adapters), and the modularity to define your own parts.
+Create `@methodts/pacta` — a modular Agent SDK where agents are assembled from typed, composable parts. Pacta provides the frame (pact contracts), a library of functional parts (reasoning strategies, context policies, budget enforcers, output validators, provider adapters), and the modularity to define your own parts.
 
 ## Core Thesis
 
@@ -87,14 +87,14 @@ const agent = createAgent({ pact, provider: myProvider, reasoning: myReasoner })
 ### Layer Position
 
 ```
-L4  @method/bridge                    Uses pacta to deploy agents
-L3  @method/pacta                     ← Modular Agent SDK (core: types + engine)
-L3  @method/pacta-testkit             ← Verification affordances (FCA P4: builders, recording providers, assertions)
-L3  @method/pacta-playground          ← Integration verification (FCA P6: scenarios, virtual FS, comparative eval)
-L3  @method/pacta-provider-claude-cli ← Claude CLI provider (separate package)
-L3  @method/pacta-provider-anthropic  ← Anthropic API provider (separate package)
-L3  @method/mcp                       Protocol adapter
-L2  @method/methodts                  Domain extensions
+L4  @methodts/bridge                    Uses pacta to deploy agents
+L3  @methodts/pacta                     ← Modular Agent SDK (core: types + engine)
+L3  @methodts/pacta-testkit             ← Verification affordances (FCA P4: builders, recording providers, assertions)
+L3  @methodts/pacta-playground          ← Integration verification (FCA P6: scenarios, virtual FS, comparative eval)
+L3  @methodts/pacta-provider-claude-cli ← Claude CLI provider (separate package)
+L3  @methodts/pacta-provider-anthropic  ← Anthropic API provider (separate package)
+L3  @methodts/mcp                       Protocol adapter
+L2  @methodts/methodts                  Domain extensions
 ```
 
 Dependency graph:
@@ -309,7 +309,7 @@ customize via Tier 2.
 
 ```typescript
 // Tier 1: Use a reference agent
-import { codeAgent } from '@method/pacta/agents';
+import { codeAgent } from '@methodts/pacta/agents';
 
 const result = await codeAgent.invoke({
   prompt: 'Add error handling to the payment service',
@@ -317,8 +317,8 @@ const result = await codeAgent.invoke({
 });
 
 // Tier 2: Assemble your own
-import { createAgent } from '@method/pacta';
-import { claudeCliProvider } from '@method/pacta-provider-claude-cli';
+import { createAgent } from '@methodts/pacta';
+import { claudeCliProvider } from '@methodts/pacta-provider-claude-cli';
 
 const myAgent = createAgent({
   provider: claudeCliProvider({ model: 'claude-sonnet-4-6' }),
@@ -333,7 +333,7 @@ const myAgent = createAgent({
 });
 
 // Tier 3: Build custom parts
-import type { AgentProvider } from '@method/pacta';
+import type { AgentProvider } from '@methodts/pacta';
 
 class OllamaProvider implements AgentProvider {
   readonly name = 'ollama';
@@ -388,7 +388,7 @@ type AgentEvent =
 **Exit criteria:** `createAgent({ provider: claudeCliProvider() }).invoke("hello")` returns
 a response. Gate tests pass (G-PORT, G-BOUNDARY, G-LAYER). Testkit ships alongside core.
 
-**`@method/pacta` (core):**
+**`@methodts/pacta` (core):**
 - Pact, ExecutionMode, BudgetContract, OutputContract, ScopeContract, ContextPolicy, ReasoningPolicy
 - AgentProvider (base + Streamable/Resumable/Killable), ToolProvider, MemoryPort
 - AgentEvent, AgentResult, TokenUsage, CostReport
@@ -399,7 +399,7 @@ a response. Gate tests pass (G-PORT, G-BOUNDARY, G-LAYER). Testkit ships alongsi
 - Phase 1 output is L0 (pure types) + L3 (composition engine). The package
   reaches full L3 at Phase 1 completion.
 
-**`@method/pacta-testkit` (verification affordances — FCA P4):**
+**`@methodts/pacta-testkit` (verification affordances — FCA P4):**
 - `RecordingProvider` — implements AgentProvider, records all interactions
 - `MockToolProvider` — returns scripted tool results
 - `pactBuilder()` — fluent builder with sensible defaults
@@ -409,7 +409,7 @@ a response. Gate tests pass (G-PORT, G-BOUNDARY, G-LAYER). Testkit ships alongsi
   cost per turn, reasoning traces, final output + stop reason. Rich enough for future
   `EvalReport` analysis.
 
-**`@method/pacta-provider-claude-cli` (first provider):**
+**`@methodts/pacta-provider-claude-cli` (first provider):**
 - Implement AgentProvider for Claude CLI (`--print`, `--resume`)
 - Map Claude's execution modes to Pacta's mode contracts
 - One reference agent (`simpleCodeAgent`) as integration test + Tier 1 on-ramp
@@ -419,7 +419,7 @@ a response. Gate tests pass (G-PORT, G-BOUNDARY, G-LAYER). Testkit ships alongsi
 **Exit criteria:** A scenario runs an agent against a virtual filesystem, asserts on tool
 calls and output, and produces an eval report. Gate tests pass.
 
-**`@method/pacta-playground` (integration verification — FCA P6):**
+**`@methodts/pacta-playground` (integration verification — FCA P6):**
 
 Tiered simulation fidelity:
 
@@ -497,7 +497,7 @@ playground scenario. Gate tests pass.
 **Exit criteria:** Same assembled agent runs with both Claude CLI and Anthropic API providers.
 Reference agents work out of the box. Success criterion #2 validated.
 
-**`@method/pacta-provider-anthropic`:**
+**`@methodts/pacta-provider-anthropic`:**
 - Implement AgentProvider for direct Anthropic Messages API
 - Messages API for oneshot/streaming + tool use
 - Prompt caching integration

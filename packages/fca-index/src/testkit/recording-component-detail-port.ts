@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RecordingComponentDetailPort — Test double for ComponentDetailPort.
  *
  * Records calls and returns configurable stub responses.
- * Use in @method/mcp tests that consume ComponentDetailPort.
+ * Use in @methodts/mcp tests that consume ComponentDetailPort.
  *
- * Part of @method/fca-index/testkit — not included in production bundle.
+ * Part of @methodts/fca-index/testkit — not included in production bundle.
  */
 
 import type { ComponentDetailPort, ComponentDetailRequest, ComponentDetail } from '../ports/component-detail.js';

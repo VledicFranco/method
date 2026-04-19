@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for CrossAppNodeExecutorImpl — the runtime-side bridge from methodts
  * `CrossAppNodeExecutor` port to the `CrossAppInvoker` port.
@@ -17,7 +18,7 @@ import type {
   StrategyDAG,
   StrategyNode,
   CrossAppInvokeNodeConfig,
-} from '@method/methodts/strategy/dag-types.js';
+} from '@methodts/methodts/strategy/dag-types.js';
 
 import { InProcessCrossAppInvoker } from './in-process-cross-app-invoker.js';
 import {

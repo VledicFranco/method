@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ScriptedToolProvider — rule-based tool responses.
  *
@@ -5,7 +6,7 @@
  * Falls back to error for unmatched calls. Tier 2 (script) fidelity.
  */
 
-import type { ToolProvider, ToolDefinition, ToolResult } from '@method/pacta';
+import type { ToolProvider, ToolDefinition, ToolResult } from '@methodts/pacta';
 
 // ── Types ────────────────────────────────────────────────────────
 

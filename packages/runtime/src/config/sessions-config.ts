@@ -1,4 +1,5 @@
-// PRD-057 / S2 §3.6: @method/runtime/config — sessions configuration schema.
+// SPDX-License-Identifier: Apache-2.0
+// PRD-057 / S2 §3.6: @methodts/runtime/config — sessions configuration schema.
 // Moved from packages/bridge/src/domains/sessions/config.ts.
 
 import { z } from 'zod';

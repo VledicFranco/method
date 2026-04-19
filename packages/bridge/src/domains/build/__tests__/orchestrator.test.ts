@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * BuildOrchestrator tests — 8-phase loop, failure routing, autonomy levels.
  *

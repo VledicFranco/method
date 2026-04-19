@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * FileSystemPort — Internal port isolating scanner domain from node:fs.
  *
- * Owner: @method/fca-index (defines interface + provides NodeFileSystem impl)
+ * Owner: @methodts/fca-index (defines interface + provides NodeFileSystem impl)
  * Consumer: scanner domain (internal)
  * Direction: filesystem → scanner (unidirectional)
  * Status: frozen 2026-04-10 (extended from 2026-04-08; see fcd-surface-fca-index-internal-ports-ext)

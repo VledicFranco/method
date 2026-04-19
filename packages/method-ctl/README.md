@@ -1,10 +1,10 @@
-# @method/method-ctl
+# @methodts/method-ctl
 
 Unified CLI for managing bridge clusters. Queries bridge HTTP endpoints and displays cluster health, node resources, and project distribution.
 
 ## Architecture
 
-`method-ctl` is an L4 application in the FCA layer stack. It is a **pure HTTP client** — it does not import `@method/cluster` or `@method/bridge` at runtime. It works with JSON responses from bridge `/cluster/*` endpoints.
+`method-ctl` is an L4 application in the FCA layer stack. It is a **pure HTTP client** — it does not import `@methodts/cluster` or `@methodts/bridge` at runtime. It works with JSON responses from bridge `/cluster/*` endpoints.
 
 ```
 L4  method-ctl      CLI application — arg parsing, HTTP calls, output formatting

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Pacta — Modular Agent SDK ─────────────────────────────────────
 //
 // The pact is the core abstraction: a typed contract declaring how

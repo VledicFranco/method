@@ -17,7 +17,7 @@ touches:
 
 # Guide 41 — Smoke Test Suite
 
-The `@method/smoke-test` package is end-to-end coverage for the method runtime. It has two faces:
+The `@methodts/smoke-test` package is end-to-end coverage for the method runtime. It has two faces:
 
 1. **A headless test runner** (`npm run smoke`) that every mock-mode case executes in CI without API keys.
 2. **A browser UI** (`npm run serve` → http://localhost:5180) that renders the runtime's capabilities as a layer-first visualization — layer stack, feature map, feature detail with SVG DAG flow. The UI doubles as live documentation of what the runtime does.
@@ -30,16 +30,16 @@ From the repo root:
 
 ```bash
 # Build
-npm --workspace=@method/smoke-test run build
+npm --workspace=@methodts/smoke-test run build
 
 # Vitest — fixture validation, registry invariants, RunFlow shape
-npm --workspace=@method/smoke-test test
+npm --workspace=@methodts/smoke-test test
 
 # Playwright — full E2E: backend run-all + browser UI navigation
-npm --workspace=@method/smoke-test run smoke
+npm --workspace=@methodts/smoke-test run smoke
 
 # Live mode — requires ANTHROPIC_API_KEY (via 1Password or .env)
-npm --workspace=@method/smoke-test run smoke:live
+npm --workspace=@methodts/smoke-test run smoke:live
 
 # Start the browser UI server (http://localhost:5180)
 cd packages/smoke-test && npm run serve

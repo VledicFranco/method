@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * P0_META — Genesis Methodology for the Meta-Method Family.
  *

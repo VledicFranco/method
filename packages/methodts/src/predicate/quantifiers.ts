@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Heterogeneous quantifiers — forall/exists over sub-types.
  *

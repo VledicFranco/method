@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `MockCortexCtx` — the structural `CortexCtx` impl the conformance suite
  * installs as the `ctx` passed to a tenant app handler. Every facade call is

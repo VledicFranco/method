@@ -1,8 +1,9 @@
-// PRD-057 / S2 §2: @method/runtime top-level barrel.
+// SPDX-License-Identifier: Apache-2.0
+// PRD-057 / S2 §2: @methodts/runtime top-level barrel.
 //
 // Hot-path symbols are re-exported here for consumers that want a single
 // import point. Advanced consumers can still deep-import from subpaths
-// (`@method/runtime/strategy`, `/sessions`, `/event-bus`, `/cost-governor`,
+// (`@methodts/runtime/strategy`, `/sessions`, `/event-bus`, `/cost-governor`,
 // `/ports`, `/config`).
 //
 // C1 (`runtime-scaffold-and-ports-move`) ships only the ports surface.

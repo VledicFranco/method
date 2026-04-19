@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Constraint Classifier — entry classification and constraint detection.
  *

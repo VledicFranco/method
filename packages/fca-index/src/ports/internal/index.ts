@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ports/internal/ — Internal port interfaces (fca-index implementation-private).
  *

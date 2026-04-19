@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * JobBackedExecutor — drives a pact across worker boundaries via ctx.jobs.
  *
  * PRD-062 / S5 §2.2. Frozen: 2026-04-14.
  *
- * Owner:    @method/runtime
- * Producer: @method/runtime (impl: CortexJobBackedExecutor)
+ * Owner:    @methodts/runtime
+ * Producer: @methodts/runtime (impl: CortexJobBackedExecutor)
  * Consumer: tenant app composition root (wires ctx.jobs into the executor)
  *
  * The tenant app never calls `enqueue`/`dispatch` directly — it registers
@@ -12,7 +13,7 @@
  * continuations whenever a pact yields.
  */
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 import type {
   ContinuationEnvelope,
   BudgetRef,

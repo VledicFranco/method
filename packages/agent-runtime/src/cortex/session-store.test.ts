@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for the Cortex-backed SessionStore adapter.
  *
@@ -11,15 +12,15 @@ import assert from 'node:assert/strict';
 
 import { createCortexSessionStore } from './session-store.js';
 import type { CortexStorageFacade } from './ctx-types.js';
-import { isSessionStoreError } from '@method/runtime/ports';
+import { isSessionStoreError } from '@methodts/runtime/ports';
 import type {
   Checkpoint,
   PersistedSessionSnapshot as SessionSnapshot,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 import {
   DEFAULT_SESSION_STORE_FIXTURES,
   runSessionStoreConformance,
-} from '@method/runtime/sessions';
+} from '@methodts/runtime/sessions';
 
 function makeInMemoryStorage(): CortexStorageFacade {
   const data = new Map<string, Record<string, unknown>>();

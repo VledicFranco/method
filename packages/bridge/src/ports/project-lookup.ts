@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ProjectLookup — Port for resolving project metadata by ID.
  *

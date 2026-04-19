@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for EventsMultiplexer — PRD-058 §6.4 D4 + §4 criterion 6.
  *
@@ -11,7 +12,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import type { AgentEvent } from '@method/pacta';
+import type { AgentEvent } from '@methodts/pacta';
 import { EventsMultiplexer } from './events-multiplexer.js';
 import { IllegalStateError } from './errors.js';
 

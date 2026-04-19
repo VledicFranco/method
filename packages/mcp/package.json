@@ -1,20 +1,46 @@
 {
-  "name": "@method/mcp",
+  "name": "@methodts/mcp",
   "version": "0.1.0",
-  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -b",
     "start": "node dist/index.js",
     "test": "vitest run"
   },
   "dependencies": {
-    "@method/fca-index": "*",
-    "@method/methodts": "*",
+    "@methodts/fca-index": "*",
+    "@methodts/methodts": "*",
     "@modelcontextprotocol/sdk": "^1.10.2",
     "zod": "^3.0.0"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
-  }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module"
 }

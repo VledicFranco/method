@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * FcaDetector — Detects which FCA parts are present in a component directory.
  *

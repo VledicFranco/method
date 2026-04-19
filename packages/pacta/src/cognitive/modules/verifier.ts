@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Verifier — cybernetic verification module for action-outcome checking.
  *

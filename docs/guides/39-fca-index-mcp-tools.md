@@ -5,7 +5,7 @@ domain: fca-index/mcp
 audience:
   - agent-operators
 summary: >-
-  Using context_query, context_detail, and coverage_check MCP tools for efficient context gathering. Two deployment options: bundled in @method/mcp or standalone via fca-index-mcp.
+  Using context_query, context_detail, and coverage_check MCP tools for efficient context gathering. Two deployment options: bundled in @methodts/mcp or standalone via fca-index-mcp.
 prereqs: [38]
 touches:
   - packages/mcp/src/context-tools.ts
@@ -20,7 +20,7 @@ touches:
 
 ## What are the context tools?
 
-Three MCP tools expose the `@method/fca-index` ports to agents:
+Three MCP tools expose the `@methodts/fca-index` ports to agents:
 
 | Tool | Port | What it does |
 |------|------|-------------|
@@ -34,13 +34,13 @@ The top-1 result is rendered with expanded excerpts (up to 350 chars per FCA par
 
 ## Two deployment options
 
-### Option A — bundled in `@method/mcp` (method-internal)
+### Option A — bundled in `@methodts/mcp` (method-internal)
 
 For projects running the full method server (methodology + bridge + strategies + fca-index tools), the context tools are already registered when `VOYAGE_API_KEY` is set. No extra setup needed beyond what Guide 38 covers.
 
 ### Option B — standalone `fca-index-mcp` (recommended for external projects)
 
-For projects that only want the FCA index tools and don't need methodology/bridge/strategy surfaces, use the standalone MCP server bundled with `@method/fca-index`:
+For projects that only want the FCA index tools and don't need methodology/bridge/strategy surfaces, use the standalone MCP server bundled with `@methodts/fca-index`:
 
 ```json
 // .mcp.json in the consumer's project
@@ -68,9 +68,9 @@ export VOYAGE_API_KEY=your_key
 fca-index scan /path/to/project
 ```
 
-**2. `VOYAGE_API_KEY` must be set** in the environment where the MCP server runs. The tools are gracefully absent when the key is not set (in `@method/mcp`) or the server fails fast with a clear error (in standalone `fca-index-mcp`).
+**2. `VOYAGE_API_KEY` must be set** in the environment where the MCP server runs. The tools are gracefully absent when the key is not set (in `@methodts/mcp`) or the server fails fast with a clear error (in standalone `fca-index-mcp`).
 
-For `@method/mcp`, the `METHOD_ROOT` environment variable is used as the default `projectRoot`. For `fca-index-mcp`, use `FCA_INDEX_ROOT` (defaults to the cwd).
+For `@methodts/mcp`, the `METHOD_ROOT` environment variable is used as the default `projectRoot`. For `fca-index-mcp`, use `FCA_INDEX_ROOT` (defaults to the cwd).
 
 ## Permissions for print-mode agents (Claude Code)
 

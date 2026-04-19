@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Router SLM Adapters — PRD 052 HTTP bridge + mock implementations.
  *

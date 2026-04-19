@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 017: Strategy Pipelines — Retrospective Writer
  *
@@ -5,9 +6,9 @@
  * a FileSystemProvider via injection (no Node-specific impl bound here).
  *
  * Per DR-03: pure logic + injected ports live in runtime; the concrete
- * NodeFileSystemProvider stays in @method/bridge.
+ * NodeFileSystemProvider stays in @methodts/bridge.
  *
- * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/.
+ * PRD-057 / S2 §3.2 / C2: moved from @methodts/bridge/domains/strategies/.
  *   - Module-level fs port pattern preserved (retain setRetroWriterFs() API).
  *   - Default fallback removed (NodeFileSystemProvider lives in bridge).
  *     Callers MUST configure the fs port at composition time.

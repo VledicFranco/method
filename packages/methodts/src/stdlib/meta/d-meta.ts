@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * D_META — the domain theory for P0-META (F1-FTH Def 1.1).
  *

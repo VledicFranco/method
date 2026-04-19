@@ -161,7 +161,7 @@ Pattern noticed → Grammar induced → Corpus validated → SLM trained → Com
 (System 2)                                                           (System 1)
 ```
 
-Once wired into `@method/pacta`'s cognitive modules:
+Once wired into `@methodts/pacta`'s cognitive modules:
 - **Memory** (ACT-R activation) triggers compilation when a pattern repeats
 - **Reflector** extracts structural invariants into trace summaries
 - **DSL Inducer** (this component) turns traces into grammars

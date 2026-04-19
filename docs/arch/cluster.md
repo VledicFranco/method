@@ -5,7 +5,7 @@
 `packages/cluster/` (L3) and `packages/bridge/src/domains/cluster/` (L4) implement peer-to-peer cluster coordination for bridge instances. Bridges on a Tailscale mesh discover each other, share capacity state, route work to the best-available node, and federate events across the cluster.
 
 **Key constraints:**
-- `@method/cluster` is an L3 package with zero transport dependencies — all I/O enters through port interfaces
+- `@methodts/cluster` is an L3 package with zero transport dependencies — all I/O enters through port interfaces
 - The bridge cluster domain (`domains/cluster/`) is an L4 consumer that provides adapters (Tailscale, HTTP, OS resources)
 - Cluster is opt-in (`CLUSTER_ENABLED=false` by default) — zero overhead when disabled
 - Bridges communicate over HTTP POST between peers — no shared database or central coordinator
@@ -44,10 +44,10 @@ Bridge A (mission-control)                    Bridge B (laptop)
 ## Layer Stack
 
 ```
-L4  @method/bridge    — gains domains/cluster/ domain (adapters, routes, federation sink)
+L4  @methodts/bridge    — gains domains/cluster/ domain (adapters, routes, federation sink)
     method-ctl        — standalone CLI, pure HTTP client (no cluster/bridge deps)
 
-L3  @method/cluster   — membership, routing, federation (zero transport deps)
+L3  @methodts/cluster   — membership, routing, federation (zero transport deps)
 ```
 
 ## Membership Protocol

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Strategy DAG Parser — parses strategy YAML into StrategyDAG types.
  *
@@ -401,7 +402,7 @@ function dfs(
  * the DAG. Returns an empty set when no cross-app-invoke nodes exist.
  *
  * The strategy executor feeds this into `assertCrossAppTargetsAllowed`
- * (`@method/runtime/ports/cross-app-invoker.ts`) at compose time so a DAG
+ * (`@methodts/runtime/ports/cross-app-invoker.ts`) at compose time so a DAG
  * targeting an app not in `requires.apps[]` fails fast — mirroring Cortex's
  * deploy-time app-dep graph check at the Method layer (PRD-067 §6.1 §12.6).
  */

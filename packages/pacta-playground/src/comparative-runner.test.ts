@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { AgentResult, AgentEvent } from '@method/pacta';
-import { RecordingProvider, pactBuilder } from '@method/pacta-testkit';
+import type { AgentResult, AgentEvent } from '@methodts/pacta';
+import { RecordingProvider, pactBuilder } from '@methodts/pacta-testkit';
 import { scenario, filesystem, prompt, toolsCalled } from './scenario.js';
 import type { ScenarioAgentConfig } from './scenario.js';
 import { compareAgents } from './comparative-runner.js';

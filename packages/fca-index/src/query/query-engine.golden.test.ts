@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * query-engine.golden.test.ts — 20-query golden test set.
  *

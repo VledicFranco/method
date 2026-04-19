@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M2_REVIEW_GH — PR Review with Self-Fix Method (P-GH/M2-REVIEW v1.1).
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Voyage AI Embedding Adapter — implements EmbeddingPort for Voyage 4 models.
  *

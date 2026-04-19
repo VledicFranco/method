@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * resources/ — Resource snapshot schema (PRD 039).
  *

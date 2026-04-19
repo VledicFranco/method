@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── method-ctl projects ─────────────────────────────────────────
 //
 // GET /cluster/state, aggregate project lists from all nodes.

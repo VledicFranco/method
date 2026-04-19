@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * design-judge — LLM-as-judge for design artifact quality.
  *

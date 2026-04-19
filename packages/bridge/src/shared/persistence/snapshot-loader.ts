@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Snapshot loader — reads a projection snapshot file from disk and validates it.
  *

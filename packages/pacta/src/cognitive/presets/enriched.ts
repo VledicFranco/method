@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * enrichedPreset — v2 cognitive agent composition preset.
  *

@@ -24,7 +24,7 @@ When a predicate fails, you often need to know *which sub-predicate* caused the 
 Renders an `EvalTrace` as an indented tree:
 
 ```typescript
-import { evaluateWithTrace, and, check, formatTrace } from "@method/testkit";
+import { evaluateWithTrace, and, check, formatTrace } from "@methodts/testkit";
 
 type S = { items: string[]; current: string | null };
 const pred = and(
@@ -48,7 +48,7 @@ AND ── false
 Same tree but marks failing leaf nodes with `← FAILED`:
 
 ```typescript
-import { formatTraceWithFailures } from "@method/testkit";
+import { formatTraceWithFailures } from "@methodts/testkit";
 
 console.log(formatTraceWithFailures(trace));
 ```
@@ -65,7 +65,7 @@ AND ── false
 If you need custom predicate checks beyond `assertHolds`/`assertRejects`, use `evaluateWithTrace` directly:
 
 ```typescript
-import { evaluate, evaluateWithTrace, formatTraceWithFailures } from "@method/testkit";
+import { evaluate, evaluateWithTrace, formatTraceWithFailures } from "@methodts/testkit";
 
 function assertMyCustomCondition<S>(pred: Predicate<S>, state: S) {
   if (!evaluate(pred, state)) {
@@ -84,7 +84,7 @@ function assertMyCustomCondition<S>(pred: Predicate<S>, state: S) {
 Formats a `CompilationReport` from `compileMethod()` with per-gate status:
 
 ```typescript
-import { compileMethod, formatCompilationReport } from "@method/testkit";
+import { compileMethod, formatCompilationReport } from "@methodts/testkit";
 
 const report = compileMethod(method, testStates);
 if (report.overall === "failed") {
@@ -113,7 +113,7 @@ The `assertCompiles` assertion uses this internally — you only need `formatCom
 Formats a `CoherenceResult` from `checkCoherence()` with per-check status:
 
 ```typescript
-import { checkCoherence, formatCoherenceResult } from "@method/testkit";
+import { checkCoherence, formatCoherenceResult } from "@methodts/testkit";
 
 const result = checkCoherence(methodology, testStates);
 console.log(formatCoherenceResult(result, methodology.id));
@@ -135,7 +135,7 @@ Coherence check for PHI_TASKS: COHERENT
 For debugging routing issues, use `evaluateTransition` directly and inspect the arm traces:
 
 ```typescript
-import { evaluateTransition } from "@method/testkit";
+import { evaluateTransition } from "@methodts/testkit";
 
 const result = evaluateTransition(methodology, state);
 
@@ -154,7 +154,7 @@ for (const trace of result.armTraces) {
 For testing routing trajectories without executing steps, use `simulateRun`:
 
 ```typescript
-import { simulateRun } from "@method/testkit";
+import { simulateRun } from "@methodts/testkit";
 
 const sim = simulateRun(methodology, [state0, state1, state2, state3]);
 
@@ -175,7 +175,7 @@ A pattern for rich test failure diagnostics:
 import {
   assertCompiles, assertCoherent, assertRoutesTo,
   compileMethod, checkCoherence, formatCompilationReport, formatCoherenceResult,
-} from "@method/testkit";
+} from "@methodts/testkit";
 
 describe("methodology validation", () => {
   it("compiles and is coherent (with diagnostic dump)", () => {

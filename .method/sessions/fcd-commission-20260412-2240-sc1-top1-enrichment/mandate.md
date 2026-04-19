@@ -24,7 +24,7 @@ Interpretation:
 
 This commission spans **two FCA domains** (against the usual "one domain per
 commission" rule). The user's "single PR consolidated" requirement supersedes
-that convention. Both domains are inside `@method/fca-index` and `@method/mcp`
+that convention. Both domains are inside `@methodts/fca-index` and `@methodts/mcp`
 respectively. Cross-domain risk is low because:
 - C-1 (fca-index/query) and C-2 (mcp/context-tools) have no shared imports.
 - The change in each domain is small (~50 LoC + tests).

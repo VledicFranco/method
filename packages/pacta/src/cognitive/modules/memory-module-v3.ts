@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Memory Module v3 — CLS dual-store retrieval for the cognitive loop.
  *

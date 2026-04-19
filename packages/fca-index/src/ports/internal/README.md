@@ -1,6 +1,6 @@
 # ports/internal/ — Internal Port Interfaces
 
-Three internal port interfaces that isolate implementation details within `@method/fca-index`. These ports are not exported from the package public API — they exist purely to enable testing and decouple internal domains.
+Three internal port interfaces that isolate implementation details within `@methodts/fca-index`. These ports are not exported from the package public API — they exist purely to enable testing and decouple internal domains.
 
 ## Ports
 

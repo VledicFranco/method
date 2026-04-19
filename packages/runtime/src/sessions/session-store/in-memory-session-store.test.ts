@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for the in-memory SessionStore reference impl. Covers the
  * gate invariants: port purity, lease semantics, fencing, schema rejection.

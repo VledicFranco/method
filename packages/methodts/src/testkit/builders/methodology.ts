@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Methodology builder — construct Methodology<S> with fluent API.
  */

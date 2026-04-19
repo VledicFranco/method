@@ -3,16 +3,16 @@ type: co-design-record
 surface: "RuntimePackageBoundary"
 slug: fcd-surface-runtime-package-boundary
 date: "2026-04-14"
-owner: "@method/runtime (new L3 package, extracted from @method/bridge)"
-producer: "@method/runtime"
-consumer: "@method/bridge (L4 process) + @method/agent-runtime (L3 Cortex-facing library, planned PRD-058)"
+owner: "@methodts/runtime (new L3 package, extracted from @methodts/bridge)"
+producer: "@methodts/runtime"
+consumer: "@methodts/bridge (L4 process) + @methodts/agent-runtime (L3 Cortex-facing library, planned PRD-058)"
 direction: "runtime → bridge, runtime → agent-runtime (unidirectional — runtime exports, consumers import)"
 status: frozen
 mode: new
 related:
   - docs/roadmap-cortex-consumption.md §4.1 item 7
   - PRD-057 (implementation container)
-  - PRD-058 (@method/agent-runtime)
+  - PRD-058 (@methodts/agent-runtime)
   - .method/sessions/fcd-surface-method-agent-port/
   - .method/sessions/fcd-design-runtime-consolidation/
 ---
@@ -21,42 +21,42 @@ related:
 
 ## 1. Context & Framing
 
-Today `@method/bridge` is a Fastify **process** (L4). Its `src/index.ts` exports
+Today `@methodts/bridge` is a Fastify **process** (L4). Its `src/index.ts` exports
 `{}` — the bridge is not a library. However, inside the bridge live several
 **engine-grade, transport-free abstractions** that must be reusable by both:
 
-1. The existing process (`@method/bridge`).
-2. The forthcoming Cortex-facing library (`@method/agent-runtime`, PRD-058).
+1. The existing process (`@methodts/bridge`).
+2. The forthcoming Cortex-facing library (`@methodts/agent-runtime`, PRD-058).
 
-This FCD extracts those engine pieces into a new **L3 package `@method/runtime`**
+This FCD extracts those engine pieces into a new **L3 package `@methodts/runtime`**
 (transport-free, library-shaped) and freezes the public API that both downstream
 consumers will import.
 
 ### Layer placement
 
 ```
-L4   @method/bridge          — Fastify HTTP server, PTY, CLI, discovery, cluster adapters
-     @method/agent-runtime   — (new, PRD-058) Cortex-targeted embeddable agent (also L3 actually; see §9)
-L3   @method/runtime         — (NEW) strategy executor, session pool, event bus, cost governor,
+L4   @methodts/bridge          — Fastify HTTP server, PTY, CLI, discovery, cluster adapters
+     @methodts/agent-runtime   — (new, PRD-058) Cortex-targeted embeddable agent (also L3 actually; see §9)
+L3   @methodts/runtime         — (NEW) strategy executor, session pool, event bus, cost governor,
                                 checkpoint port, cognitive provider/sink, config schemas
-     @method/pacta           — modular agent SDK (already L3)
-     @method/mcp             — protocol adapter (already L3)
-L2   @method/methodts        — domain extensions (DAG executor, stdlib catalog)
-     @method/testkit         — testing framework
+     @methodts/pacta           — modular agent SDK (already L3)
+     @methodts/mcp             — protocol adapter (already L3)
+L2   @methodts/methodts        — domain extensions (DAG executor, stdlib catalog)
+     @methodts/testkit         — testing framework
 ```
 
-`@method/runtime` sits *above* `@method/methodts` and `@method/pacta`, *below*
+`@methodts/runtime` sits *above* `@methodts/methodts` and `@methodts/pacta`, *below*
 any transport or process concern. **Zero** dependencies on `fastify`,
 `@fastify/websocket`, `node-pty`, Tailscale, or any HTTP client.
 
 ### Name check
 
-`@method/runtime` reads clean and is unambiguous inside the workspace. The
-only collision risk is conceptual: `@method/methodts` already exports a
+`@methodts/runtime` reads clean and is unambiguous inside the workspace. The
+only collision risk is conceptual: `@methodts/methodts` already exports a
 "StrategyRuntime" class. Mitigation: namespace the new package's top-level
 export under `runtime/*` subpaths, and keep the class name
 `StrategyExecutor` (matching current code) rather than renaming to
-`Runtime`. **No rename needed.** Alternative name considered: `@method/engine`
+`Runtime`. **No rename needed.** Alternative name considered: `@methodts/engine`
 (rejected — "engine" is already overloaded in the cognitive composition
 module; would create semantic conflict with `packages/pacta/src/cognitive/engine/`).
 
@@ -65,16 +65,16 @@ module; would create semantic conflict with `packages/pacta/src/cognitive/engine
 ## 2. Package Public API — Tree of Exports
 
 Package root: `packages/runtime/`.
-Manifest: `@method/runtime` with `exports` map using subpath pattern (matches
-`@method/methodts` conventions — one conceptual surface per subpath).
+Manifest: `@methodts/runtime` with `exports` map using subpath pattern (matches
+`@methodts/methodts` conventions — one conceptual surface per subpath).
 
 ```
-@method/runtime/
+@methodts/runtime/
 ├── package.json                     (no fastify, no node-pty, no ws deps)
 ├── src/
 │   ├── index.ts                     — barrel: re-exports all subpaths below
 │   │
-│   ├── strategy/                    [subpath: @method/runtime/strategy]
+│   ├── strategy/                    [subpath: @methodts/runtime/strategy]
 │   │   ├── index.ts                 — StrategyExecutor, config, types
 │   │   ├── strategy-executor.ts     ← moved from bridge/domains/strategies/
 │   │   ├── context-load-executor.ts ← moved
@@ -88,7 +88,7 @@ Manifest: `@method/runtime` with `exports` map using subpath pattern (matches
 │   │   ├── pacta-strategy.ts        ← moved
 │   │   └── types.ts                 ← moved
 │   │
-│   ├── sessions/                    [subpath: @method/runtime/sessions]
+│   ├── sessions/                    [subpath: @methodts/runtime/sessions]
 │   │   ├── index.ts                 — SessionPool port + factory + cognitive provider
 │   │   ├── pool.ts                  ← moved from bridge/domains/sessions/pool.ts
 │   │   │                               (PTY code paths STAY in bridge — see §5.2)
@@ -104,7 +104,7 @@ Manifest: `@method/runtime` with `exports` map using subpath pattern (matches
 │   │   ├── bridge-tools.ts          ← moved, renamed runtime-tools.ts
 │   │   └── types.ts                 ← moved
 │   │
-│   ├── event-bus/                   [subpath: @method/runtime/event-bus]
+│   ├── event-bus/                   [subpath: @methodts/runtime/event-bus]
 │   │   ├── index.ts                 — EventBus port + sinks
 │   │   ├── in-memory-event-bus.ts   ← moved from bridge/shared/event-bus/
 │   │   ├── persistence-sink.ts      ← moved
@@ -115,7 +115,7 @@ Manifest: `@method/runtime` with `exports` map using subpath pattern (matches
 │   │   ├── agent-event-adapter.ts   ← moved
 │   │   └── adapters.ts              ← moved
 │   │
-│   ├── cost-governor/               [subpath: @method/runtime/cost-governor]
+│   ├── cost-governor/               [subpath: @methodts/runtime/cost-governor]
 │   │   ├── index.ts                 — CostGovernor domain factory + ports
 │   │   ├── observations-store.ts    ← moved
 │   │   ├── cost-oracle-impl.ts      ← moved
@@ -128,7 +128,7 @@ Manifest: `@method/runtime` with `exports` map using subpath pattern (matches
 │   │   ├── cost-events.ts           ← moved
 │   │   └── config.ts                ← moved (Zod schema)
 │   │
-│   ├── ports/                       [subpath: @method/runtime/ports]
+│   ├── ports/                       [subpath: @methodts/runtime/ports]
 │   │   ├── index.ts                 — ALL port interfaces (public types)
 │   │   ├── event-bus.ts             ← moved (BridgeEvent → RuntimeEvent, see §4)
 │   │   ├── session-pool.ts          ← moved
@@ -146,7 +146,7 @@ Manifest: `@method/runtime` with `exports` map using subpath pattern (matches
 │   │   ├── methodology-source.ts    ← moved (port)
 │   │   └── native-session-discovery.ts ← INTERFACE ONLY (Node impl stays in bridge)
 │   │
-│   └── config/                      [subpath: @method/runtime/config]
+│   └── config/                      [subpath: @methodts/runtime/config]
 │       ├── index.ts                 — unified config Zod schemas
 │       ├── sessions-config.ts       ← moved (CognitiveSessionConfig, SessionsConfig)
 │       ├── strategies-config.ts     ← moved (StrategyExecutorConfig)
@@ -156,7 +156,7 @@ Manifest: `@method/runtime` with `exports` map using subpath pattern (matches
 ### Top-level barrel `index.ts`
 
 Re-exports the most commonly used symbols from each subpath so consumers can
-`import { StrategyExecutor, InMemoryEventBus, createCostGovernor } from '@method/runtime'`
+`import { StrategyExecutor, InMemoryEventBus, createCostGovernor } from '@methodts/runtime'`
 for the fast path, while still being able to deep-import from subpaths for
 advanced use.
 
@@ -164,7 +164,7 @@ advanced use.
 
 ## 3. Frozen Public Exports (named, by subpath)
 
-### 3.1 `@method/runtime/ports`
+### 3.1 `@methodts/runtime/ports`
 
 **Stability tier: STABLE** — changes require a new FCD session.
 
@@ -246,7 +246,7 @@ export type { YamlLoader };
 export type { NativeSessionDiscovery, NativeSessionInfo };
 ```
 
-### 3.2 `@method/runtime/strategy`
+### 3.2 `@methodts/runtime/strategy`
 
 **Stability tier: STABLE** (centerpiece — both consumers depend on this).
 
@@ -278,12 +278,12 @@ export { parseStrategyYaml } from './strategy-parser.js';
 export type { StrategyDAG, StrategyNode, MethodologyNodeConfig };
 ```
 
-`StrategyExecutor` stays a **thin wrapper** over `@method/methodts`
+`StrategyExecutor` stays a **thin wrapper** over `@methodts/methodts`
 `DagStrategyExecutor` — it is NOT a god-object. Its constructor takes injected
 ports (AgentProvider, SubStrategySource, HumanApprovalResolver,
 ContextLoadExecutor), exposing **composition points, not implementation**.
 
-### 3.3 `@method/runtime/sessions`
+### 3.3 `@methodts/runtime/sessions`
 
 **Stability tier: STABLE for pool/provider interface; EXPERIMENTAL for cognitive module internals.**
 
@@ -331,7 +331,7 @@ export { installScopeHook } from './scope-hook.js';
 (lives in bridge) and agent-runtime can pass its Cortex-`ctx.llm`-backed factory.
 See §6 for the exact shape.
 
-### 3.4 `@method/runtime/event-bus`
+### 3.4 `@methodts/runtime/event-bus`
 
 **Stability tier: STABLE.**
 
@@ -360,9 +360,9 @@ export { toChannelMessage, toAllEventsWrapper } from './adapters.js';
 
 **Explicitly NOT exported:** `WebSocketSink`. It depends on `@fastify/websocket`
 and lives in the bridge. Bridge imports the `EventSink` interface from
-`@method/runtime/ports` and implements it locally (see §5.1).
+`@methodts/runtime/ports` and implements it locally (see §5.1).
 
-### 3.5 `@method/runtime/cost-governor`
+### 3.5 `@methodts/runtime/cost-governor`
 
 **Stability tier: STABLE for factory + ports; EXPERIMENTAL for internal stores.**
 
@@ -413,7 +413,7 @@ Fastify-specific and stays in bridge). Instead it exposes primitives; bridge's
 new `domains/cost-governor/routes.ts` thin shim imports the primitives and
 wires them to Fastify.
 
-### 3.6 `@method/runtime/config`
+### 3.6 `@methodts/runtime/config`
 
 **Stability tier: STABLE.**
 
@@ -437,7 +437,7 @@ filesystem assumptions (env-only by default; bridge overlays with
 ## 4. Rename: `BridgeEvent` → `RuntimeEvent`
 
 This is the only semantic rename the extraction requires. Every domain
-currently emits `BridgeEvent` — but once the bus lives in `@method/runtime`
+currently emits `BridgeEvent` — but once the bus lives in `@methodts/runtime`
 and is used by non-bridge consumers (agent-runtime, future SLM server,
 Cortex tenant apps), the name lies.
 
@@ -448,7 +448,7 @@ Cortex tenant apps), the name lies.
 
 ---
 
-## 5. What Stays in `@method/bridge` (L4)
+## 5. What Stays in `@methodts/bridge` (L4)
 
 Strict L4 responsibilities — anything the process owns, any transport, any
 host-OS coupling. The bridge remains a runnable; its `index.ts` continues to
@@ -472,15 +472,15 @@ export `{}`.
 ### 5.3 File-backed / OS-backed port implementations
 - `ports/file-system.ts`: interface moves to runtime; `NodeFileSystemProvider` stays in bridge.
 - `ports/yaml-loader.ts`: interface moves to runtime; `JsYamlLoader` stays in bridge.
-- `ports/stdlib-source.ts`: stays in bridge (wraps `@method/methodts` stdlib; trivially re-locatable but no consumer benefit).
-- `ports/in-memory-source.ts`: can move to `@method/runtime/ports` if the smoke-test suite wants it. **Decision: move.**
+- `ports/stdlib-source.ts`: stays in bridge (wraps `@methodts/methodts` stdlib; trivially re-locatable but no consumer benefit).
+- `ports/in-memory-source.ts`: can move to `@methodts/runtime/ports` if the smoke-test suite wants it. **Decision: move.**
 
 ### 5.4 Project discovery + cluster
 - All of `domains/projects/*` — file-based project discovery via scanning
   `C:/Users/atfm0/Repositories/` is inherently a host-OS concern.
 - All of `domains/cluster/*` — Tailscale discovery, HTTP-based membership,
   federation sink. Bridge-specific (cluster peers are bridges).
-- `@method/cluster` (the protocol library) continues to be consumed by bridge only.
+- `@methodts/cluster` (the protocol library) continues to be consumed by bridge only.
 
 ### 5.5 Domain-level process orchestration
 - `domains/genesis/*` — spawner that calls `pool.create` with a PTY session.
@@ -509,7 +509,7 @@ PTY/print-session spawn behavior. The extraction introduces a
 mechanism.
 
 ```typescript
-// @method/runtime/ports/session-pool.ts (extended)
+// @methodts/runtime/ports/session-pool.ts (extended)
 
 /**
  * Factory that produces the concrete session implementation for a given
@@ -547,7 +547,7 @@ new file): returns `createPrintSession()` from runtime for print mode,
 `createCognitiveSession()` from runtime for cognitive-agent mode, both wired
 to `claudeCliProvider()` or `anthropicProvider()`.
 
-Agent-runtime's factory (lives in the new `@method/agent-runtime` package):
+Agent-runtime's factory (lives in the new `@methodts/agent-runtime` package):
 returns a CortexProviderSession that routes through `ctx.llm`, per
 roadmap §4.1 items 2-3.
 
@@ -569,9 +569,9 @@ import type { EventBus } from './ports/event-bus.js';
 
 becomes:
 ```typescript
-import { StrategyExecutor } from '@method/runtime/strategy';
-import { InMemoryEventBus } from '@method/runtime/event-bus';
-import type { EventBus } from '@method/runtime/ports';
+import { StrategyExecutor } from '@methodts/runtime/strategy';
+import { InMemoryEventBus } from '@methodts/runtime/event-bus';
+import type { EventBus } from '@methodts/runtime/ports';
 ```
 
 **Strategy:** single PR per subpath (strategy → event-bus → cost-governor →
@@ -603,12 +603,12 @@ bridge behavior bit-identical and adds a genuinely optional hook.
 
 ---
 
-## 9. Why `@method/agent-runtime` Is Separate From `@method/runtime`
+## 9. Why `@methodts/agent-runtime` Is Separate From `@methodts/runtime`
 
 Considered collapsing them. Rejected because:
 
-1. **Different knowledge assumptions.** `@method/runtime` is the engine; it
-   knows about pacts, strategies, sessions, events. `@method/agent-runtime`
+1. **Different knowledge assumptions.** `@methodts/runtime` is the engine; it
+   knows about pacts, strategies, sessions, events. `@methodts/agent-runtime`
    is a **Cortex-shaped convenience layer** that knows about `ctx.llm`,
    `ctx.audit`, `ctx.jobs` — a Cortex-platform coupling that should not
    leak into the engine.
@@ -619,8 +619,8 @@ Considered collapsing them. Rejected because:
    Cortex agent tenant app"; "runtime" signals "the method engine". Two
    audiences, two packages.
 
-So: **this FCD defines the public API of `@method/runtime` only**.
-`@method/agent-runtime` is PRD-058 and will be its own FCD session.
+So: **this FCD defines the public API of `@methodts/runtime` only**.
+`@methodts/agent-runtime` is PRD-058 and will be its own FCD session.
 
 ---
 
@@ -628,7 +628,7 @@ So: **this FCD defines the public API of `@method/runtime` only**.
 
 ```
            ┌────────────────────────────┐
-           │  @method/bridge (L4)       │  Fastify, PTY, cluster, genesis,
+           │  @methodts/bridge (L4)       │  Fastify, PTY, cluster, genesis,
            │                            │  triggers, projects, build,
            │                            │  method-ctl, WebSocketSink,
            │                            │  NodeFileSystemProvider,
@@ -637,27 +637,27 @@ So: **this FCD defines the public API of `@method/runtime` only**.
                       │ depends on
                       ▼
 ┌──────────────────────────────────────────────────────────┐
-│  @method/runtime (L3) — THIS FCD                         │
+│  @methodts/runtime (L3) — THIS FCD                         │
 │  strategy/  sessions/  event-bus/  cost-governor/        │
 │  ports/     config/                                      │
 └──────────┬────────────────────────────────────┬──────────┘
            │                                    │
            ▼                                    ▼
   ┌────────────────┐                    ┌────────────────┐
-  │ @method/methodts│                   │ @method/pacta   │
+  │ @methodts/methodts│                   │ @methodts/pacta   │
   │ (L2)           │                   │ (L3)            │
   └────────────────┘                    └────────────────┘
 
            ┌────────────────────────────┐
-           │ @method/agent-runtime (L3) │  (PRD-058, separate FCD)
+           │ @methodts/agent-runtime (L3) │  (PRD-058, separate FCD)
            │  depends on:               │
-           │  @method/runtime +         │
-           │  @method/pacta +           │
+           │  @methodts/runtime +         │
+           │  @methodts/pacta +           │
            │  Cortex platform types     │
            └────────────────────────────┘
 ```
 
-No cycles. `@method/runtime` has zero transport deps.
+No cycles. `@methodts/runtime` has zero transport deps.
 
 ---
 
@@ -666,7 +666,7 @@ No cycles. `@method/runtime` has zero transport deps.
 
 ### G-RUNTIME-ZERO-TRANSPORT (new)
 ```typescript
-it('@method/runtime has zero transport dependencies', () => {
+it('@methodts/runtime has zero transport dependencies', () => {
   const forbidden = ['fastify', '@fastify/', 'ws', 'node-pty', 'express'];
   const violations = scanPackageImports('packages/runtime/src', forbidden);
   expect(violations).toEqual([]);
@@ -675,15 +675,15 @@ it('@method/runtime has zero transport dependencies', () => {
 
 ### G-RUNTIME-NO-BRIDGE-BACKREF (new)
 ```typescript
-it('@method/runtime never imports from @method/bridge', () => {
-  const violations = scanPackageImports('packages/runtime/src', ['@method/bridge', '../../bridge/']);
+it('@methodts/runtime never imports from @methodts/bridge', () => {
+  const violations = scanPackageImports('packages/runtime/src', ['@methodts/bridge', '../../bridge/']);
   expect(violations).toEqual([]);
 });
 ```
 
 ### G-BRIDGE-USES-RUNTIME-PORTS (new, replaces existing port tests)
 ```typescript
-it('bridge cross-domain imports of strategy/event-bus/cost/session go through @method/runtime', () => {
+it('bridge cross-domain imports of strategy/event-bus/cost/session go through @methodts/runtime', () => {
   const srcRoots = [
     'packages/bridge/src/domains',
     'packages/bridge/src/shared',
@@ -713,20 +713,20 @@ it('runtime RuntimeEvent does not hard-code bridge-specific domain names', () =>
 ## 12. Producer & Consumer Mapping
 
 **Producer** (domain that IMPLEMENTS these exports):
-- New package `@method/runtime` at `packages/runtime/`.
+- New package `@methodts/runtime` at `packages/runtime/`.
 - Implementation work tracked under **PRD-057**.
 - Wiring: none internal — the package ships primitives. Composition happens
   entirely at consumer side.
 
-**Consumer A** (existing): `@method/bridge`
+**Consumer A** (existing): `@methodts/bridge`
 - Wires everything in `packages/bridge/src/server-entry.ts` (unchanged file).
-- Imports shift from local paths to `@method/runtime/*` subpaths (§7).
+- Imports shift from local paths to `@methodts/runtime/*` subpaths (§7).
 - Continues to own PTY session factory, NodeFileSystemProvider,
   JsYamlLoader, WebSocketSink, routes, cluster adapters.
 
-**Consumer B** (planned): `@method/agent-runtime` (PRD-058)
+**Consumer B** (planned): `@methodts/agent-runtime` (PRD-058)
 - Separate FCD (not this one).
-- Imports `@method/runtime` + `@method/pacta` + Cortex types.
+- Imports `@methodts/runtime` + `@methodts/pacta` + Cortex types.
 - Wires a Cortex-backed session provider factory, a Cortex-backed
   MethodologySource, a CortexEventConnector, and an AppId-scoped
   CostGovernor.
@@ -747,7 +747,7 @@ it('runtime RuntimeEvent does not hard-code bridge-specific domain names', () =>
 
 1. **Checkpoint port placement.** `CheckpointPort` (build orchestrator,
    PRD-047) is currently only used by bridge's build domain. Moving it to
-   `@method/runtime/ports` is correct by layering but may invite
+   `@methodts/runtime/ports` is correct by layering but may invite
    cortex-backed agents to adopt it prematurely. **Current decision: move
    the port interface; leave the FS-backed impl in bridge.** Flag for
    PRD-057 review.
@@ -761,15 +761,15 @@ it('runtime RuntimeEvent does not hard-code bridge-specific domain names', () =>
    for bridge-specific fields and generalize.
 
 3. **`ports/methodology-source.ts` vs `StdlibSource`.** Interface moves;
-   `StdlibSource` (wraps `@method/methodts` stdlib catalog) is
+   `StdlibSource` (wraps `@methodts/methodts` stdlib catalog) is
    knowledge-only and could live in runtime. Choosing to **keep
    `StdlibSource` in bridge** for now because it's not consumed outside
    bridge and PRD-064 will replace it with `CortexMethodologySource`
    in agent-runtime. Neutral on revisiting.
 
-4. **`@method/cluster` status.** Question from roadmap §8.5. Cluster
+4. **`@methodts/cluster` status.** Question from roadmap §8.5. Cluster
    federation is bridge-only for now. No runtime dependency on
-   `@method/cluster`; cluster stays unchanged.
+   `@methodts/cluster`; cluster stays unchanged.
 
 5. **`registerRoutes` removal from cost-governor factory.** Breaking
    change for bridge callers. Mitigation: bridge gets a tiny new

@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * formatters.test.ts — Unit tests for the standalone MCP formatters.
  *
- * Mirrors the rendering tests in @method/mcp/src/context-tools.test.ts
+ * Mirrors the rendering tests in @methodts/mcp/src/context-tools.test.ts
  * but tests the fca-index-local copy to prevent drift.
  */
 

@@ -13,9 +13,9 @@ touches:
 
 # Guide 29 — Pacta: Testing with Playground
 
-Pacta ships two testing packages: `@method/pacta-testkit` for unit-level verification affordances, and `@method/pacta-playground` for scenario-level evaluation with simulated environments. Together they let you test agent behavior without calling real LLMs.
+Pacta ships two testing packages: `@methodts/pacta-testkit` for unit-level verification affordances, and `@methodts/pacta-playground` for scenario-level evaluation with simulated environments. Together they let you test agent behavior without calling real LLMs.
 
-## @method/pacta-testkit
+## @methodts/pacta-testkit
 
 The testkit provides four tools: a recording provider, a mock tool provider, fluent builders, and assertion helpers.
 
@@ -24,9 +24,9 @@ The testkit provides four tools: a recording provider, a mock tool provider, flu
 `RecordingProvider` implements `AgentProvider` and records everything. Configure it with scripted responses, then inspect the recording after invocation.
 
 ```typescript
-import { RecordingProvider } from '@method/pacta-testkit';
-import { createAgent } from '@method/pacta';
-import type { AgentResult, TokenUsage } from '@method/pacta';
+import { RecordingProvider } from '@methodts/pacta-testkit';
+import { createAgent } from '@methodts/pacta';
+import type { AgentResult, TokenUsage } from '@methodts/pacta';
 
 const provider = new RecordingProvider();
 
@@ -81,7 +81,7 @@ Key `RecordingProvider` methods:
 `MockToolProvider` implements `ToolProvider` with scripted tool results:
 
 ```typescript
-import { MockToolProvider } from '@method/pacta-testkit';
+import { MockToolProvider } from '@methodts/pacta-testkit';
 
 const tools = new MockToolProvider();
 
@@ -109,7 +109,7 @@ console.log(tools.callLog);
 `pactBuilder()` and `agentRequestBuilder()` construct test objects with sensible defaults:
 
 ```typescript
-import { pactBuilder, agentRequestBuilder } from '@method/pacta-testkit';
+import { pactBuilder, agentRequestBuilder } from '@methodts/pacta-testkit';
 
 const pact = pactBuilder()
   .withMode({ type: 'resumable' })
@@ -137,8 +137,8 @@ import {
   assertToolsCalledUnordered,
   assertBudgetUnder,
   assertOutputMatches,
-} from '@method/pacta-testkit';
-import type { Recording } from '@method/pacta-testkit';
+} from '@methodts/pacta-testkit';
+import type { Recording } from '@methodts/pacta-testkit';
 
 // Assert exact tool call sequence
 assertToolsCalled(recording, ['Read', 'Grep', 'Edit']);
@@ -161,7 +161,7 @@ const parsed = assertOutputMatches(result, mySchema);
 
 All assertions throw descriptive errors on failure, compatible with any test runner (vitest, node:test, etc.).
 
-## @method/pacta-playground
+## @methodts/pacta-playground
 
 The playground is a scenario-level evaluation environment. It runs agents against simulated tool providers and produces structured `EvalReport` objects.
 
@@ -182,7 +182,7 @@ The `FidelityLevel` type (`'stub' | 'script' | 'virtual'`) labels the tier.
 An in-memory filesystem that implements `ToolProvider`. Supports Read, Write, Edit, Glob, and Grep with real semantics:
 
 ```typescript
-import { VirtualToolProvider } from '@method/pacta-playground';
+import { VirtualToolProvider } from '@methodts/pacta-playground';
 
 const vfs = new VirtualToolProvider({
   'src/main.ts': 'function main() {\n  return 42;\n}\n',
@@ -220,7 +220,7 @@ The virtual FS faithfully emulates Claude Code's tool behavior: Read produces `c
 Rule-based tool responses for Tier 2 fidelity:
 
 ```typescript
-import { ScriptedToolProvider } from '@method/pacta-playground';
+import { ScriptedToolProvider } from '@methodts/pacta-playground';
 
 const scripted = new ScriptedToolProvider();
 
@@ -249,8 +249,8 @@ Rules are checked in registration order — the first matching rule wins.
 The scenario builder provides a fluent, declarative interface for defining test scenarios:
 
 ```typescript
-import { scenario, filesystem, tools, prompt, toolsCalled, outputMatches, tokensBelow } from '@method/pacta-playground';
-import { RecordingProvider, pactBuilder } from '@method/pacta-testkit';
+import { scenario, filesystem, tools, prompt, toolsCalled, outputMatches, tokensBelow } from '@methodts/pacta-playground';
+import { RecordingProvider, pactBuilder } from '@methodts/pacta-testkit';
 
 const s = scenario('code-review-agent')
   .given(filesystem({
@@ -286,9 +286,9 @@ Assertion helpers:
 Run a scenario by passing an agent config with a `RecordingProvider`:
 
 ```typescript
-import { scenario, filesystem, prompt, toolsCalled } from '@method/pacta-playground';
-import { RecordingProvider, pactBuilder } from '@method/pacta-testkit';
-import type { EvalReport } from '@method/pacta-playground';
+import { scenario, filesystem, prompt, toolsCalled } from '@methodts/pacta-playground';
+import { RecordingProvider, pactBuilder } from '@methodts/pacta-testkit';
+import type { EvalReport } from '@methodts/pacta-playground';
 
 const provider = new RecordingProvider();
 provider.addResponse({
@@ -366,9 +366,9 @@ The reasoning detection is heuristic — it checks thinking traces for keywords 
 Run the same scenario against two agent configs to compare behavior:
 
 ```typescript
-import { scenario, filesystem, prompt, toolsCalled, compareAgents } from '@method/pacta-playground';
-import { RecordingProvider, pactBuilder } from '@method/pacta-testkit';
-import type { ComparativeReport } from '@method/pacta-playground';
+import { scenario, filesystem, prompt, toolsCalled, compareAgents } from '@methodts/pacta-playground';
+import { RecordingProvider, pactBuilder } from '@methodts/pacta-testkit';
+import type { ComparativeReport } from '@methodts/pacta-playground';
 
 const s = scenario('edit-task')
   .given(filesystem({ 'src/main.ts': 'old code' }))
@@ -418,9 +418,9 @@ A complete test file using both testkit and playground:
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { createAgent } from '@method/pacta';
-import { RecordingProvider, pactBuilder, assertToolsCalled, assertBudgetUnder } from '@method/pacta-testkit';
-import { scenario, filesystem, prompt, toolsCalled } from '@method/pacta-playground';
+import { createAgent } from '@methodts/pacta';
+import { RecordingProvider, pactBuilder, assertToolsCalled, assertBudgetUnder } from '@methodts/pacta-testkit';
+import { scenario, filesystem, prompt, toolsCalled } from '@methodts/pacta-playground';
 
 describe('my agent', () => {
   it('calls Read then Edit for a fix task', async () => {

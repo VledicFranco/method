@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Inheritance resolution for CortexMethodologySource.
  *
@@ -13,12 +14,12 @@
  * become authoritative (the app froze its behavior).
  */
 
-import type { MethodologySource } from '@method/runtime/ports';
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
+import type { MethodologySource } from '@methodts/runtime/ports';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
 import {
   loadMethodologyFromYamlString,
-} from '@method/methodts';
-import type { Method, Methodology } from '@method/methodts';
+} from '@methodts/methodts';
+import type { Method, Methodology } from '@methodts/methodts';
 import type {
   MethodologyDocument,
   MethodologyPolicy,

@@ -104,7 +104,7 @@ All session state flows through `SessionPool`. No route handler, event sink, or 
 
 ## CognitiveSink — Event Plumbing
 
-`CognitiveSink` is the bridge between the `@method/pacta` cognitive algebra and the Universal Event Bus (PRD 026). It maps all 9 typed `CognitiveEvent` variants to `BridgeEvent` objects and emits them on the injected `EventBus` port.
+`CognitiveSink` is the bridge between the `@methodts/pacta` cognitive algebra and the Universal Event Bus (PRD 026). It maps all 9 typed `CognitiveEvent` variants to `BridgeEvent` objects and emits them on the injected `EventBus` port.
 
 ### Role in the event pipeline
 

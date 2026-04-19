@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexJobBackedExecutor — Wave 1 impl of the JobBackedExecutor port.
  *
@@ -28,7 +29,7 @@
  * substitute a real runner without touching the envelope plumbing.
  */
 
-import type { PactDeadLetterEvent } from '@method/pacta';
+import type { PactDeadLetterEvent } from '@methodts/pacta';
 import type {
   BudgetRef,
   ContinuationEnvelope,

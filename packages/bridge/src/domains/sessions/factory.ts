@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Bridge-side SessionProviderFactory (PRD-057 / S2 §6 / C5).
  *
  * Produces concrete `PtySession` values backed by bridge's local providers:
  *
- *   - `mode === 'print'`        → `createPrintSession` from `@method/runtime/sessions`
+ *   - `mode === 'print'`        → `createPrintSession` from `@methodts/runtime/sessions`
  *                                 wired to `claudeCliProvider` (claude CLI binary).
  *   - `mode === 'cognitive-agent'` → `createCognitiveSession` from
- *                                    `@method/runtime/sessions` wired to
+ *                                    `@methodts/runtime/sessions` wired to
  *                                    `anthropicProvider` or `ollamaProvider`
  *                                    (dynamic-imported to avoid eager load).
  *
@@ -24,20 +25,20 @@ import type {
   SessionProviderFactory,
   SessionProviderOptions,
   PtySessionHandle,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 import type {
   PtySession,
   StreamEvent,
   CognitiveEventContext,
-} from '@method/runtime/sessions';
+} from '@methodts/runtime/sessions';
 import {
   createPrintSession,
   createCognitiveSession,
   createRuntimeToolProvider,
   CognitiveEventBusSink,
-} from '@method/runtime/sessions';
-import type { EventBus } from '@method/runtime/ports';
-import type { AgentProvider } from '@method/pacta';
+} from '@methodts/runtime/sessions';
+import type { EventBus } from '@methodts/runtime/ports';
+import type { AgentProvider } from '@methodts/pacta';
 
 export interface CreateBridgeSessionProviderFactoryOptions {
   /**
@@ -63,7 +64,7 @@ export function createBridgeSessionProviderFactory(
       const { sessionId, mode, workdir, metadata, onEvent, cognitiveConfig, cognitiveSink } = opts;
 
       if (mode === 'cognitive-agent') {
-        const { createProviderAdapter } = await import('@method/pacta');
+        const { createProviderAdapter } = await import('@methodts/pacta');
         const tools = createRuntimeToolProvider(workdir);
 
         const cfgRecord = (cognitiveConfig ?? {}) as Record<string, unknown>;
@@ -107,7 +108,7 @@ export function createBridgeSessionProviderFactory(
       }
 
       // print mode
-      const { claudeCliProvider } = await import('@method/pacta-provider-claude-cli');
+      const { claudeCliProvider } = await import('@methodts/pacta-provider-claude-cli');
       const effectiveModel = typeof metadata?.model === 'string' ? metadata.model : undefined;
       const providerOverride: AgentProvider = claudeCliProvider({ model: effectiveModel });
       const session = createPrintSession({
@@ -130,11 +131,11 @@ async function resolveProvider(
 ): Promise<AgentProvider> {
   switch (providerName) {
     case 'anthropic': {
-      const { anthropicProvider } = await import('@method/pacta-provider-anthropic');
+      const { anthropicProvider } = await import('@methodts/pacta-provider-anthropic');
       return anthropicProvider({ model: config.model, toolProvider: config.toolProvider });
     }
     case 'ollama': {
-      const { ollamaProvider } = await import('@method/pacta-provider-ollama');
+      const { ollamaProvider } = await import('@methodts/pacta-provider-ollama');
       const provider = ollamaProvider({
         baseUrl: config.baseUrl ?? process.env.OLLAMA_BASE_URL ?? 'http://chobits:11434',
         model: config.model,

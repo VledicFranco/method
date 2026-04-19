@@ -1,6 +1,6 @@
 ---
 type: council-decision
-topic: "@method/fca-index — FCA-Indexed Context Library for Token-Efficient Agent Retrieval"
+topic: "@methodts/fca-index — FCA-Indexed Context Library for Token-Efficient Agent Retrieval"
 date: "2026-04-08"
 cast: [Oryn, Sable, Vera, Rion, Lena]
 surface_advocate: Sable
@@ -8,18 +8,18 @@ ports_identified: [ProjectManifest, ComponentContext, IndexStore, ModeGate]
 status: decided
 ---
 
-# Decision: Build @method/fca-index as a Universal L3 Library
+# Decision: Build @methodts/fca-index as a Universal L3 Library
 
 ## What Was Decided
 
-A new L3 package — `@method/fca-index` — that indexes FCA-compliant projects using a
+A new L3 package — `@methodts/fca-index` — that indexes FCA-compliant projects using a
 hybrid SQLite + embedding store over co-located documentation. It ships:
 
 1. **Query engine** — returns `ComponentContext` results with relevance + coverage scores
 2. **Compliance tooling** — doc coverage checker, FCA gate validator, quality-gate installer
 3. **Two modes** — discovery (< coverage threshold, warnings) and production (>= threshold, trusted)
 4. **Two consumer surfaces** — structured API for MCP/methodts, human-readable CLI layer
-5. **Universal scope** — works for any FCA project; `@method/mcp` ships a thin MCP adapter on top
+5. **Universal scope** — works for any FCA project; `@methodts/mcp` ships a thin MCP adapter on top
 
 ## Key Design Decisions
 
@@ -33,9 +33,9 @@ hybrid SQLite + embedding store over co-located documentation. It ships:
 
 ### Scope: Universal Library, Method-Specific Adapter
 
-- `@method/fca-index` is universal — any FCA-compliant project can use it
-- `@method/mcp` ships a thin adapter that wraps query API in MCP tool signatures
-- `ComponentContext` type lives in the universal library; MCP tool schema lives in `@method/mcp`
+- `@methodts/fca-index` is universal — any FCA-compliant project can use it
+- `@methodts/mcp` ships a thin adapter that wraps query API in MCP tool signatures
+- `ComponentContext` type lives in the universal library; MCP tool schema lives in `@methodts/mcp`
 
 ### Consumer Surfaces: Two, Not One
 
@@ -63,8 +63,8 @@ hybrid SQLite + embedding store over co-located documentation. It ships:
 
 | Port | Producer | Consumer | Priority |
 |------|----------|----------|----------|
-| `ComponentContext` | `@method/fca-index` query engine | `@method/mcp`, CLI | **CRITICAL — Wave 0 first** |
-| `ProjectManifest` | Consuming project (FCA dir structure) | `@method/fca-index` scanner | Wave 0 |
+| `ComponentContext` | `@methodts/fca-index` query engine | `@methodts/mcp`, CLI | **CRITICAL — Wave 0 first** |
+| `ProjectManifest` | Consuming project (FCA dir structure) | `@methodts/fca-index` scanner | Wave 0 |
 | `IndexStore` | Internal storage (SQLite+Lance) | Query engine | Wave 0 (decide if pluggable) |
 | `ModeGate` | Compliance engine | CI/CD, quality gate runner | Wave 1 |
 
@@ -81,7 +81,7 @@ None — new library.
 
 Before any implementation starts:
 
-1. `/fcd-surface fca-index mcp` — define `ComponentContext` type with both `@method/fca-index` and `@method/mcp` present. **This is the composition theorem's highest-priority surface.**
+1. `/fcd-surface fca-index mcp` — define `ComponentContext` type with both `@methodts/fca-index` and `@methodts/mcp` present. **This is the composition theorem's highest-priority surface.**
 2. `/fcd-surface fca-index consuming-project` — define `ProjectManifest` or confirm FCA directory convention is sufficient as implicit contract.
 3. `/fcd-surface fca-index cli` — define `CoverageReport` type and structured vs. human output split.
 

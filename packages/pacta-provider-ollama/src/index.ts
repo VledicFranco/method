@@ -1,4 +1,5 @@
-// @method/pacta-provider-ollama — Ollama AgentProvider (OpenAI-compatible)
+// SPDX-License-Identifier: Apache-2.0
+// @methodts/pacta-provider-ollama — Ollama AgentProvider (OpenAI-compatible)
 
 // Provider factory
 export { ollamaProvider, OllamaApiError } from './ollama-provider.js';

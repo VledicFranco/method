@@ -13,7 +13,7 @@ Ready-to-use agent configurations for common LLM tasks. Each reference agent is 
 ## Usage
 
 ```typescript
-import { codeAgent } from '@method/pacta/agents';
+import { codeAgent } from '@methodts/pacta/agents';
 
 const result = await codeAgent
   .with({ maxTokens: 4096 })

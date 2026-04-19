@@ -11,7 +11,7 @@ status: implemented
 **Depends on:** PRD 021 Phase 1b (MethodTS SDK — co-developed; runtime, strategy, providers, stdlib must reach Phase 1b before PRD 022 Phase 1a begins), PRD 017 (strategy pipelines), PRD 004 (methodology runtime)
 **Subsumes:** PRD 015 (Default Execution Method — M-EXEC is absorbed as one selectable methodology)
 **Complexity:** High — new package, standalone process, M-SELECT methodology design, client contract
-**Package:** `@method/loop` (new)
+**Package:** `@methodts/loop` (new)
 **Council:** TOPIC-META-AGENT-LOOP session 2026-03-21. 6-member council, 4 questions resolved, 3 position shifts, 0 escalations.
 **Review:** 4-advisor adversarial review completed 2026-03-21. 32 findings, 23 fixes applied. Action plan: `tmp/action-plan-prd022-2026-03-21.md`
 
@@ -101,7 +101,7 @@ PRD 022 (this PRD)
   ├─ M-SELECT methodology (5-step, 4-arm routing)
   ├─ MetaStrategy controller
   ├─ Client contract (EventBus + bridge channels)
-  └─ @method/loop package
+  └─ @methodts/loop package
 ```
 
 ---
@@ -117,7 +117,7 @@ PRD 022 (this PRD)
                         │ EventBus subscription + Resolution input
                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    @method/loop process                          │
+│                    @methodts/loop process                          │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │              MetaStrategy Controller                      │   │
@@ -1061,10 +1061,10 @@ A readiness checkpoint must confirm these APIs exist before commissioning each p
 
 ### Phase 1c: Integration
 - End-to-end test with `ClaudeHeadlessProvider` against real Claude
-- Package wiring (`@method/loop` depends on `@method/methodts`)
+- Package wiring (`@methodts/loop` depends on `@methodts/methodts`)
 - CLI entry point (`run.ts` — parse objective from args or stdin, build Effect layers, execute)
 - Documentation: getting-started guide, architecture overview
-- **Deployment:** CLI invocation: `npx @method/loop --objective 'task description' --workdir .`. Prerequisites: Node.js 20+, `claude` CLI on PATH, `@method/methodts` installed, valid `.method/project-card.yaml`. Environment variables: `CLAUDE_BIN` (default: `claude`), `MAX_COST_USD` (default: 100), `MODEL` (default: user's configured model).
+- **Deployment:** CLI invocation: `npx @methodts/loop --objective 'task description' --workdir .`. Prerequisites: Node.js 20+, `claude` CLI on PATH, `@methodts/methodts` installed, valid `.method/project-card.yaml`. Environment variables: `CLAUDE_BIN` (default: `claude`), `MAX_COST_USD` (default: 100), `MODEL` (default: user's configured model).
 - Token overhead measurement: if overhead exceeds 30K tokens for trivial objectives, add a fast-path that skips analysis/pitch for pre-approved methodology patterns
 
 ### Phase 2: Bridge + Web
@@ -1097,10 +1097,10 @@ A readiness checkpoint must confirm these APIs exist before commissioning each p
 
 | System | Relationship | Direction |
 |--------|-------------|-----------|
-| **@method/methodts** (PRD 021) | The meta-loop's foundation. All types, runtime, providers, strategy come from MethodTS. | Consumed |
-| **@method/bridge** (PRDs 005-018) | Session pool for sub-agent execution (Phase 2). Dashboard for sub-agent visibility. | Consumed via BridgeAgentProvider |
-| **@method/mcp** | Not used. The meta-loop is a standalone process, not an MCP server. MCP tools are available to agents spawned by the meta-loop (via Claude Code's tool surface). | Indirect |
-| **@method/core** | Not used. The meta-loop uses MethodTS, not core. PRD 021's transition plan applies: core is deprecated as MethodTS matures. | None |
+| **@methodts/methodts** (PRD 021) | The meta-loop's foundation. All types, runtime, providers, strategy come from MethodTS. | Consumed |
+| **@methodts/bridge** (PRDs 005-018) | Session pool for sub-agent execution (Phase 2). Dashboard for sub-agent visibility. | Consumed via BridgeAgentProvider |
+| **@methodts/mcp** | Not used. The meta-loop is a standalone process, not an MCP server. MCP tools are available to agents spawned by the meta-loop (via Claude Code's tool surface). | Indirect |
+| **@methodts/core** | Not used. The meta-loop uses MethodTS, not core. PRD 021's transition plan applies: core is deprecated as MethodTS matures. | None |
 | **Registry (YAML)** | Scanned at strategy start for `MethodologyMeta`. Read-only during execution. Created methodologies persisted post-strategy. | Read + append |
 | **Project card** | Loaded at strategy start into `MetaState.projectCard`. Used for instantiation and context injection. | Read |
 | **Bridge dashboard** | Shows sub-agent sessions spawned by the meta-loop (Phase 2). Does NOT show the meta-loop itself. | Downstream |

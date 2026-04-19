@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexAuditMiddleware — every pacta `AgentEvent` variant mapped to a
  * PRD-065 `ctx.audit.event` call. Fire-and-forget (PRD-065 §6.4): write
@@ -31,7 +32,7 @@ import type {
   AgentBudgetExhausted,
   AgentError,
   AgentCompleted,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import {
   CortexAdapterComposeError,
   type ComposedAdapter,

@@ -12,6 +12,6 @@ L4 adapter implementations for the cluster's L3 port interfaces. These are the c
 
 ## FCA Notes
 
-These adapters are the only files in the bridge that import platform APIs (`node:os`, `http`, Tailscale SDK). All other bridge code accesses these capabilities exclusively through the injected port interfaces defined in `@method/cluster/src/ports/`.
+These adapters are the only files in the bridge that import platform APIs (`node:os`, `http`, Tailscale SDK). All other bridge code accesses these capabilities exclusively through the injected port interfaces defined in `@methodts/cluster/src/ports/`.
 
 Adapters are instantiated in `server-entry.ts` and injected into `MembershipManager` at startup.

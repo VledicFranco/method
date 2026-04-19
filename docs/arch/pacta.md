@@ -2,14 +2,14 @@
 
 ## Responsibility
 
-`@method/pacta` is a modular agent SDK that makes agent deployment a composition problem rather than a framework choice. Agents are assemblies of typed parts bound to a declarative contract (the pact). Every part — provider, reasoning strategy, context management, budget enforcement, output validation — is replaceable through port interfaces.
+`@methodts/pacta` is a modular agent SDK that makes agent deployment a composition problem rather than a framework choice. Agents are assemblies of typed parts bound to a declarative contract (the pact). Every part — provider, reasoning strategy, context management, budget enforcement, output validation — is replaceable through port interfaces.
 
-**Position in the layer stack:** L3 (library), same layer as `@method/methodts` and `@method/testkit`. Zero runtime dependencies — the core package has no `dependencies` field in `package.json`.
+**Position in the layer stack:** L3 (library), same layer as `@methodts/methodts` and `@methodts/testkit`. Zero runtime dependencies — the core package has no `dependencies` field in `package.json`.
 
 **Core thesis:** A pact declares *what* (constraints). Ports provide *how* (implementations). `createAgent()` binds them at composition time, validating that the provider supports the pact's requirements before any invocation occurs.
 
 **Key constraints:**
-- Core package (`@method/pacta`) has zero runtime dependencies (G-PORT gate)
+- Core package (`@methodts/pacta`) has zero runtime dependencies (G-PORT gate)
 - No cross-domain imports within pacta — engine/middleware/ports must not import from agents/ (G-BOUNDARY gate)
 - No upward layer violations — pacta must not import from bridge L4 (G-LAYER gate)
 - Streaming is orthogonal to execution mode — any mode can stream events
@@ -20,19 +20,19 @@
 Five packages, strict dependency flow:
 
 ```
-@method/pacta-playground ──→ @method/pacta-testkit ──→ @method/pacta
-@method/pacta-provider-claude-cli ──→ @method/pacta
-@method/pacta-provider-anthropic ──→ @method/pacta
-@method/bridge (L4) ──→ @method/pacta, @method/pacta-provider-*
+@methodts/pacta-playground ──→ @methodts/pacta-testkit ──→ @methodts/pacta
+@methodts/pacta-provider-claude-cli ──→ @methodts/pacta
+@methodts/pacta-provider-anthropic ──→ @methodts/pacta
+@methodts/bridge (L4) ──→ @methodts/pacta, @methodts/pacta-provider-*
 ```
 
 | Package | Layer | Description |
 |---------|-------|-------------|
-| `@method/pacta` | L3 | Core types, ports, middleware, composition engine, reference agents |
-| `@method/pacta-testkit` | L3 | RecordingProvider, fluent builders, assertion helpers |
-| `@method/pacta-playground` | L3 | Simulated evaluation — virtual FS, scripted tools, scenario runner, comparative eval |
-| `@method/pacta-provider-claude-cli` | L3 | Claude Code CLI provider (`--print`/`--resume`) |
-| `@method/pacta-provider-anthropic` | L3 | Anthropic Messages API provider (raw fetch, SSE streaming) |
+| `@methodts/pacta` | L3 | Core types, ports, middleware, composition engine, reference agents |
+| `@methodts/pacta-testkit` | L3 | RecordingProvider, fluent builders, assertion helpers |
+| `@methodts/pacta-playground` | L3 | Simulated evaluation — virtual FS, scripted tools, scenario runner, comparative eval |
+| `@methodts/pacta-provider-claude-cli` | L3 | Claude Code CLI provider (`--print`/`--resume`) |
+| `@methodts/pacta-provider-anthropic` | L3 | Anthropic Messages API provider (raw fetch, SSE streaming) |
 
 ## Core Abstractions
 
@@ -332,7 +332,7 @@ type AgentEvent =
 
 ## Provider Implementations
 
-### Claude CLI Provider (`@method/pacta-provider-claude-cli`)
+### Claude CLI Provider (`@methodts/pacta-provider-claude-cli`)
 
 Wraps the `claude` CLI binary via `node:child_process.spawn`.
 
@@ -345,7 +345,7 @@ Wraps the `claude` CLI binary via `node:child_process.spawn`.
 | Executor | `cli-executor.ts` — injectable `SpawnFn` for testing. Configurable binary, timeout (default 300s). |
 | Errors | `CliExecutionError` (non-zero exit), `CliTimeoutError`, `CliSpawnError`. |
 
-### Anthropic API Provider (`@method/pacta-provider-anthropic`)
+### Anthropic API Provider (`@methodts/pacta-provider-anthropic`)
 
 Direct Anthropic Messages API integration via raw `fetch()`. No SDK dependency.
 
@@ -360,9 +360,9 @@ Direct Anthropic Messages API integration via raw `fetch()`. No SDK dependency.
 
 ## Verification Architecture
 
-### Testkit (`@method/pacta-testkit`)
+### Testkit (`@methodts/pacta-testkit`)
 
-Testing affordances for Pacta agents. Depends only on `@method/pacta`.
+Testing affordances for Pacta agents. Depends only on `@methodts/pacta`.
 
 | Export | Purpose |
 |--------|---------|
@@ -375,7 +375,7 @@ Testing affordances for Pacta agents. Depends only on `@method/pacta`.
 | `assertBudgetUnder(result, limits)` | Assert result within token/cost/duration/turn limits. |
 | `assertOutputMatches(result, schema)` | Assert output passes `SchemaDefinition.parse()`. |
 
-### Playground (`@method/pacta-playground`)
+### Playground (`@methodts/pacta-playground`)
 
 Simulated agent evaluation environment. Three fidelity tiers:
 
@@ -405,15 +405,15 @@ FCA architectural invariants enforced as tests:
 
 | Gate | Invariant |
 |------|-----------|
-| G-PORT | `@method/pacta` has zero runtime dependencies (no `dependencies` in `package.json`). |
+| G-PORT | `@methodts/pacta` has zero runtime dependencies (no `dependencies` in `package.json`). |
 | G-BOUNDARY | No cross-domain imports — engine, middleware, ports, gates must not import from `agents/`. The barrel `index.ts` is exempt as the public API surface. |
-| G-LAYER | No upward layer violations — no source file may import from `@method/bridge` (L4). |
+| G-LAYER | No upward layer violations — no source file may import from `@methodts/bridge` (L4). |
 
 ## Bridge Integration
 
 Pacta operates at L3 as a library. The bridge at L4 is the integration surface:
 
-- Bridge can depend on `@method/pacta` and `@method/pacta-provider-*` packages
+- Bridge can depend on `@methodts/pacta` and `@methodts/pacta-provider-*` packages
 - Pacta must not depend on the bridge (G-LAYER)
 - The bridge's existing session management (PTY pool, domain-co-located structure) remains separate from Pacta's provider abstraction
 - Bridge integration uses Pacta providers to replace or complement the existing PTY-based agent spawning
@@ -422,7 +422,7 @@ The bridge composition root (`server-entry.ts`) is where Pacta providers are ins
 
 ## Design Decisions
 
-1. **Zero runtime dependencies in core.** `@method/pacta` has no `dependencies` field. All implementations (providers, testkit, playground) are separate packages. This keeps the type contracts portable — they can be consumed without pulling in fetch, node-pty, or any other runtime.
+1. **Zero runtime dependencies in core.** `@methodts/pacta` has no `dependencies` field. All implementations (providers, testkit, playground) are separate packages. This keeps the type contracts portable — they can be consumed without pulling in fetch, node-pty, or any other runtime.
 
 2. **Streaming orthogonal to mode.** Any execution mode can optionally stream events via `Pact.streaming`. Streaming is a provider capability, not a mode variant. This avoids a combinatorial explosion of mode types (oneshot-streaming, resumable-streaming, etc.).
 
@@ -482,7 +482,7 @@ packages/pacta/
 │   │   └── review-agent.ts            reviewAgent() — oneshot, 15 turns, $1, Read/Grep/Glob (read-only)
 │   └── gates/
 │       └── gates.test.ts               G-PORT, G-BOUNDARY, G-LAYER architectural invariant tests
-└── package.json                        @method/pacta — zero runtime dependencies
+└── package.json                        @methodts/pacta — zero runtime dependencies
 ```
 
 ## References

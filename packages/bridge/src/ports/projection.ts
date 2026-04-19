@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Projection<S> — domain contract for projecting event streams into in-memory state.
  *

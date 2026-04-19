@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { ollamaProvider, OllamaApiError } from './ollama-provider.js';
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 // ── Mock Fetch ───────────────────────────────────────────────────
 

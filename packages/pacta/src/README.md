@@ -1,4 +1,4 @@
-# @method/pacta — Modular Agent SDK
+# @methodts/pacta — Modular Agent SDK
 
 L3 library. Composable agent execution framework with pluggable LLM providers, middleware pipeline, and cognitive composition engine. Used by the bridge for running structured agent sessions.
 
@@ -26,6 +26,6 @@ Provides the execution layer for running LLM agents with:
 
 ## Providers (separate packages)
 
-- `@method/pacta-provider-anthropic` — Anthropic API (claude-opus, claude-sonnet)
-- `@method/pacta-provider-claude-cli` — Claude Code CLI subprocess
-- `@method/pacta-provider-ollama` — Local Ollama server
+- `@methodts/pacta-provider-anthropic` — Anthropic API (claude-opus, claude-sonnet)
+- `@methodts/pacta-provider-claude-cli` — Claude Code CLI subprocess
+- `@methodts/pacta-provider-ollama` — Local Ollama server

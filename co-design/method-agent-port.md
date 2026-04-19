@@ -10,7 +10,7 @@ status: awaiting-cortex-signature
 # MethodAgentPort — Bilateral Signoff
 
 This document records the bilateral acceptance of **S1 — MethodAgentPort** as
-the contract between `@method/agent-runtime` (producer) and Cortex tenant apps
+the contract between `@methodts/agent-runtime` (producer) and Cortex tenant apps
 of category `agent` (consumer, Tier 2 per RFC-005 §10.2).
 
 It is produced by PRD-060 (`.method/sessions/fcd-design-prd-060-method-agent-port/prd.md`)
@@ -41,15 +41,15 @@ I will implement / consume against, and any future divergence routes through
 
 - **Surface Advocate:** Vledic | Franco (`@VledicFranco`)
 - **Signed:** 2026-04-14
-- **Role authority:** `@method/agent-runtime` maintainer; pacta composition
+- **Role authority:** `@methodts/agent-runtime` maintainer; pacta composition
   engine owner
 - **Commitment:**
-  - `@method/agent-runtime` ≥ 1.0.0 public exports match decision.md §4
+  - `@methodts/agent-runtime` ≥ 1.0.0 public exports match decision.md §4
     verbatim.
   - No narrowing, renaming, or removal of any symbol in §4 without a new
     `/fcd-surface` session co-attended by both advocates.
   - Quarterly surface review honored (see `co-design/CHANGES.md` §Cadence).
-  - Peer-dep cascade on `@method/pacta` handled per `co-design/CHANGES.md`
+  - Peer-dep cascade on `@methodts/pacta` handled per `co-design/CHANGES.md`
     §Peer-dependency cascade — no silent majors.
   - CODEOWNERS protection on `.method/sessions/fcd-surface-*/decision.md`
     maintained (see repository root `CODEOWNERS`).
@@ -118,14 +118,14 @@ Cortex signature unless they escalate to additive or breaking.
 
 - Clarifications: no version bump; PR to decision.md with
   `changelog: clarification` frontmatter.
-- Additive (new optional field, new method with default): `@method/agent-runtime`
+- Additive (new optional field, new method with default): `@methodts/agent-runtime`
   minor bump; advocate-level approval.
 - Breaking (rename, remove, narrow, default-flip, sync→async): new
-  `/fcd-surface` session; `@method/agent-runtime` major bump; both-sides
+  `/fcd-surface` session; `@methodts/agent-runtime` major bump; both-sides
   coordinated release; this file updated and archived per
   `co-design/history/`.
 
-Peer-dep cascade: if `@method/pacta` majors, `@method/agent-runtime` majors
+Peer-dep cascade: if `@methodts/pacta` majors, `@methodts/agent-runtime` majors
 in the same release window per `co-design/CHANGES.md` §Peer-dependency
 cascade — this is treated as breaking even if no field literally changes on
 S1, because the re-exported `Pact` / `AgentEvent` types shifted.

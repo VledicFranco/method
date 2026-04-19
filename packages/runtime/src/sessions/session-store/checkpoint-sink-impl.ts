@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Default `CheckpointSink` implementation — PRD-061 §5 "Default sink".
  *

@@ -68,16 +68,16 @@ own queue. It must compose over `ctx.*`. The contract method enforces (the
 
 | Package | What it is | Cortex-readiness |
 |---|---|---|
-| `@method/pacta` | Modular Agent SDK — typed pacts (mode, budget, output, scope, reasoning, context), composition engine, reference agents (code/research/review), middleware (budget enforcer, output validator), reasoning strategies (ReAct, Reflexion, FewShot), context managers (compaction, note-taking, subagent delegation). **L3, library-shaped, zero process deps.** | **High** — already a library. The pact contract maps cleanly onto Cortex's bounded-execution model. Needs: provider that uses `ctx.llm`, audit emitter, AppId-scoped budget plumbing. |
-| `@method/pacta-provider-claude-cli` | Spawns `claude --print/--resume` as the agent backend. | **Low** — assumes local Claude CLI binary. Cortex deployment needs an HTTP-based provider that goes through `ctx.llm`, OR a sidecar pattern. |
-| `@method/pacta-provider-anthropic` | Direct Anthropic SDK provider. | **Medium** — works, but bypasses `ctx.llm` budget. Wrap to route through `ctx.llm`. |
-| `@method/methodts` | Typed Methodology SDK — predicates, steps, methods, methodologies, gates, runtime, strategy controller, prebuilt strategies, ClaudeHeadless provider. **L2, library-shaped, exported via subpath.** | **High** — already a library. The DAG executor and gates are exactly what an "autonomous feature development" pact needs. |
-| `@method/cluster` | Cluster protocol, membership, routing — transport-agnostic. **L3, zero `@method/*` deps.** | **High** — pure library. Useful for federating method nodes across Cortex tenant apps. |
-| `@method/mcp` | Thin MCP adapter wrapping `@method/methodts`. | **Medium** — usable as a Cortex `mcp-tool` tier app, but currently entangled with the bridge's discovery model. Needs a Cortex transport. |
-| `@method/fca-index` | FCA component indexer. | **Independent** — can ship as a stateless utility tenant app. Already split (see PRD-053/054). |
-| `@method/bridge` | L4 application — Fastify HTTP server, PTY pool, strategy executor, federation sink, event bus, project discovery. **`packages/bridge/src/index.ts` exports `{}`** — bridge is a runnable, not a library. | **Process-only** — Cortex tenant apps can't `npm install` the bridge. Either (a) extract its domains as libraries, or (b) run the bridge as a separate Cortex-managed service that tenant apps call via HTTP. The strategy executor + cognitive sink + event bus + cost governor are the "engine" that needs to be exposed. |
-| `@method/method-ctl` | CLI for cluster management. | **N/A** — operator tool, not a runtime dependency. |
-| `@method/smoke-test` | Layer-aware E2E suite + browser UI. | **N/A** — internal validation. |
+| `@methodts/pacta` | Modular Agent SDK — typed pacts (mode, budget, output, scope, reasoning, context), composition engine, reference agents (code/research/review), middleware (budget enforcer, output validator), reasoning strategies (ReAct, Reflexion, FewShot), context managers (compaction, note-taking, subagent delegation). **L3, library-shaped, zero process deps.** | **High** — already a library. The pact contract maps cleanly onto Cortex's bounded-execution model. Needs: provider that uses `ctx.llm`, audit emitter, AppId-scoped budget plumbing. |
+| `@methodts/pacta-provider-claude-cli` | Spawns `claude --print/--resume` as the agent backend. | **Low** — assumes local Claude CLI binary. Cortex deployment needs an HTTP-based provider that goes through `ctx.llm`, OR a sidecar pattern. |
+| `@methodts/pacta-provider-anthropic` | Direct Anthropic SDK provider. | **Medium** — works, but bypasses `ctx.llm` budget. Wrap to route through `ctx.llm`. |
+| `@methodts/methodts` | Typed Methodology SDK — predicates, steps, methods, methodologies, gates, runtime, strategy controller, prebuilt strategies, ClaudeHeadless provider. **L2, library-shaped, exported via subpath.** | **High** — already a library. The DAG executor and gates are exactly what an "autonomous feature development" pact needs. |
+| `@methodts/cluster` | Cluster protocol, membership, routing — transport-agnostic. **L3, zero `@methodts/*` deps.** | **High** — pure library. Useful for federating method nodes across Cortex tenant apps. |
+| `@methodts/mcp` | Thin MCP adapter wrapping `@methodts/methodts`. | **Medium** — usable as a Cortex `mcp-tool` tier app, but currently entangled with the bridge's discovery model. Needs a Cortex transport. |
+| `@methodts/fca-index` | FCA component indexer. | **Independent** — can ship as a stateless utility tenant app. Already split (see PRD-053/054). |
+| `@methodts/bridge` | L4 application — Fastify HTTP server, PTY pool, strategy executor, federation sink, event bus, project discovery. **`packages/bridge/src/index.ts` exports `{}`** — bridge is a runnable, not a library. | **Process-only** — Cortex tenant apps can't `npm install` the bridge. Either (a) extract its domains as libraries, or (b) run the bridge as a separate Cortex-managed service that tenant apps call via HTTP. The strategy executor + cognitive sink + event bus + cost governor are the "engine" that needs to be exposed. |
+| `@methodts/method-ctl` | CLI for cluster management. | **N/A** — operator tool, not a runtime dependency. |
+| `@methodts/smoke-test` | Layer-aware E2E suite + browser UI. | **N/A** — internal validation. |
 
 **Summary:** the L2/L3 packages (`pacta`, `methodts`, `cluster`, `fca-index`)
 are already library-shaped. The L4 bridge is the gap — it owns the stateful
@@ -92,7 +92,7 @@ proven 13-hour Slack marathon (the existence proof of what we're operationalizin
 
 ### 4.1 Hard requirements (must ship to host any agent demo)
 
-1. **A `@method/agent-runtime` library** (new package) — what an agent tenant app actually imports. Wraps `@method/pacta` + provider + middleware so a Cortex app can write:
+1. **A `@methodts/agent-runtime` library** (new package) — what an agent tenant app actually imports. Wraps `@methodts/pacta` + provider + middleware so a Cortex app can write:
    ```ts
    const agent = createMethodAgent({ ctx, pact: incidentTriagePact });
    const result = await agent.invoke({ prompt, sessionId, parentToken });
@@ -109,7 +109,7 @@ proven 13-hour Slack marathon (the existence proof of what we're operationalizin
 
 6. **A `JobQueue`-backed scheduler for long-running pacts** — the bridge's `cron` triggers and strategy executor today run in-process. In Cortex, "overnight" means the runtime hands off to `ctx.jobs` + `ctx.schedule`. Need a `JobBackedExecutor` that enqueues pact continuations.
 
-7. **A library-mode bridge** — minimum: extract `domains/strategies/strategy-executor.ts`, `domains/sessions/cognitive-provider.ts`, `domains/cost-governor/`, and `shared/event-bus/` into a new `@method/runtime` package the bridge itself depends on. Cortex tenant apps then depend on `@method/runtime`, not `@method/bridge`.
+7. **A library-mode bridge** — minimum: extract `domains/strategies/strategy-executor.ts`, `domains/sessions/cognitive-provider.ts`, `domains/cost-governor/`, and `shared/event-bus/` into a new `@methodts/runtime` package the bridge itself depends on. Cortex tenant apps then depend on `@methodts/runtime`, not `@methodts/bridge`.
 
 ### 4.2 Soft requirements (needed for "autonomous overnight" pacts to be production-grade)
 
@@ -121,7 +121,7 @@ proven 13-hour Slack marathon (the existence proof of what we're operationalizin
 
 11. **Methodology source over `ctx.storage`** — the `MethodologySource` port (already exists at `packages/bridge/src/ports/methodology-source.ts`) needs a Cortex-backed implementation: methodologies live as documents in the tenant app's per-app DB so a Cortex admin can curate them per app/role.
 
-12. **MCP transport to Cortex tool registry** — `@method/mcp` currently registers via the bridge. For a Cortex-hosted methodology agent, tools need to register via `POST /v1/platform/apps/:id/tools` (PRD-043) so Cortex enforces operation-grammar authorization.
+12. **MCP transport to Cortex tool registry** — `@methodts/mcp` currently registers via the bridge. For a Cortex-hosted methodology agent, tools need to register via `POST /v1/platform/apps/:id/tools` (PRD-043) so Cortex enforces operation-grammar authorization.
 
 ### 4.3 Stretch (Wave 2+)
 
@@ -137,12 +137,12 @@ This is the binary checklist Cortex teams will run to declare "method is consuma
 
 ### Group A — April 21 demo readiness (next ~4 weeks)
 
-- [ ] **A1.** Carve out `@method/runtime` package containing strategy executor, cognitive provider, cost governor (per-AppId), event bus + sinks. Bridge depends on it.
-- [ ] **A2.** Carve out `@method/agent-runtime` package — the public, embeddable API for Cortex tenant apps. Wraps `@method/pacta` + sane defaults + ports for `ctx.*`.
+- [ ] **A1.** Carve out `@methodts/runtime` package containing strategy executor, cognitive provider, cost governor (per-AppId), event bus + sinks. Bridge depends on it.
+- [ ] **A2.** Carve out `@methodts/agent-runtime` package — the public, embeddable API for Cortex tenant apps. Wraps `@methodts/pacta` + sane defaults + ports for `ctx.*`.
 - [ ] **A3.** Implement `CortexLLMProvider` (AgentProvider that calls `ctx.llm.complete/structured/embed`). Validates `requires.llm` + budget handler presence at composition time.
 - [ ] **A4.** Implement `CortexAuditMiddleware` (AgentEvent → `ctx.audit.event()`).
 - [ ] **A5.** Implement `CortexTokenExchangeMiddleware` (RFC 8693, depth ≤ 2).
-- [ ] **A6.** Document a "minimal Cortex agent app" cookbook entry and a working sample app (`samples/cortex-incident-triage-agent/`) that consumes `@method/agent-runtime` end-to-end against Cortex's local mock server.
+- [ ] **A6.** Document a "minimal Cortex agent app" cookbook entry and a working sample app (`samples/cortex-incident-triage-agent/`) that consumes `@methodts/agent-runtime` end-to-end against Cortex's local mock server.
 - [ ] **A7.** Define and freeze the `MethodAgentPort` co-design with Cortex (analogous to Cortex's RFC-005 Wave 0 surfaces). Single doc: `/co-design/method-agent-port.md`. Surface advocate review.
 - [ ] **A8.** Smoke-test invocation against `t1-cortex-1` dev stack — agent runs, budget reserved, audit logged, event in `#sistema-incidencias` posted via `ctx.notify`.
 
@@ -155,8 +155,8 @@ This is the binary checklist Cortex teams will run to declare "method is consuma
 - [ ] **B5.** `CortexMethodologySource` — methodologies stored in per-app DB, hot-reloadable via Cortex admin UI.
 - [ ] **B6.** Resume-on-restart contract — when a Cortex container restarts mid-pact, the next worker resumes from the last checkpoint without losing budget reservation context.
 - [ ] **B7.** Cost-governor reports per-AppId; budget enforcer becomes a predictive pre-check before the real `ctx.llm` reservation (no double-charge, no race).
-- [ ] **B8.** Conformance test suite (`@method/pacta-testkit` extension) that any Cortex-targeted agent app can run to assert it satisfies the `MethodAgentPort` contract.
-- [ ] **B9.** Migration guide for the existing `@method/bridge` STRATEGY.md autonomous loop in `t1-cortex-1` to use `@method/runtime` directly (no separate bridge process needed inside Cortex).
+- [ ] **B8.** Conformance test suite (`@methodts/pacta-testkit` extension) that any Cortex-targeted agent app can run to assert it satisfies the `MethodAgentPort` contract.
+- [ ] **B9.** Migration guide for the existing `@methodts/bridge` STRATEGY.md autonomous loop in `t1-cortex-1` to use `@methodts/runtime` directly (no separate bridge process needed inside Cortex).
 
 ### Group C — Production hardening + multi-agent (next ~12+ weeks)
 
@@ -174,8 +174,8 @@ These are the implementation containers — drafts only, sized per FCA partition
 
 | PRD # | Title | Group | Size |
 |---|---|---|---|
-| `057` | `@method/runtime` package extraction (strategy executor + cognitive provider + cost governor + event bus) | A | L |
-| `058` | `@method/agent-runtime` package — Cortex-targeted public API | A | M |
+| `057` | `@methodts/runtime` package extraction (strategy executor + cognitive provider + cost governor + event bus) | A | L |
+| `058` | `@methodts/agent-runtime` package — Cortex-targeted public API | A | M |
 | `059` | `CortexLLMProvider` + `CortexAuditMiddleware` + `CortexTokenExchangeMiddleware` | A | M |
 | `060` | `MethodAgentPort` co-design (with Cortex) | A | S |
 | `061` | `CortexSessionStore` + checkpoint resume contract | B | M |
@@ -192,7 +192,7 @@ These are the implementation containers — drafts only, sized per FCA partition
 ```
 Phase 1 — Library carve-out                    Apr 14 – May 12 (4 wk)
   PRDs 057, 058, 060
-  Outcome: t1-cortex tenant apps can `npm install @method/agent-runtime`
+  Outcome: t1-cortex tenant apps can `npm install @methodts/agent-runtime`
 
 Phase 2 — Cortex service wiring                Apr 28 – May 26 (4 wk, overlaps)
   PRDs 059
@@ -223,11 +223,11 @@ Phase 5 — MCP + multi-app + cognitive          Jul 1 – Sep 1 (8 wk)
 2. **Budget pre-reservation semantics** — PRD-068 §2 says check-and-reserve is atomic. Should method's budget enforcer be advisory (predictive only) or perform a soft reservation via a dedicated `ctx.llm.reserve()` API?
 3. **Per-app methodology storage** — does PRD-064 (`ctx.storage`) handle large structured documents (methodology YAMLs are ~2-10KB each, hundreds per app), or do we need a dedicated knowledge-tier path?
 4. **Tool registration timing** — methodologies define dynamic tool sets per role/step. Does Cortex's `POST /v1/platform/apps/:id/tools` (PRD-043) support runtime updates without redeploy, or is it deploy-time only?
-5. **Cluster federation** — `@method/cluster` enables cross-instance event relay. Is there a Cortex pattern for app-to-app messaging that subsumes this, or do we keep cluster as method-internal?
+5. **Cluster federation** — `@methodts/cluster` enables cross-instance event relay. Is there a Cortex pattern for app-to-app messaging that subsumes this, or do we keep cluster as method-internal?
 
 ## 9. Non-Goals
 
-- **Don't fork the runtime.** Cortex consumption must use the same `@method/pacta` + `@method/methodts` packages as the standalone bridge. Divergence kills the registry-as-source-of-truth invariant from `.method/project-card.yaml`.
+- **Don't fork the runtime.** Cortex consumption must use the same `@methodts/pacta` + `@methodts/methodts` packages as the standalone bridge. Divergence kills the registry-as-source-of-truth invariant from `.method/project-card.yaml`.
 - **Don't reimplement Cortex services in method.** No method-level identity, knowledge, or jobs implementations meant for production. Method's defaults remain local-only and exist for the standalone bridge use case.
 - **Don't promise multi-tenant isolation inside method.** Cortex provides per-app isolation; method runs as one library inside one app's container. If a tenant app needs to host multiple agents, that's a method composition concern, not a method tenancy concern.
 
@@ -242,22 +242,22 @@ frozen, one needs-follow-up pending Cortex clarification.
 
 | ID | Surface | Producer ↔ Consumer | Status | Decision file |
 |----|---------|---------------------|--------|---------------|
-| **S1** | `MethodAgentPort` | `@method/agent-runtime` ↔ Cortex tenant app | ✔️ frozen | `.method/sessions/fcd-surface-method-agent-port/decision.md` |
-| **S2** | `RuntimePackageBoundary` | `@method/bridge` ↔ `@method/runtime` (new) | ✔️ frozen | `.method/sessions/fcd-surface-runtime-package-boundary/decision.md` |
-| **S3** | `CortexServiceAdapters` (LLM + Audit + TokenExchange) | `@method/agent-runtime` ↔ `ctx.{llm,audit,auth}` | ✔️ frozen | `.method/sessions/fcd-surface-cortex-service-adapters/decision.md` |
-| **S4** | `SessionStore` + `CheckpointSink` (resume) | `@method/runtime` ↔ `ctx.storage` / FS | ✔️ frozen | `.method/sessions/fcd-surface-session-store/decision.md` |
-| **S5** | `JobBackedExecutor` + `ScheduledPact` | `@method/runtime` ↔ `ctx.{jobs,schedule}` | ✔️ frozen | `.method/sessions/fcd-surface-job-backed-executor/decision.md` |
-| **S6** | `CortexEventConnector` | `@method/runtime` ↔ `ctx.events` | ✔️ frozen | `.method/sessions/fcd-surface-event-connector/decision.md` |
-| **S7** | `CortexMethodologySource` | `@method/agent-runtime` ↔ `ctx.storage` + `@method/methodts` | ✔️ frozen | `.method/sessions/fcd-surface-methodology-source/decision.md` |
-| **S8** | `CortexAgentConformance` testkit | `@method/pacta-testkit/conformance` ↔ Cortex agent apps | ✔️ frozen | `.method/sessions/fcd-surface-conformance-testkit/decision.md` |
-| **S9** | `MCPCortexTransport` (tool registration) | `@method/mcp` ↔ Cortex tool registry | ⏸️ needs-follow-up | `.method/sessions/fcd-surface-mcp-cortex-transport/decision.md` |
+| **S1** | `MethodAgentPort` | `@methodts/agent-runtime` ↔ Cortex tenant app | ✔️ frozen | `.method/sessions/fcd-surface-method-agent-port/decision.md` |
+| **S2** | `RuntimePackageBoundary` | `@methodts/bridge` ↔ `@methodts/runtime` (new) | ✔️ frozen | `.method/sessions/fcd-surface-runtime-package-boundary/decision.md` |
+| **S3** | `CortexServiceAdapters` (LLM + Audit + TokenExchange) | `@methodts/agent-runtime` ↔ `ctx.{llm,audit,auth}` | ✔️ frozen | `.method/sessions/fcd-surface-cortex-service-adapters/decision.md` |
+| **S4** | `SessionStore` + `CheckpointSink` (resume) | `@methodts/runtime` ↔ `ctx.storage` / FS | ✔️ frozen | `.method/sessions/fcd-surface-session-store/decision.md` |
+| **S5** | `JobBackedExecutor` + `ScheduledPact` | `@methodts/runtime` ↔ `ctx.{jobs,schedule}` | ✔️ frozen | `.method/sessions/fcd-surface-job-backed-executor/decision.md` |
+| **S6** | `CortexEventConnector` | `@methodts/runtime` ↔ `ctx.events` | ✔️ frozen | `.method/sessions/fcd-surface-event-connector/decision.md` |
+| **S7** | `CortexMethodologySource` | `@methodts/agent-runtime` ↔ `ctx.storage` + `@methodts/methodts` | ✔️ frozen | `.method/sessions/fcd-surface-methodology-source/decision.md` |
+| **S8** | `CortexAgentConformance` testkit | `@methodts/pacta-testkit/conformance` ↔ Cortex agent apps | ✔️ frozen | `.method/sessions/fcd-surface-conformance-testkit/decision.md` |
+| **S9** | `MCPCortexTransport` (tool registration) | `@methodts/mcp` ↔ Cortex tool registry | ⏸️ needs-follow-up | `.method/sessions/fcd-surface-mcp-cortex-transport/decision.md` |
 
 ### Key cross-surface decisions
 
 - **`createMethodAgent({ ctx, pact, onEvent? })`** is the single public factory (S1). `pacta` is a peer dep; tenant app brings one version. `events()` and `onEvent` are mutually exclusive.
-- **`@method/pacta-provider-cortex` is its own package** (S1+S3) — preserves the `pacta-provider-*` family naming, keeps `@method/agent-runtime` thin.
+- **`@methodts/pacta-provider-cortex` is its own package** (S1+S3) — preserves the `pacta-provider-*` family naming, keeps `@methodts/agent-runtime` thin.
 - **`BridgeEvent` → `RuntimeEvent`** rename (S2). One-line type alias retained in bridge during migration.
-- **`@method/runtime` subpath exports** (S2): `/strategy`, `/sessions`, `/event-bus`, `/cost-governor`, `/ports`, `/config`. Bridge keeps Fastify routes, PTY factory, project discovery, Tailscale adapters, `method-ctl`.
+- **`@methodts/runtime` subpath exports** (S2): `/strategy`, `/sessions`, `/event-bus`, `/cost-governor`, `/ports`, `/config`. Bridge keeps Fastify routes, PTY factory, project discovery, Tailscale adapters, `method-ctl`.
 - **`SessionProviderFactory` port** introduced (S2) so the session pool can host PTY-spawned (bridge) and Cortex-LLM-driven (agent-runtime) sessions through the same abstraction.
 - **Budget single authority = `ctx.llm`** (S3). Pacta's `budgetEnforcer` gains a `mode: 'authoritative' | 'predictive'` option; predictive when provider declares `capabilities().budgetEnforcement === 'native'`. Turns + duration stay authoritative in pacta. Gate `G-BUDGET-SINGLE-AUTHORITY`.
 - **Token-exchange depth check** lives in `CortexTokenExchangeMiddleware.exchangeForSubAgent` (S3), throws `CortexDelegationDepthExceededError` at depth ≥ 2.
@@ -265,7 +265,7 @@ frozen, one needs-follow-up pending Cortex clarification.
 - **SessionStore split from CheckpointSink** (S4) — persistence port doesn't depend on `RuntimeEvent`. 10 methods (`create`, `load`, `resume`, `releaseLease`, `renewLease`, `appendCheckpoint`, `loadCheckpoint`, `loadLatestCheckpoint`, `listCheckpoints`, `finalize`, `destroy`). Lease (~30s) + fencing token = idempotency.
 - **Continuation envelope** (S5): `(version, sessionId, turnIndex, checkpointRef, budgetRef, nextAction, pactKey, tokenContext, traceId)`. Budget carry-over default = `batched-held` (single `ctx.llm.reserve(maxCostUsd)` at pact start, settled per turn). One handler per app for `method.pact.continue`.
 - **Methodology hot-reload via single declared event type** `methodology.updated` (S7) — Cortex PRD-072 forbids runtime wildcard subscriptions. `MethodologySource` extended additively with optional `init/reload/onChange/close`.
-- **Conformance testkit ships as `@method/pacta-testkit/conformance` subpath** (S8), not a new package. Self-certification in v1; Cortex reads a signed `ComplianceReport.json` artifact. Three v1 fixtures: incident-triage, feature-dev-commission, daily-report.
+- **Conformance testkit ships as `@methodts/pacta-testkit/conformance` subpath** (S8), not a new package. Self-certification in v1; Cortex reads a signed `ComplianceReport.json` artifact. Three v1 fixtures: incident-triage, feature-dev-commission, daily-report.
 
 ### Open follow-ups raised by surfaces
 
@@ -289,7 +289,7 @@ frozen, one needs-follow-up pending Cortex clarification.
 - **PRD-062** ships `JobBackedExecutor` with three budget strategies (`fresh-per-continuation`, `batched-held` default, `predictive-prereserve`), explicitly marks DLQ visibility contract.
 - **PRD-063** must measure event-bus payload sizes for gate-approval topic; needs to enforce manifest-emit-section generation.
 - **PRD-064** introduces a separate `methodology_policy` singleton document; admin-only API methods stay on `CortexMethodologySource` (not on base port).
-- **PRD-065** is a `@method/pacta-testkit/conformance` subpath, not a new package.
+- **PRD-065** is a `@methodts/pacta-testkit/conformance` subpath, not a new package.
 - **PRD-066** is **blocked** until Cortex resolves O5/O6/O7. Solo can ship the methodts→Cortex mapping table + the v1 fallback (Model A: deploy-time only manifest registration).
 
 ## 11. PRD Design Outcomes (FCD — 2026-04-14)
@@ -299,8 +299,8 @@ its frozen surfaces by `decision.md` path and inherits their gates.
 
 | PRD | Title | Size | Status | Design artifact |
 |-----|-------|------|--------|-----------------|
-| **057** | `@method/runtime` extraction | L | draft | `.method/sessions/fcd-design-prd-057-method-runtime/prd.md` |
-| **058** | `@method/agent-runtime` public API | M | draft | `.method/sessions/fcd-design-prd-058-method-agent-runtime/prd.md` |
+| **057** | `@methodts/runtime` extraction | L | draft | `.method/sessions/fcd-design-prd-057-method-runtime/prd.md` |
+| **058** | `@methodts/agent-runtime` public API | M | draft | `.method/sessions/fcd-design-prd-058-method-agent-runtime/prd.md` |
 | **059** | `CortexLLMProvider` + Audit + TokenExchange adapters | M | draft | `.method/sessions/fcd-design-prd-059-cortex-adapters/prd.md` |
 | **060** | `MethodAgentPort` bilateral ratification | S | draft | `.method/sessions/fcd-design-prd-060-method-agent-port/prd.md` |
 | **061** | `CortexSessionStore` + checkpoint resume | M | ✔️ implemented (#182) | `.method/sessions/fcd-design-prd-061-session-store/prd.md` |
@@ -322,9 +322,9 @@ its frozen surfaces by `decision.md` path and inherits their gates.
 - **PRD-062** — **Wave 1 ships `fresh-per-continuation` only** (batched-held blocked on Cortex O1). Gate `G-DLQ-SINGLE-EMIT` enforces two-path dedup. `InProcessExecutor` deferred to Wave 3.
 - **PRD-063** — 21 events topics confirmed; token-bucket @ 12/s (25% below PRD-069 quota); 32 KB envelope truncation + `artifact_ref`; early O8 measurement harness gates on P99 > 200 KB.
 - **PRD-064** — Whole-doc Mongo storage; admin methods live on `CortexMethodologySource` only (new `G-RUNTIME-NO-ADMIN-IMPORT` gate); single `methodology.updated` event type with `payload.kind` discriminator (PRD-072 forbids wildcards).
-- **PRD-065** — Subpath ship (`@method/pacta-testkit/conformance`); Ed25519 signed `ComplianceReport.json`; optional peer dep on `@method/agent-runtime`; stub sample-app fixture as fallback if PRD-058 slips.
+- **PRD-065** — Subpath ship (`@methodts/pacta-testkit/conformance`); Ed25519 signed `ComplianceReport.json`; optional peer dep on `@methodts/agent-runtime`; stub sample-app fixture as fallback if PRD-058 slips.
 - **PRD-066** — **Two-track PRD**: Track A (mapping fn + surface + Model-A deploy-time manifest) ships now; Track B (dynamic registration + DELETE + `authzTemplate`) blocked on Cortex O5/O6/O7. Model A is real-ship default, not a degraded mode.
-- **PRD-067** — `CrossAppInvoker` port in `@method/runtime` + `CortexCrossAppInvoker` adapter; 13 assumptions on PRD-080; **token-depth conflict flagged** (S3's depth-2 cap can block `user→agent→cross-app→sub-agent` chains — default mitigation is re-compose as siblings); `InProcessCrossAppInvoker` simulator Wave 0/1 so demos don't gate on PRD-080.
+- **PRD-067** — `CrossAppInvoker` port in `@methodts/runtime` + `CortexCrossAppInvoker` adapter; 13 assumptions on PRD-080; **token-depth conflict flagged** (S3's depth-2 cap can block `user→agent→cross-app→sub-agent` chains — default mitigation is re-compose as siblings); `InProcessCrossAppInvoker` simulator Wave 0/1 so demos don't gate on PRD-080.
 - **PRD-068** — Wave 1 = 3 modules (Monitor, Planner, Memory) as separate Cortex tenant apps; new `method.cortex.workspace.*` topic family keyed by `traceId`; fixed per-module budget isolation (no rebalancing); only R-26c rerun blocks demo target (Twins Flow #2); 5 modules deferred to Waves 2-3+.
 
 ### Cross-PRD dependency graph

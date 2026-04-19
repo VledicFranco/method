@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Strategy compatibility layer — bridge between PRD 017 static strategy DAGs
  * and MethodTS adaptive strategy controllers.

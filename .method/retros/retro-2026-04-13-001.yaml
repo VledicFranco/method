@@ -64,7 +64,7 @@ card_feedback:
   delivery_rules: >
     DR-04 was unexpectedly load-bearing here — it independently confirmed the
     council's choice to put trim logic in fca-index/query/result-formatter.ts
-    rather than in @method/mcp's formatter. DR-09 (real fixtures) was satisfied
+    rather than in @methodts/mcp's formatter. DR-09 (real fixtures) was satisfied
     by the IndexEntry fixture builder pattern in result-formatter.test.ts.
 
 proposed_deltas:

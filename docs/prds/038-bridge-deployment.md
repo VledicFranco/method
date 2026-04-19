@@ -106,15 +106,15 @@ This is additive. The existing `.env` workflow is untouched.
 
 ### 3.4 — Packaging Model
 
-The bridge monorepo has workspace dependencies (`@method/methodts`, `@method/pacta`, etc.) that are not published to npm. A bare `npm pack` would produce a tarball with unresolvable workspace references. Instead, the packaging script uses `esbuild` to bundle `server-entry.js` and all workspace dependencies into a single file, then packages the bundle with the pre-built frontend.
+The bridge monorepo has workspace dependencies (`@methodts/methodts`, `@methodts/pacta`, etc.) that are not published to npm. A bare `npm pack` would produce a tarball with unresolvable workspace references. Instead, the packaging script uses `esbuild` to bundle `server-entry.js` and all workspace dependencies into a single file, then packages the bundle with the pre-built frontend.
 
-**MCP server bundling:** Agents spawned by the bridge need MCP tools. The MCP server (`@method/mcp`) is a separate process that Claude Code spawns from `.mcp.json` in the agent's workdir. It has its own workspace dependencies (`@method/methodts`). The tarball must include a bundled MCP server entry point and a correctly-pathed `.mcp.json` template so that spawned agents on the target machine can access methodology tools.
+**MCP server bundling:** Agents spawned by the bridge need MCP tools. The MCP server (`@methodts/mcp`) is a separate process that Claude Code spawns from `.mcp.json` in the agent's workdir. It has its own workspace dependencies (`@methodts/methodts`). The tarball must include a bundled MCP server entry point and a correctly-pathed `.mcp.json` template so that spawned agents on the target machine can access methodology tools.
 
 Packaging steps:
 
 1. `npm run build` — compile all TypeScript (bridge + MCP + methodts)
 2. Build frontend (`packages/bridge/frontend/`)
-3. Bundle bridge: `esbuild packages/bridge/dist/server-entry.js --bundle --platform=node --outfile=dist-bundle/server-entry.js --external:better-sqlite3` — single-file bundle with all `@method/*` workspace deps inlined
+3. Bundle bridge: `esbuild packages/bridge/dist/server-entry.js --bundle --platform=node --outfile=dist-bundle/server-entry.js --external:better-sqlite3` — single-file bundle with all `@methodts/*` workspace deps inlined
 4. Bundle MCP server: `esbuild packages/mcp/dist/index.js --bundle --platform=node --outfile=dist-bundle/mcp-server.js` — single-file bundle of the MCP server with methodts inlined
 5. Generate `.mcp.json` template pointing to `dist-bundle/mcp-server.js` (relative to install location)
 6. Assemble tarball: `dist-bundle/` (bridge + MCP), `frontend/dist/`, `bin/method-bridge.js`, `.env.tpl`, `.method/instances/` templates, `.mcp.json` template, `package.json`

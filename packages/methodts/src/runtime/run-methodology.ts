@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * runMethodology — Coalgebraic execution loop for methodologies.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Refinement Engine — unit tests (PRD 047 C-2).
  *

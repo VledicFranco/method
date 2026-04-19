@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/testkit — Testing and validation toolkit for MethodTS.
+ * @methodts/testkit — Testing and validation toolkit for MethodTS.
  *
  * Provides builders, assertions, harnesses, providers, and diagnostics
  * for testing methodologies, methods, steps, predicates, and domain theories.
@@ -42,7 +43,7 @@ export {
 export { formatTrace, formatTraceWithFailures } from "./diagnostics/trace-printer.js";
 export { formatCompilationReport, formatCoherenceResult } from "./diagnostics/report-printer.js";
 
-// ── Re-exports from @method/methodts ──
+// ── Re-exports from @methodts/methodts ──
 // Common types and constructors so users don't need dual imports for basic tests.
 
 export {

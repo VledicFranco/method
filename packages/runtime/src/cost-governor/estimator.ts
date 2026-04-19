@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Critical-Path DAG Estimator — computes total cost/duration
  * via the longest path through a DAG with parallelism discount.
  */
 
-import type { InvocationSignature, CostBand } from '@method/types';
+import type { InvocationSignature, CostBand } from '@methodts/types';
 import type { NodeEstimate, StrategyEstimate } from '../ports/cost-oracle.js';
 
 export interface SignatureEstimator {

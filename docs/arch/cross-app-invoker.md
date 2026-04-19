@@ -5,7 +5,7 @@
 `packages/runtime/src/ports/cross-app-invoker.ts` defines the transport-free port the strategy DAG executor calls to dispatch a `cross-app-invoke` node — one strategy fanning out to another Cortex tenant app's operation.
 
 **Key constraints:**
-- `@method/runtime` knows nothing about Cortex (G-BOUNDARY). The port is the abstraction boundary.
+- `@methodts/runtime` knows nothing about Cortex (G-BOUNDARY). The port is the abstraction boundary.
 - Strategy executors MUST dispatch through this port, never directly through `ctx.apps.invoke` (G-PORT)
 - Typed target errors surface as node failures, not strategy crashes (G-FAILURE-ISOLATION)
 - Fire-and-forget is NOT supported (PRD-080 §4 OOS): every call is request/reply
@@ -103,7 +103,7 @@ Apps register via `registerApp({ appId, operations })` where each operation is a
 
 Constructor does NOT throw (`capabilities()` is callable for compose-time inspection). Every `invoke()` call throws `CortexCrossAppInvokerNotImplementedError` with the PRD-080 reference baked into the message. When PRD-080 thaws, swapping the stub for the live adapter is a single file replacement — the port surface stays identical.
 
-The eventual real home for the live adapter is `@method/agent-runtime/cortex/` (PRD-067 §7.2); the stub lives next to the port for discoverability until PRD-080 ships.
+The eventual real home for the live adapter is `@methodts/agent-runtime/cortex/` (PRD-067 §7.2); the stub lives next to the port for discoverability until PRD-080 ships.
 
 ### `NullCrossAppInvoker` — default
 

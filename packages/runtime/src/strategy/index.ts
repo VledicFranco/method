@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/strategy — strategy executor + adapters (PRD-057 / S2 §3.2).
+ * @methodts/runtime/strategy — strategy executor + adapters (PRD-057 / S2 §3.2).
  *
- * Public surface frozen by S2 §3.2. Both consumers (@method/bridge and the
- * forthcoming @method/agent-runtime) depend on this subpath.
+ * Public surface frozen by S2 §3.2. Both consumers (@methodts/bridge and the
+ * forthcoming @methodts/agent-runtime) depend on this subpath.
  */
 
 // ── StrategyExecutor + types ────────────────────────────────────

@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * StdlibSource — Production MethodologySource backed by @method/methodts stdlib.
+ * StdlibSource — Production MethodologySource backed by @methodts/methodts stdlib.
  *
  * WS-1: First concrete implementation of the MethodologySource port.
  * Wraps the stdlib catalog's three lookup functions in the port interface.
@@ -11,14 +12,14 @@
  */
 
 import type { MethodologySource, MethodologyChange } from './methodology-source.js';
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
-import type { Method } from '@method/methodts';
-import type { Methodology } from '@method/methodts';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
+import type { Method } from '@methodts/methodts';
+import type { Methodology } from '@methodts/methodts';
 import {
   getStdlibCatalog,
   getMethod,
   getMethodology,
-} from '@method/methodts/stdlib';
+} from '@methodts/methodts/stdlib';
 
 export class StdlibSource implements MethodologySource {
   list(): CatalogMethodologyEntry[] {

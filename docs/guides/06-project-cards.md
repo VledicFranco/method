@@ -160,18 +160,18 @@ Where docs and code live. Helps agents navigate your project:
   source_layout:
     monorepo: true
     packages:
-      - name: "@method/core"
+      - name: "@methodts/core"
         path: "packages/core/"
         status: deprecated
         purpose: "DEPRECATED — legacy YAML loader, replaced by MethodologySource port"
-      - name: "@method/mcp"
+      - name: "@methodts/mcp"
         path: "packages/mcp/"
         purpose: "MCP server — wires core to tools"
 ```
 
-> **Deprecation note:** `@method/core` is deprecated for methodology data loading.
+> **Deprecation note:** `@methodts/core` is deprecated for methodology data loading.
 > Methodology operations now go through the `MethodologySource` port backed by `StdlibSource`
-> (wrapping the `@method/methodts` stdlib catalog). New project cards should reference the
+> (wrapping the `@methodts/methodts` stdlib catalog). New project cards should reference the
 > port pattern instead. See `docs/arch/methodology-source.md` for the architecture.
 
 ### 7. Card Version

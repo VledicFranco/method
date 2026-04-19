@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Monitor cognitive-module pact — PRD-068 Wave 1.
  *
  * Wraps pacta's `MonitorV2` module behavior (packages/pacta/src/cognitive/
- * modules/monitor-v2.ts) in the shape expected by `@method/agent-runtime`.
+ * modules/monitor-v2.ts) in the shape expected by `@methodts/agent-runtime`.
  *
  * This Wave 1 scaffold ships a `resumable` pact with a tight budget ceiling
  * (Monitor is the cheapest module — rule-based + small-LLM path). It is
@@ -18,7 +19,7 @@
  * anomaly/confidence emissions.
  */
 
-import type { Pact, SchemaDefinition, SchemaResult } from '@method/agent-runtime';
+import type { Pact, SchemaDefinition, SchemaResult } from '@methodts/agent-runtime';
 
 /** Summary of the most recent Monitor pass — returned by the oneshot pact. */
 export interface MonitorReport {

@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * EventBusHumanApprovalResolver — EventBus-backed HumanApprovalResolver port.
  *
- * Implements the HumanApprovalResolver port from @method/methodts.
+ * Implements the HumanApprovalResolver port from @methodts/methodts.
  * When a human_approval gate fires:
  *   1. Emits strategy.gate.awaiting_approval on the EventBus (dashboard picks it up)
  *   2. Subscribes to strategy.gate.approval_response waiting for matching execution_id + gate_id
@@ -10,11 +11,11 @@
  *
  * Transport-agnostic: depends only on EventBus port — no HTTP, WebSocket, or fs imports.
  *
- * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/
+ * PRD-057 / S2 §3.2 / C2: moved from @methodts/bridge/domains/strategies/
  * (renamed from `BridgeHumanApprovalResolver` → `EventBusHumanApprovalResolver`).
  */
 
-import type { HumanApprovalResolver, HumanApprovalContext, HumanApprovalDecision } from '@method/methodts/strategy/dag-types.js';
+import type { HumanApprovalResolver, HumanApprovalContext, HumanApprovalDecision } from '@methodts/methodts/strategy/dag-types.js';
 import type { EventBus, StrategyGateAwaitingApprovalPayload, StrategyGateApprovalResponsePayload } from '../ports/event-bus.js';
 
 export class EventBusHumanApprovalResolver implements HumanApprovalResolver {

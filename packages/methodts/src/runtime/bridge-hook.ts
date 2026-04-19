@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Bridge channel hook — forwards RuntimeEvents to bridge visibility channels.
  *

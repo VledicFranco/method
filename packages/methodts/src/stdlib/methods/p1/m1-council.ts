@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M1_COUNCIL — Synthetic Agents Method (M1-COUNCIL v1.3).
  *

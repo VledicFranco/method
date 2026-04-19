@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Memory Port — unified memory interface for agent context strategies.
  *

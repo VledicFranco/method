@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * agentSteeredController — Strategy controller that commissions a reasoning
  * agent to decide suspension resolutions and strategy decisions.

@@ -33,7 +33,7 @@
 - All modules implement CognitiveModule<I,O,S,Mu,Kappa> — same generic contract
 - Versioned factory functions: createMonitorV2(), createMemoryV3(), createAffectModule()
 - Composition presets: baselinePreset (v1), enrichedPreset (v2 core), fullPreset (all modules)
-- Layer: L3 (@method/pacta) — pure library, no transport dependencies
+- Layer: L3 (@methodts/pacta) — pure library, no transport dependencies
 - No new ports needed — modules use existing ProviderAdapter, ToolProvider, MemoryPort
 
 ### Research References

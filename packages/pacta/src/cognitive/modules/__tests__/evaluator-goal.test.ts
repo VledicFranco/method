@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for goal-state monitoring in the Evaluator (PRD 045).
  *

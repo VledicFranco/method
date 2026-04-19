@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Simple Code Agent — pre-assembled reference agent using Claude CLI.
  *
@@ -5,8 +6,8 @@
  * Intended as a quick-start for common code tasks.
  */
 
-import type { Pact, Agent } from '@method/pacta';
-import { createAgent } from '@method/pacta';
+import type { Pact, Agent } from '@methodts/pacta';
+import { createAgent } from '@methodts/pacta';
 import { claudeCliProvider, type ClaudeCliProviderOptions } from './claude-cli-provider.js';
 
 // ── Default Pact ─────────────────────────────────────────────────

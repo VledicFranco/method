@@ -332,7 +332,7 @@ Three enforcement layers work independently. Any layer can catch a scope violati
 
 ### Architectural Note
 
-PRD 014 spans `@method/bridge` (hook generator, watcher extension) and `@method/mcp` (spawn tool schema). The core package is not touched (DR-03 — no transport deps in core). The pre-commit hook is a generated bash script, not a Node.js module — it has zero runtime dependencies.
+PRD 014 spans `@methodts/bridge` (hook generator, watcher extension) and `@methodts/mcp` (spawn tool schema). The core package is not touched (DR-03 — no transport deps in core). The pre-commit hook is a generated bash script, not a Node.js module — it has zero runtime dependencies.
 
 ---
 

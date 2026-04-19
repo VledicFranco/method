@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { estimateStrategy, heuristicEstimate } from './estimator.js';
-import type { InvocationSignature, CostBand } from '@method/types';
+import type { InvocationSignature, CostBand } from '@methodts/types';
 
 const sigOf = (id: string): InvocationSignature => ({
   methodologyId: id,

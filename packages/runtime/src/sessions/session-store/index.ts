@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/runtime/sessions/session-store — PRD-061 composition surface.
+ * @methodts/runtime/sessions/session-store — PRD-061 composition surface.
  *
  * Re-exports the SessionStore port, default CheckpointSink implementation,
  * adapter-agnostic resume algorithm, and the in-memory reference store used

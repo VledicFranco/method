@@ -1,31 +1,31 @@
 ---
 type: prd
-title: "@method/fca-index — Standalone MCP Server"
+title: "@methodts/fca-index — Standalone MCP Server"
 date: "2026-04-13"
 status: draft
 domains: [fca-index/mcp]
 surfaces: []
 ---
 
-# PRD — @method/fca-index Standalone MCP Server
+# PRD — @methodts/fca-index Standalone MCP Server
 
 ## Problem
 
-`@method/fca-index` is ready to publish as a standalone library, but its MCP
+`@methodts/fca-index` is ready to publish as a standalone library, but its MCP
 tools (`context_query`, `context_detail`, `coverage_check`) are locked inside
-`@method/mcp` — a 1,150-line server that bundles 50+ tools for methodology,
+`@methodts/mcp` — a 1,150-line server that bundles 50+ tools for methodology,
 bridge, strategies, experiments, and more. Anyone who wants fca-index's semantic
 code search for their own FCA-compliant project must run the entire method
 server. This makes standalone adoption impossible.
 
 ## Constraints
 
-- `@method/fca-index` is L3. The MCP server is a **composition root** (like
+- `@methodts/fca-index` is L3. The MCP server is a **composition root** (like
   the CLI) — it may import transport libraries (`@modelcontextprotocol/sdk`),
   but library exports (`src/index.ts`) must remain transport-agnostic.
 - All 6 frozen ports are unchanged. No `/fcd-surface` session needed.
-- The existing `@method/mcp` server must continue to work for method-internal
-  users. This PRD does NOT remove context tools from `@method/mcp` — it adds a
+- The existing `@methodts/mcp` server must continue to work for method-internal
+  users. This PRD does NOT remove context tools from `@methodts/mcp` — it adds a
   standalone alternative.
 - The fca-index library already has `@modelcontextprotocol/sdk` as a transitive
   dependency (via the monorepo). For standalone publish, it becomes a direct
@@ -39,7 +39,7 @@ server. This makes standalone adoption impossible.
 | SC-1 | **Standalone MCP works end-to-end** | `echo '...' \| npx fca-index-mcp` returns valid context_query results for a scanned project |
 | SC-2 | **Zero new ports** | No changes to any file in `packages/fca-index/src/ports/` |
 | SC-3 | **Library exports unchanged** | `packages/fca-index/src/index.ts` gains at most a re-export line for MCP types; no removals |
-| SC-4 | **@method/mcp still works** | Existing method server's context tools unaffected |
+| SC-4 | **@methodts/mcp still works** | Existing method server's context tools unaffected |
 | SC-5 | **Gate coverage** | New G-BOUNDARY-MCP gate in `architecture.test.ts`: `mcp/` does not import from `cli/` internals or domain internals |
 
 ## Scope
@@ -47,14 +47,14 @@ server. This makes standalone adoption impossible.
 **In:**
 - New composition root: `packages/fca-index/src/mcp/server.ts`
 - Formatters moved: `formatContextQueryResult`, `formatComponentDetail`,
-  `formatCoverageReport` relocated from `@method/mcp` to `fca-index/mcp/`
+  `formatCoverageReport` relocated from `@methodts/mcp` to `fca-index/mcp/`
 - New bin entry: `fca-index-mcp` (stdio MCP server)
 - New package.json export: `"./mcp"` entry point
 - Architecture gate: G-BOUNDARY-MCP
 - Tests: MCP server handler tests (mirrors existing `context-tools.test.ts`)
 
 **Out:**
-- Removing context tools from `@method/mcp` (backward compat — do later)
+- Removing context tools from `@methodts/mcp` (backward compat — do later)
 - Publishing to npm (separate task after this PRD)
 - HTTP/SSE transport (stdio only for now)
 - New tools beyond the existing 3 (context_query, context_detail, coverage_check)
@@ -66,7 +66,7 @@ server. This makes standalone adoption impossible.
 ## Domain Map
 
 ```
-@method/fca-index
+@methodts/fca-index
 ├── src/
 │   ├── ports/           (UNCHANGED — 6 frozen ports)
 │   ├── scanner/         (UNCHANGED)
@@ -81,7 +81,7 @@ server. This makes standalone adoption impossible.
 │       └── formatters.ts  formatContextQueryResult + detail + coverage
 └── package.json         (CHANGED — new bin + export + dep)
 
-@method/mcp              (UNCHANGED — keeps its copy of context tools)
+@methodts/mcp              (UNCHANGED — keeps its copy of context tools)
 ```
 
 **Cross-domain interactions:** zero new. The MCP server is a composition root
@@ -111,7 +111,7 @@ doesn't touch the contract").
 packages/fca-index/src/mcp/
   server.ts              # MCP stdio server entry point
   formatters.ts          # formatContextQueryResult, formatComponentDetail,
-                         # formatCoverageReport (moved from @method/mcp)
+                         # formatCoverageReport (moved from @methodts/mcp)
   formatters.test.ts     # Unit tests for formatters
   server.test.ts         # Handler integration tests (RecordingPorts + MCP call → text)
 ```
@@ -140,7 +140,7 @@ const server = new Server(
 );
 
 // Register 3 tools: context_query, context_detail, coverage_check
-// (same schemas as @method/mcp/src/context-tools.ts CONTEXT_TOOLS array)
+// (same schemas as @methodts/mcp/src/context-tools.ts CONTEXT_TOOLS array)
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOL_DEFINITIONS,
@@ -156,14 +156,14 @@ await server.connect(transport);
 
 **formatters.ts design:**
 
-Move the 3 formatter functions from `@method/mcp/src/context-tools.ts`:
+Move the 3 formatter functions from `@methodts/mcp/src/context-tools.ts`:
 - `formatContextQueryResult` (already exported in PR #164)
 - `formatComponentDetail`
 - `formatCoverageReport`
 
-These are pure functions (no ports, no state). The move is a copy — `@method/mcp`
-keeps its versions for backward compat. When `@method/mcp` eventually removes its
-copy, it imports from `@method/fca-index/mcp`.
+These are pure functions (no ports, no state). The move is a copy — `@methodts/mcp`
+keeps its versions for backward compat. When `@methodts/mcp` eventually removes its
+copy, it imports from `@methodts/fca-index/mcp`.
 
 **Package.json changes:**
 
@@ -187,7 +187,7 @@ copy, it imports from `@method/fca-index/mcp`.
 **Verification strategy:**
 
 - `formatters.test.ts`: unit tests for the 3 formatters (can reuse fixture
-  patterns from existing `context-tools.test.ts` in `@method/mcp`)
+  patterns from existing `context-tools.test.ts` in `@methodts/mcp`)
 - `server.test.ts`: integration tests using RecordingContextQueryPort etc.
   to verify MCP handlers produce correct text output
 - Architecture gate: G-BOUNDARY-MCP — `mcp/` must not import from `cli/`
@@ -233,12 +233,12 @@ Or for local development:
 ### Wave 1 — MCP server + formatters
 
 1. Create `packages/fca-index/src/mcp/formatters.ts` — copy the 3 formatters
-   from `@method/mcp/src/context-tools.ts` (with the per-rank rendering
+   from `@methodts/mcp/src/context-tools.ts` (with the per-rank rendering
    constants from PRs #163/#168).
 2. Create `packages/fca-index/src/mcp/server.ts` — stdio MCP server wiring
    `createDefaultFcaIndex` + 3 tool handlers.
 3. Create `packages/fca-index/src/mcp/formatters.test.ts` — formatter tests
-   (adapt from `@method/mcp/src/context-tools.test.ts`).
+   (adapt from `@methodts/mcp/src/context-tools.test.ts`).
 4. Update `packages/fca-index/package.json` — add `@modelcontextprotocol/sdk`
    dep, `bin.fca-index-mcp`, `exports["./mcp"]`.
 5. Add `G-BOUNDARY-MCP` gate to `architecture.test.ts`.
@@ -252,8 +252,8 @@ against a scanned project. All gates green.
 
 1. Update `packages/fca-index/src/README.md` with MCP server usage.
 2. Add a top-level usage example to the README showing `.mcp.json` config.
-3. (Optional) Update `@method/mcp/src/context-tools.ts` to import formatters
-   from `@method/fca-index/mcp` instead of maintaining its own copy. Only if
+3. (Optional) Update `@methodts/mcp/src/context-tools.ts` to import formatters
+   from `@methodts/fca-index/mcp` instead of maintaining its own copy. Only if
    it simplifies the codebase — not required for this PRD.
 
 ---
@@ -263,6 +263,6 @@ against a scanned project. All gates green.
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
 | `@modelcontextprotocol/sdk` as a direct dependency bloats the package | Low | Medium | SDK is small (~50KB); only imported by the MCP entry point, not the library surface |
-| Formatter drift between fca-index/mcp and @method/mcp | Medium | Low | Track as tech debt; plan to have @method/mcp import from fca-index when convenient |
-| VOYAGE_API_KEY required at startup (fail-fast) vs lazy init (fail-at-call-time) | Design choice | Low | Fail-fast is cleaner for standalone; the lazy pattern in @method/mcp was needed because it hosts 50+ tools and can't fail on one missing key |
+| Formatter drift between fca-index/mcp and @methodts/mcp | Medium | Low | Track as tech debt; plan to have @methodts/mcp import from fca-index when convenient |
+| VOYAGE_API_KEY required at startup (fail-fast) vs lazy init (fail-at-call-time) | Design choice | Low | Fail-fast is cleaner for standalone; the lazy pattern in @methodts/mcp was needed because it hosts 50+ tools and can't fail on one missing key |
 | MCP SDK version drift between packages | Low | Low | Pin to same version in monorepo; hoist to root package.json |

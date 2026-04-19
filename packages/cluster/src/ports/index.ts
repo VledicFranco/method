@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ports/ — Cluster port interfaces (PRD 039).
  *

@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RecordingContextQueryPort — Test double for ContextQueryPort.
  *
  * Records all calls for assertion, returns configurable stub results.
- * Use in @method/mcp tests that consume ContextQueryPort.
+ * Use in @methodts/mcp tests that consume ContextQueryPort.
  *
- * Part of @method/fca-index/testkit — not included in production bundle.
+ * Part of @methodts/fca-index/testkit — not included in production bundle.
  */
 
 import type { ContextQueryPort, ContextQueryRequest, ContextQueryResult, ComponentContext } from '../ports/context-query.js';

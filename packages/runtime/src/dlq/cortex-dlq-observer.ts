@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexDlqObserver — external DLQ emission path for PactDeadLetterEvent.
  *
@@ -6,7 +7,7 @@
  * ONE `PactDeadLetterEvent` across the union of inline + external paths.
  */
 
-import type { PactDeadLetterEvent } from '@method/pacta';
+import type { PactDeadLetterEvent } from '@methodts/pacta';
 import type { ContinuationEnvelope } from '../ports/continuation-envelope.js';
 import type {
   DlqObserver,

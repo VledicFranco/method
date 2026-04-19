@@ -95,7 +95,7 @@ interface ComplianceSuggestion {
 No `/fcd-surface` sessions needed.
 
 **Feature set B — 1 new port:**
-- `ComponentDetailPort` between `fca-index query domain` → `@method/mcp` + CLI
+- `ComponentDetailPort` between `fca-index query domain` → `@methodts/mcp` + CLI
 - Action: `/fcd-surface fca-index mcp ComponentDetailPort`
 
 **Feature set C — 2 new ports:**

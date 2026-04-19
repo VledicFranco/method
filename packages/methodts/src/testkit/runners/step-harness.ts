@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Step harness — run a single step in isolation without Effect ceremony.
  */

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for Anthropic Messages API Provider.
  *
@@ -14,9 +15,10 @@ import type {
   ToolProvider,
   ToolDefinition,
   ToolResult,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import Anthropic from '@anthropic-ai/sdk';
-import { anthropicProvider, AnthropicApiError } from './anthropic-provider.js';
+import { anthropicProvider } from './anthropic-provider.js';
+import { RateLimitError } from '@methodts/pacta';
 import type {
   AnthropicMessagesResponse,
   AnthropicMessagesRequest,
@@ -24,12 +26,30 @@ import type {
 import { parseSseChunk } from './sse-parser.js';
 import { mapUsage, calculateCost } from './pricing.js';
 
-/** Create an Anthropic client wired to a mock fetch function. */
+/**
+ * Create an Anthropic client wired to a mock fetch function.
+ *
+ * `maxRetries: 0` disables the SDK's built-in 429/5xx retry backoff so
+ * non-200 mocks fail fast instead of triggering minute-long exponential
+ * waits inside unit tests.
+ */
 function makeClient(apiKey: string, fetchFn: typeof globalThis.fetch): Anthropic {
-  return new Anthropic({ apiKey, fetch: fetchFn });
+  return new Anthropic({ apiKey, fetch: fetchFn, maxRetries: 0 });
 }
 
 // ── Mock Helpers ─────────────────────────────────────────────────
+
+/**
+ * Normalize the SDK's HeadersInit (which may be a Headers instance, a
+ * plain record, or undefined) to a flat record so test assertions can
+ * read `headers['x-api-key']` regardless of SDK internals.
+ */
+function normalizeHeaders(h: HeadersInit | undefined): Record<string, string> {
+  if (!h) return {};
+  if (h instanceof Headers) return Object.fromEntries(h.entries());
+  if (Array.isArray(h)) return Object.fromEntries(h);
+  return h as Record<string, string>;
+}
 
 function mockFetch(
   responseBody: unknown,
@@ -42,7 +62,10 @@ function mockFetch(
     init?: RequestInit,
   ): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-    capturedRequests.push({ url, init: init ?? {} });
+    const normalizedInit: RequestInit = init
+      ? { ...init, headers: normalizeHeaders(init.headers) }
+      : {};
+    capturedRequests.push({ url, init: normalizedInit });
 
     if (status !== 200) {
       return new Response(
@@ -162,14 +185,17 @@ describe('anthropicProvider', () => {
       assert.strictEqual(req.url, 'https://api.anthropic.com/v1/messages');
       assert.strictEqual(req.init.method, 'POST');
 
+      // normalizeHeaders lowercases all keys (Headers API normalizes), so
+      // assertions read the canonical lowercase names.
       const headers = req.init.headers as Record<string, string>;
       assert.strictEqual(headers['x-api-key'], 'sk-test-key');
       assert.strictEqual(headers['anthropic-version'], '2023-06-01');
-      assert.strictEqual(headers['Content-Type'], 'application/json');
+      assert.strictEqual(headers['content-type'], 'application/json');
 
       const body = JSON.parse(req.init.body as string) as AnthropicMessagesRequest;
       assert.strictEqual(body.model, 'claude-sonnet-4-6');
-      assert.strictEqual(body.stream, false);
+      // SDK 0.80.0 omits `stream` for non-streaming calls (absence implies false).
+      assert.ok(body.stream === false || body.stream === undefined);
       assert.deepStrictEqual(body.messages, [
         { role: 'user', content: 'Hello, world!' },
       ]);
@@ -300,11 +326,21 @@ describe('anthropicProvider', () => {
       delete process.env.ANTHROPIC_API_KEY;
 
       try {
-        const provider = anthropicProvider({ client: new Anthropic({ apiKey: '', fetch: fetchFn }) });
+        // SDK 0.80.0 throws on construction with missing apiKey; fall back to
+        // catching the constructor error if invoke is never reached.
         await assert.rejects(
-          () => provider.invoke(basePact, baseRequest),
+          async () => {
+            const provider = anthropicProvider({
+              client: new Anthropic({ apiKey: '', fetch: fetchFn, maxRetries: 0 }),
+            });
+            await provider.invoke(basePact, baseRequest);
+          },
           (err: Error) => {
-            assert.ok(err.message.includes('API key'));
+            const m = err.message.toLowerCase();
+            assert.ok(
+              m.includes('api') || m.includes('apikey') || m.includes('authentication'),
+              `Expected auth-related error, got: ${err.message}`,
+            );
             return true;
           },
         );
@@ -345,15 +381,14 @@ describe('anthropicProvider', () => {
       assert.strictEqual(result.stopReason, 'budget_exhausted');
     });
 
-    it('throws AnthropicApiError on non-200 response', async () => {
+    it('throws RateLimitError on 429 response', async () => {
       const { fetchFn } = mockFetch('Rate limit exceeded', 429);
 
       const provider = anthropicProvider({ client: makeClient('sk-test', fetchFn) });
       await assert.rejects(
         () => provider.invoke(basePact, baseRequest),
         (err: Error) => {
-          assert.ok(err instanceof AnthropicApiError);
-          assert.strictEqual((err as AnthropicApiError).statusCode, 429);
+          assert.ok(err instanceof RateLimitError, `expected RateLimitError, got ${err.constructor.name}: ${err.message}`);
           return true;
         },
       );
@@ -456,18 +491,20 @@ describe('anthropicProvider', () => {
           capturedBodies.push(JSON.parse(init.body as string));
         }
 
+        const jsonHeaders = { 'Content-Type': 'application/json' };
+
         if (callCount === 1) {
           return new Response(JSON.stringify(makeResponse({
             stop_reason: 'tool_use',
             content: [
               { type: 'tool_use', id: 'toolu_abc', name: 'calc', input: { x: 2 } },
             ],
-          })), { status: 200 });
+          })), { status: 200, headers: jsonHeaders });
         }
 
         return new Response(JSON.stringify(makeResponse({
           content: [{ type: 'text', text: 'result: 4' }],
-        })), { status: 200 });
+        })), { status: 200, headers: jsonHeaders });
       };
 
       const tp = makeToolProvider(

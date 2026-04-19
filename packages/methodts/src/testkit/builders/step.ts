@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Step builders — construct Step<S> values with minimal ceremony.
  */

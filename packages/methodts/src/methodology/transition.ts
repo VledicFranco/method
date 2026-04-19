@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Transition function evaluation — deterministic δ_Φ.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * HTTP Network Adapter — tests.
  *
@@ -7,7 +8,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { HttpNetwork, type FetchFn } from './http-network.js';
-import type { PeerAddress, ClusterMessage } from '@method/cluster';
+import type { PeerAddress, ClusterMessage } from '@methodts/cluster';
 
 // ── Tests ──────────────────────────────────────────────────────
 

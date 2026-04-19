@@ -8,7 +8,7 @@ sessions:
 
     decisions:
       - id: D-093
-        question: "Should MethodTS replace @method/core?"
+        question: "Should MethodTS replace @methodts/core?"
         decision: >
           Yes. MethodTS replaces core as the methodology runtime following a phased
           transition: Phase 1 (prove standalone), Phase 2 (MCP rewire + YAML adapter +

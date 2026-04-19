@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * runStrategy — Adaptive execution loop over methodology runs.
  *

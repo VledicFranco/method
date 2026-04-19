@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Strategy layer tests — StrategyController, runStrategy, prebuilt controllers.
  *

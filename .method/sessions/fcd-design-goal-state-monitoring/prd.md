@@ -13,7 +13,7 @@ rfc: docs/rfcs/004-goal-state-monitoring.md
 PRD 045 designed via FCD surface-first methodology. 4 surfaces defined and frozen
 (GoalDiscrepancy, TerminateSignal, GoalRepresentation, CycleResult extension).
 No new ports needed — all interactions follow existing algebra → module → engine
-import patterns within @method/pacta.
+import patterns within @methodts/pacta.
 
 ## Surfaces Frozen
 

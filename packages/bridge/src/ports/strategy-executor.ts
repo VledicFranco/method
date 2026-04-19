@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * StrategyExecutorPort — Strategy DAG execution for the Build Orchestrator.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for P3_GOV methodology — Governance Methodology.
  *

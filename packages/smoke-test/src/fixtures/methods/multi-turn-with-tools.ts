@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method fixture: multi-turn with tool use
  *
@@ -5,7 +6,7 @@
  * Live-mode only — requires real provider for tool dispatch.
  */
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 export const METHOD_ID = 'multi-turn-with-tools';
 

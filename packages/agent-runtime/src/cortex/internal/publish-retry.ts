@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * publish-retry — exponential backoff helper around
  * `ctx.events.emit(topic, payload)`. Mirrors `WebhookConnector`

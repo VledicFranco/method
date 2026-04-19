@@ -85,7 +85,7 @@ than richer top-1 excerpts in already-existing fields.
 ## Domain Map
 
 ```
-@method/fca-index                              @method/mcp
+@methodts/fca-index                              @methodts/mcp
 ┌──────────────────────┐                    ┌──────────────────┐
 │  query/              │                    │  context-tools   │
 │  ┌────────────────┐  │                    │  ┌────────────┐  │
@@ -134,7 +134,7 @@ to permit the new shape.
 
 ## Per-Domain Architecture
 
-### Domain 1 — `@method/fca-index/query` (changed)
+### Domain 1 — `@methodts/fca-index/query` (changed)
 
 **Layer placement:** L2 domain, no level change.
 
@@ -218,7 +218,7 @@ formatter inherits the richer top-1 automatically.
 
 ---
 
-### Domain 2 — `@method/mcp/context-tools` (changed)
+### Domain 2 — `@methodts/mcp/context-tools` (changed)
 
 **Layer placement:** L3 protocol adapter, unchanged.
 

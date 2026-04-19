@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Test suite for Genesis Spawner — PRD 029 C-3 dedup behavior
  *
@@ -10,7 +11,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import type { SessionPool, SessionStatusInfo } from '@method/runtime/sessions';
+import type { SessionPool, SessionStatusInfo } from '@methodts/runtime/sessions';
 import {
   spawnGenesis,
   getGenesisStatus,

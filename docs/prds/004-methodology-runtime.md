@@ -11,7 +11,7 @@ status: implemented
 **Depends on:** 003-dispatch (completed — provides routing, validation, step_context tools)
 **Requested by:** pv-agi (Vidtecci flagship — AGI research through metacognitive orchestration)
 **Evidence:** pv-agi Session 001 (manual artifact production), pv-agi Session 002 (identified gap: council can't dispatch through tooling because methods don't compose within sessions)
-**PRD 021 impact:** **Replaced (Phase 3).** MethodTS replaces @method/core as the methodology runtime. δ_Φ evaluation moves from agent reasoning (~800 tokens) to deterministic TypeScript (0 tokens). Session state tracking becomes typed `WorldState<S>` with `StateTrace<S>`. Method composition becomes algebraic with compile-time DAG validation. Phase 2 rewires MCP tool handlers; Phase 3 removes core entirely.
+**PRD 021 impact:** **Replaced (Phase 3).** MethodTS replaces @methodts/core as the methodology runtime. δ_Φ evaluation moves from agent reasoning (~800 tokens) to deterministic TypeScript (0 tokens). Session state tracking becomes typed `WorldState<S>` with `StateTrace<S>`. Method composition becomes algebraic with compile-time DAG validation. Phase 2 rewires MCP tool handlers; Phase 3 removes core entirely.
 
 ---
 
@@ -240,7 +240,7 @@ Methodology sessions use the same `session_id` mechanism from PRD 002. A methodo
 
 ### Phase 1: Methodology session model + `methodology_start`
 
-Add `MethodologySession` to `@method/core`. Implement `methodology_start` tool. This is the foundation — all other tools depend on a methodology session existing.
+Add `MethodologySession` to `@methodts/core`. Implement `methodology_start` tool. This is the foundation — all other tools depend on a methodology session existing.
 
 ### Phase 2: `methodology_route` + `methodology_load_method`
 

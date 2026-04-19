@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for cortexLLMProvider (PRD-059 §5.1 test strategy).
  *
@@ -12,7 +13,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Pact, AgentRequest, AgentEvent } from '@method/pacta';
+import type { Pact, AgentRequest, AgentEvent } from '@methodts/pacta';
 import { cortexLLMProvider } from './llm-provider.js';
 import { CortexAdapterComposeError } from './adapter.js';
 import type {

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Effort Mapper — translates reasoning effort levels to provider-specific parameters.
  *

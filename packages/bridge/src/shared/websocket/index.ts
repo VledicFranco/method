@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /** WebSocket shared module barrel. */
 
 export { WsHub } from './hub.js';

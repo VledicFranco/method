@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Memory cognitive-module — Cortex tenant app composition root (PRD-068 W1).
  *
@@ -35,7 +36,7 @@ import {
   type MethodAgent,
   type CorticalWorkspaceMembershipHandle,
   type WorkspaceEventEmitter,
-} from '@method/agent-runtime';
+} from '@methodts/agent-runtime';
 
 import { memoryPact, type MemoryEntry, type MemoryRecallOutput } from './pact.js';
 

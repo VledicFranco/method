@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/methodts/stdlib — Standard Library
+ * @methodts/methodts/stdlib — Standard Library
  *
  * Ships P0-META (the genesis methodology) as typed MethodTS values.
  * Self-hosting: methodology designers use the stdlib's own meta-methods

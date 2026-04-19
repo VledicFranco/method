@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * QueryEngine — ContextQueryPort implementation for the FCA index.
  *

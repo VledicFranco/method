@@ -22,7 +22,7 @@ P3-DISPATCH closes the loop: **the methodology drives the agents**. A human (or 
 This requires three components:
 
 1. **P3-DISPATCH** — a new methodology encoding three autonomy modes as methods
-2. **`@method/bridge`** — a PTY bridge package that spawns and manages Claude Code agent sessions
+2. **`@methodts/bridge`** — a PTY bridge package that spawns and manages Claude Code agent sessions
 3. **4 new MCP tools** — methodology-level routing, step context, and output validation
 
 ---
@@ -134,7 +134,7 @@ Certificate: ν_DISPATCH = ν_target (the target methodology's own certificate).
 
 ---
 
-## Component 2: `@method/bridge` Package
+## Component 2: `@methodts/bridge` Package
 
 A standalone Node.js HTTP server that manages a pool of Claude Code PTY sessions. Lives at `packages/bridge/` in the monorepo.
 
@@ -147,7 +147,7 @@ packages/bridge/
 │   ├── pty-session.ts    Single PTY session manager (spawn, prompt, kill)
 │   ├── pool.ts           Session pool (Map<id, PtySession>)
 │   └── parser.ts         PTY output extraction (●-based parser)
-├── package.json          @method/bridge
+├── package.json          @methodts/bridge
 └── tsconfig.json
 ```
 
@@ -235,9 +235,9 @@ The bridge and MCP server are peers, not parent-child:
 
 ```
 Human's Claude Code session (P3-DISPATCH orchestrator)
-    ├── MCP tools ──→ @method/mcp (methodology intelligence)
+    ├── MCP tools ──→ @methodts/mcp (methodology intelligence)
     │                    └── reads registry/, theory/
-    └── HTTP API ──→ @method/bridge (agent spawning)
+    └── HTTP API ──→ @methodts/bridge (agent spawning)
                          └── spawns Claude Code agents via PTY
                                └── each agent has own MCP connection
 ```
@@ -248,7 +248,7 @@ No circular dependency. Spawned agents connect to the method MCP server through 
 
 ## Component 3: New MCP Tools (4)
 
-Added to `@method/mcp`. Depend on new `@method/core` functions.
+Added to `@methodts/mcp`. Depend on new `@methodts/core` functions.
 
 ### `methodology_get_routing`
 
@@ -343,7 +343,7 @@ The `recommendation` field suggests what the orchestrator should do based on the
 
 Smallest scope, immediately useful. An orchestrating agent can evaluate routing and compose sub-agent prompts even without the bridge (using native Claude Code agent spawning).
 
-### Phase 2: `@method/bridge` package
+### Phase 2: `@methodts/bridge` package
 
 Port the POC from `ov-oss/tmp/claude-pty-bridge/` into `packages/bridge/`. Add session pool management. Validate with manual HTTP calls.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M4_WORK — Issue Work Execution Method (P-GH/M4-WORK v1.0).
  *

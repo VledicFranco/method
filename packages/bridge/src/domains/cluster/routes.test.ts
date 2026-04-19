@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cluster Domain — HTTP Route tests.
  *
  * Uses Fastify inject() to test routes without a live server.
- * Test doubles from @method/cluster handle all I/O.
+ * Test doubles from @methodts/cluster handle all I/O.
  */
 
 import { describe, it, beforeEach } from 'node:test';
@@ -15,7 +16,7 @@ import {
   FakeResources,
   CapacityWeightedRouter,
   type ClusterNode,
-} from '@method/cluster';
+} from '@methodts/cluster';
 import { ClusterDomain, type ClusterLogger } from './core.js';
 import { registerClusterRoutes } from './routes.js';
 import type { ClusterConfig } from './config.js';

@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * RecordingCoverageReportPort — Test double for CoverageReportPort.
  *
  * Records calls and returns configurable stub reports.
- * Use in @method/mcp tests that consume CoverageReportPort.
+ * Use in @methodts/mcp tests that consume CoverageReportPort.
  *
- * Part of @method/fca-index/testkit — not included in production bundle.
+ * Part of @methodts/fca-index/testkit — not included in production bundle.
  */
 
 import type { CoverageReportPort, CoverageReportRequest, CoverageReport, CoverageSummary } from '../ports/coverage-report.js';

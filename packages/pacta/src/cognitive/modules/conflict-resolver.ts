@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Conflict Resolver — synthesizes parallel adversarial reasoning (PRD 032, P1).
  *

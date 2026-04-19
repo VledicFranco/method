@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M5_MCOM — Method Composition method (F1-FTH Definition 6.1).
  *

@@ -13,7 +13,7 @@ touches:
 
 # Guide 22 — Testkit: Getting Started
 
-The `@method/testkit` package provides builders, assertions, harnesses, and test doubles for testing MethodTS methodologies, methods, steps, predicates, and domain theories. It eliminates the boilerplate of constructing typed values, running Effect-based execution, and interpreting failures.
+The `@methodts/testkit` package provides builders, assertions, harnesses, and test doubles for testing MethodTS methodologies, methods, steps, predicates, and domain theories. It eliminates the boilerplate of constructing typed values, running Effect-based execution, and interpreting failures.
 
 ## Installation
 
@@ -27,9 +27,9 @@ import {
   assertHolds, assertRoutesTo, assertCompiles, assertCoherent,
   // Runners
   runMethodologyIsolated, scenario,
-  // Re-exported from @method/methodts (no dual imports needed)
+  // Re-exported from @methodts/methodts (no dual imports needed)
   check, and, not,
-} from "@method/testkit";
+} from "@methodts/testkit";
 ```
 
 ## Quick Start: Testing a Methodology
@@ -42,7 +42,7 @@ Here's a minimal example — a counter methodology that increments to a target, 
 import {
   check, and,
   domainBuilder, scriptStep, methodBuilder, methodologyBuilder,
-} from "@method/testkit";
+} from "@methodts/testkit";
 
 type CounterState = {
   count: number;
@@ -119,7 +119,7 @@ import {
   assertHolds, assertRejects, assertRoutesTo, assertCoherent,
   assertCompiles, assertTerminates, scenario, runMethodologyIsolated,
   worldState,
-} from "@method/testkit";
+} from "@methodts/testkit";
 
 describe("Counter methodology", () => {
   const STATES = {
@@ -199,7 +199,7 @@ The testkit follows the same layered architecture as MethodTS. Test from the bot
 For steps that use LLM agents instead of scripts, provide mock responses:
 
 ```typescript
-import { runStepIsolated, SequenceProvider, runMethodologyIsolated } from "@method/testkit";
+import { runStepIsolated, SequenceProvider, runMethodologyIsolated } from "@methodts/testkit";
 
 // Step-level: provide agent responses
 const result = await runStepIsolated(agentStep, stateValue, {

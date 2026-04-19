@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from "vitest";
 import { evaluate } from "../../predicate/evaluate.js";
 import { predicates } from "../predicates.js";

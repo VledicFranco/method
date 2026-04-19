@@ -29,7 +29,7 @@ This prevents double-retry (provider 3× backoff × DAG 3× retry = 9 attempts) 
 **File:** `packages/pacta/src/errors.ts` (new)
 
 ```typescript
-import type { ProviderClass, AccountId } from '@method/types';
+import type { ProviderClass, AccountId } from '@methodts/types';
 
 // ── Branding for cross-module instanceof safety ─────────────────────
 /** Symbol brand prevents instanceof false-negatives when pacta loads twice
@@ -224,7 +224,7 @@ The two-level abstraction (`ProviderError` → `{PermanentError, TransientError}
 
 ### Why `Symbol.for('pacta.ProviderError')` branding?
 
-Monorepo hazard (F-R-16): if `@method/pacta` is loaded twice (symlink + install mismatch, bundler hoisting issue), `instanceof ProviderError` returns `false` for errors thrown from a different module instance. `Symbol.for` is cross-realm: two realms share the same symbol via the global symbol registry. The `isProviderError` helper is the safe cross-module check.
+Monorepo hazard (F-R-16): if `@methodts/pacta` is loaded twice (symlink + install mismatch, bundler hoisting issue), `instanceof ProviderError` returns `false` for errors thrown from a different module instance. `Symbol.for` is cross-realm: two realms share the same symbol via the global symbol registry. The `isProviderError` helper is the safe cross-module check.
 
 ### Why `code` field on concrete subclasses?
 
@@ -367,7 +367,7 @@ describe('G-PORT: Provider errors use the ProviderError taxonomy', () => {
       if (!hasImport) violations.push(`${file}: no ProviderError import`);
     }
     assert.deepStrictEqual(violations, [], [
-      'G-PORT violation: providers must import error taxonomy from @method/pacta.',
+      'G-PORT violation: providers must import error taxonomy from @methodts/pacta.',
       '',
       ...violations,
     ].join('\n'));
@@ -377,7 +377,7 @@ describe('G-PORT: Provider errors use the ProviderError taxonomy', () => {
 // G-CREDENTIALS: error messages do not contain raw credential patterns
 describe('G-CREDENTIALS: Errors redact credentials at construction', () => {
   it('redactCredentials function exists and strips known patterns', async () => {
-    const { redactCredentials } = await import('@method/pacta');
+    const { redactCredentials } = await import('@methodts/pacta');
     assert.equal(
       redactCredentials('auth failed for sk-ant-api03-abcdef1234'),
       'auth failed for sk-ant-[REDACTED]',

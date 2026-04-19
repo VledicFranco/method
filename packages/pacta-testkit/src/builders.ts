@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Fluent builders for Pact and AgentRequest test objects.
  *
@@ -14,7 +15,7 @@ import type {
   ExecutionMode,
   ContextPolicy,
   ReasoningPolicy,
-} from '@method/pacta';
+} from '@methodts/pacta';
 
 // ── PactBuilder ─────────────────────────────────────────────────
 

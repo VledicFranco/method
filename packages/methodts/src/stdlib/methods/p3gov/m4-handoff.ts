@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M4_HANDOFF — Commission Handoff Method (M4-HANDOFF v0.1).
  *

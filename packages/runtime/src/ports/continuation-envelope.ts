@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ContinuationEnvelope v1 — the wire format for pact continuations (PRD-062 / S5 §2.1).
  *

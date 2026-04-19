@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Runs the SessionStore conformance fixtures against the in-memory
  * reference store. Every production adapter should pass the same suite;

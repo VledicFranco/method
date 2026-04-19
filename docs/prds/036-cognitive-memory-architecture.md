@@ -15,7 +15,7 @@ domains_affected: [pacta, pacta-testkit]
 **Status:** Implemented (CLS dual-store, ACT-R activation, consolidator, sleep API, memoryPreset — all with tests)
 **Author:** PO + Lysica
 **Date:** 2026-03-29
-**Package:** `@method/pacta` (L3 — library)
+**Package:** `@methodts/pacta` (L3 — library)
 **Depends on:** PRD 030 (Pacta Cognitive Composition)
 **Research:** `tmp/20260328-cognitive-architecture-research.md`, `tmp/20260328-cognitive-module-proposals.md`
 **Organization:** Vidtecci — vida, ciencia y tecnologia
@@ -394,7 +394,7 @@ Programmatic and HTTP interface for triggering offline consolidation between ses
 
 ```typescript
 // Standalone function — does not extend CognitiveAgent interface
-import { consolidateOffline } from '@method/pacta';
+import { consolidateOffline } from '@methodts/pacta';
 
 await consolidateOffline(store, {
   mode: 'offline',

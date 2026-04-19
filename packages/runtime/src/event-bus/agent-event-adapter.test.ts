@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for AgentEvent-to-RuntimeEvent adapter (PRD 029 Phase C-2).
  */
@@ -5,7 +6,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAgentEventAdapter } from './agent-event-adapter.js';
-import type { AgentEvent } from '@method/pacta';
+import type { AgentEvent } from '@methodts/pacta';
 import type { RuntimeEvent, RuntimeEventInput, EventBus, EventFilter, EventSink, EventSubscription } from '../ports/event-bus.js';
 
 // ── Mock EventBus ─────────────────────────────────────────────────

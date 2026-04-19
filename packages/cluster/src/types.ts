@@ -1,4 +1,5 @@
-// ── @method/cluster — Shared Cluster Types ─────────────────────
+// SPDX-License-Identifier: Apache-2.0
+// ── @methodts/cluster — Shared Cluster Types ─────────────────────
 //
 // Transport-agnostic types for the cluster protocol. These define
 // the shape of cluster state, peer identity, and message formats.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for StructuredAgentProvider — prompt injection, JSON parsing,
  * error handling, and integration with mock providers.

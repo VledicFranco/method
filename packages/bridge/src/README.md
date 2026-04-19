@@ -1,4 +1,4 @@
-# @method/bridge — Bridge Application
+# @methodts/bridge — Bridge Application
 
 L4 application. HTTP server that wires all bridge domains together and exposes them to the MCP adapter and external clients. Owns the process — responsible for startup, port binding, graceful shutdown, and domain composition.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Precision Adapter — continuous precision parameter for LLM effort allocation.
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSignature, inputSizeBucket, signatureKey } from './signature-builder.js';

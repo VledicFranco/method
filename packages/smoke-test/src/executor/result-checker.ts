@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Result checker — validates StrategyExecutionResult against SmokeExpected.
  *
@@ -5,7 +6,7 @@
  * display in the verification panel.
  */
 
-import type { StrategyExecutionResult } from '@method/methodts/strategy/dag-types.js';
+import type { StrategyExecutionResult } from '@methodts/methodts/strategy/dag-types.js';
 import type { SmokeExpected } from '../cases/index.js';
 
 export interface AssertionResult {

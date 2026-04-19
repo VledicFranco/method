@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CheckpointPort — Pipeline state persistence for the Build Orchestrator.
  *
  * Saves and loads pipeline checkpoints at phase boundaries so builds
  * can resume after crashes, restarts, or deliberate pauses.
  *
- * PRD-057 / S2 §14 Q1: Interface moves to @method/runtime/ports; the
+ * PRD-057 / S2 §14 Q1: Interface moves to @methodts/runtime/ports; the
  * FS-backed implementation stays in bridge.
  *
  * @see PRD 047 — Build Orchestrator §Surfaces

@@ -58,9 +58,9 @@ card_feedback:
     - id: DR-03
       status: respected
       note: >
-        All scope enforcement code lives in @method/bridge (scope-hook.ts,
-        pattern-matchers.ts, pty-watcher.ts) and @method/mcp (index.ts).
-        Zero changes to @method/core.
+        All scope enforcement code lives in @methodts/bridge (scope-hook.ts,
+        pattern-matchers.ts, pty-watcher.ts) and @methodts/mcp (index.ts).
+        Zero changes to @methodts/core.
     - id: DR-14
       status: respected
       note: >

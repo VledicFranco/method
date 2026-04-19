@@ -1,4 +1,4 @@
-# @method/methodts — Typed Methodology SDK
+# @methodts/methodts — Typed Methodology SDK
 
 L3 library. Makes the formal methodology theory (F1-FTH, F4-PHI) executable in TypeScript. Provides the type system, runtime, stdlib catalog, and tooling for defining and executing formal methodologies as structured agent workflows.
 
@@ -21,7 +21,7 @@ A methodology is a DAG of steps where each step has: a predicate (entry conditio
 ## Runtime
 
 ```typescript
-import { createRuntime } from '@method/methodts';
+import { createRuntime } from '@methodts/methodts';
 
 const runtime = createRuntime({ provider: claudeCliProvider });
 const session = await runtime.startMethod(methodology, 'M1-PLAN');

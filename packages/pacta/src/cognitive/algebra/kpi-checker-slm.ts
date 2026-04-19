@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * HTTP SLM-backed KPIChecker — implements KPICheckerPort via a Python
  * HTTP bridge serving the trained Qwen2.5-0.5B-LoRA KPI Checker SLM.

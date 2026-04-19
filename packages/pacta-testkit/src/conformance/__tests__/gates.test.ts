@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
@@ -28,12 +29,12 @@ function walkSourceFiles(dir: string): string[] {
   return out;
 }
 
-describe('G-BOUNDARY — no value imports from @method/agent-runtime in conformance/', () => {
+describe('G-BOUNDARY — no value imports from @methodts/agent-runtime in conformance/', () => {
   it('scans conformance source files', () => {
     const files = walkSourceFiles(CONFORMANCE_DIR);
     assert.ok(files.length > 0, 'expected at least one source file');
     const violations: string[] = [];
-    const valueImport = /^\s*import\s+(?!type\b)[^;]*from\s+['"]@method\/agent-runtime['"]/gm;
+    const valueImport = /^\s*import\s+(?!type\b)[^;]*from\s+['"]@methodts\/agent-runtime['"]/gm;
     for (const file of files) {
       const content = fs.readFileSync(file, 'utf-8');
       if (valueImport.test(content)) violations.push(file);
@@ -71,10 +72,10 @@ describe('G-PORT — conformance subpath exports match the S8 frozen symbol set'
   });
 });
 
-describe('G-LAYER — no imports from @method/bridge or higher layers', () => {
+describe('G-LAYER — no imports from @methodts/bridge or higher layers', () => {
   it('scans conformance source files', () => {
     const files = walkSourceFiles(CONFORMANCE_DIR);
-    const forbidden = /@method\/(bridge|mcp|methodts|cluster)/g;
+    const forbidden = /@methodts\/(bridge|mcp|methodts|cluster)/g;
     const violations: string[] = [];
     for (const file of files) {
       const content = fs.readFileSync(file, 'utf-8');

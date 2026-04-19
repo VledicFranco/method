@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * YamlLoader — Port interface for YAML parse/dump.
  *

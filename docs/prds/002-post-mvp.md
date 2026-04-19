@@ -102,8 +102,8 @@ Proposed: structured JSON + message:
 
 #### Scope
 
-- Changes to `@method/core` state module: `advance()` and `current()` return enriched types
-- Changes to `@method/mcp`: format the enriched responses
+- Changes to `@methodts/core` state module: `advance()` and `current()` return enriched types
+- Changes to `@methodts/mcp`: format the enriched responses
 - No new tools, no new dependencies
 
 ---
@@ -187,8 +187,8 @@ Start with **Option A** — simplest to implement, explicit, backwards compatibl
 
 #### Scope
 
-- `@method/core`: `createSession` stays as-is. Add a `SessionManager` that holds `Map<string, Session>` with `getOrCreate(sessionId)`.
-- `@method/mcp`: add optional `session_id` to all tool input schemas. Route through `SessionManager`.
+- `@methodts/core`: `createSession` stays as-is. Add a `SessionManager` that holds `Map<string, Session>` with `getOrCreate(sessionId)`.
+- `@methodts/mcp`: add optional `session_id` to all tool input schemas. Route through `SessionManager`.
 - No new dependencies.
 
 #### Acceptance

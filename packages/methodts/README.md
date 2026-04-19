@@ -1,4 +1,4 @@
-# @method/methodts
+# @methodts/methodts
 
 Typed Methodology SDK -- makes the formal theory (F1-FTH) executable in TypeScript.
 
@@ -9,7 +9,7 @@ MethodTS encodes formal methodologies as composable, type-safe TypeScript values
 ## Install
 
 ```bash
-npm install @method/methodts
+npm install @methodts/methodts
 ```
 
 ## Quick Example
@@ -17,7 +17,7 @@ npm install @method/methodts
 **Define a predicate:**
 
 ```typescript
-import { check, and, evaluate } from "@method/methodts";
+import { check, and, evaluate } from "@methodts/methodts";
 
 type TaskState = {
   tasks: string[];
@@ -43,7 +43,7 @@ evaluate(ready, {
 **Define a method:**
 
 ```typescript
-import { type Method, type Step, type StepDAG, TRUE, check } from "@method/methodts";
+import { type Method, type Step, type StepDAG, TRUE, check } from "@methodts/methodts";
 import { Effect } from "effect";
 
 const planStep: Step<TaskState> = {
@@ -88,7 +88,7 @@ const taskMethod: Method<TaskState> = {
 **Compile it:**
 
 ```typescript
-import { compileMethod } from "@method/methodts";
+import { compileMethod } from "@methodts/methodts";
 
 const report = compileMethod(taskMethod, [
   { tasks: ["x"], assigned: {}, reviewed: false },
@@ -169,14 +169,14 @@ report.gates.forEach((g) => console.log(`${g.gate}: ${g.status}`));
 
 `compileMethod`, `assertCompiled`, `CompilationReport`, `instantiate`, `instantiateMethodology`, `ProjectCard`, `aggregateEvidence`, `diffDomainTheory`, `classifyDomainChanges`
 
-### Standard Library (`@method/methodts/stdlib`)
+### Standard Library (`@methodts/methodts/stdlib`)
 
 `MetaState`, `DesignState`, `EvolutionState`, `InstantiationState`, `D_META`, `predicates`, `prompts`, `M1_MDES`, `P0_META`, `compilationGates` (G1-G6)
 
 ## Architecture
 
 ```
-@method/methodts
+@methodts/methodts
   |
   +-- prompt/         Prompt<A> algebra (contravariant functor, monoid)
   +-- predicate/      Predicate<A> ADT + evaluate engine

@@ -3,16 +3,16 @@ type: co-design-record
 surface: "CortexMethodologySource"
 slug: fcd-surface-methodology-source
 date: "2026-04-14"
-owner: "@method/agent-runtime (new L3, PRD-058 / PRD-064 follow-on)"
-producer: "@method/agent-runtime"
-consumer: "@method/runtime (via frozen MethodologySource port) + Cortex admin UI (via PlatformMethodologyApi)"
+owner: "@methodts/agent-runtime (new L3, PRD-058 / PRD-064 follow-on)"
+producer: "@methodts/agent-runtime"
+consumer: "@methodts/runtime (via frozen MethodologySource port) + Cortex admin UI (via PlatformMethodologyApi)"
 direction: "agent-runtime ← Cortex ctx.storage (load) + agent-runtime ← ctx.events (invalidation) + admin-UI → agent-runtime (curation)"
 status: frozen
 mode: extension
 related:
   - docs/roadmap-cortex-consumption.md §4.2 item 11
   - PRD-064 (implementation container)
-  - PRD-058 (@method/agent-runtime)
+  - PRD-058 (@methodts/agent-runtime)
   - .method/sessions/fcd-surface-runtime-package-boundary/decision.md §3.1, §14 Q3
   - packages/bridge/src/ports/methodology-source.ts (existing port)
   - packages/bridge/src/ports/stdlib-source.ts (existing stdlib impl)
@@ -25,9 +25,9 @@ related:
 
 ## 1. Context & Framing
 
-Today the `MethodologySource` port (frozen, moves to `@method/runtime/ports` per
+Today the `MethodologySource` port (frozen, moves to `@methodts/runtime/ports` per
 RuntimePackageBoundary FCD) has one production implementation: `StdlibSource`,
-which wraps the compiled `@method/methodts` stdlib catalog. Zero I/O, zero
+which wraps the compiled `@methodts/methodts` stdlib catalog. Zero I/O, zero
 substitutability value beyond the port seam.
 
 Cortex tenant apps break that world:
@@ -64,7 +64,7 @@ L4   Cortex admin-UI (tenant-facing webapp)
      │
      │ HTTP ──→ PlatformMethodologyApi (new Cortex platform route)
      │
-L3   @method/agent-runtime                ← NEW consumer
+L3   @methodts/agent-runtime                ← NEW consumer
      │   CortexMethodologySource (impl of MethodologySource)
      │   ├─ reads  ctx.storage (PRD-064)
      │   ├─ listens ctx.events (PRD-072) — one declared type
@@ -72,12 +72,12 @@ L3   @method/agent-runtime                ← NEW consumer
      │
      │ implements
      ▼
-L3   @method/runtime/ports                ← EXISTING frozen port (extended)
+L3   @methodts/runtime/ports                ← EXISTING frozen port (extended)
      MethodologySource
 ```
 
-No cycle. `@method/runtime` stays zero-transport, zero-Cortex. The Cortex
-binding happens entirely inside `@method/agent-runtime`.
+No cycle. `@methodts/runtime` stays zero-transport, zero-Cortex. The Cortex
+binding happens entirely inside `@methodts/agent-runtime`.
 
 ---
 
@@ -93,8 +93,8 @@ path**. Two additive extensions are frozen here:
 ```typescript
 // packages/runtime/src/ports/methodology-source.ts  (after PRD-057 move)
 
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
-import type { Method, Methodology } from '@method/methodts';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
+import type { Method, Methodology } from '@methodts/methodts';
 
 /**
  * Port interface for methodology data access.
@@ -103,8 +103,8 @@ import type { Method, Methodology } from '@method/methodts';
  * path on every runtime tick. Implementations MUST maintain an in-memory
  * cache; network I/O happens only in init/reload.
  *
- * Owner:     @method/runtime
- * Consumers: @method/bridge (via StdlibSource), @method/agent-runtime
+ * Owner:     @methodts/runtime
+ * Consumers: @methodts/bridge (via StdlibSource), @methodts/agent-runtime
  *            (via CortexMethodologySource), tests (via InMemorySource)
  * Co-designed: 2026-04-14
  */
@@ -175,10 +175,10 @@ export type MethodologyChange =
 import type {
   MethodologySource,
   MethodologyChange,
-} from '@method/runtime/ports';
-import type { CatalogMethodologyEntry } from '@method/methodts/stdlib';
-import type { Method, Methodology } from '@method/methodts';
-import { StdlibSource } from '@method/runtime/ports';   // fallback/inheritance
+} from '@methodts/runtime/ports';
+import type { CatalogMethodologyEntry } from '@methodts/methodts/stdlib';
+import type { Method, Methodology } from '@methodts/methodts';
+import { StdlibSource } from '@methodts/runtime/ports';   // fallback/inheritance
 
 /** Cortex platform ports the source needs. Injected at composition root. */
 export interface CortexMethodologySourceDeps {
@@ -229,7 +229,7 @@ export class CortexMethodologySource implements MethodologySource {
 
 ### 3.1 — Cortex-side port shims (consumed, not produced here)
 
-To keep `@method/agent-runtime` decoupled from Cortex SDK types, the surface
+To keep `@methodts/agent-runtime` decoupled from Cortex SDK types, the surface
 defines **minimal structural interfaces** over what it actually uses. The
 Cortex SDK is adapted into these at the agent-runtime composition root.
 
@@ -316,7 +316,7 @@ export interface MethodologyDocument {
     overall: 'compiled' | 'failed' | 'needs_review';
     gates: Array<{ gate: string; status: 'pass' | 'fail' | 'needs_review'; details: string }>;
     compiledAt: string;               // ISO-8601
-    methodtsVersion: string;          // pin of @method/methodts at compile time
+    methodtsVersion: string;          // pin of @methodts/methodts at compile time
   };
   // Audit fields (Cortex standard).
   createdAt: string;
@@ -485,7 +485,7 @@ deprecated in memory, and excluded from `list()` until an admin re-upserts.
 
 **methodts pin.** `compilationReport.methodtsVersion` is stored on every doc.
 At load time, if the pinned version differs from the runtime's current
-`@method/methodts` version, the entry is **re-parsed and G6-rechecked**
+`@methodts/methodts` version, the entry is **re-parsed and G6-rechecked**
 (cheap round-trip), but G1-G5 are trusted. A major methodts version bump
 triggers a full re-compile (operator action, not automatic).
 
@@ -650,7 +650,7 @@ OAuth client.
    propagate back to the method monorepo. Authoring flows through the
    governance methodology (P0-META) outside Cortex; Cortex curates only.
 5. **Policy vs MethodologyRouter placement.** Router currently lives in
-   `@method/runtime`. Policy lives in `@method/agent-runtime` (Cortex-coupled).
+   `@methodts/runtime`. Policy lives in `@methodts/agent-runtime` (Cortex-coupled).
    The `policy?: MethodologyPolicy` field on `RoutingContext` keeps the router
    oblivious but requires agent-runtime to pass it. Acceptable; no change.
 
@@ -711,14 +711,14 @@ it('Mongo collection names pass PRD-064 CollectionName regex', () => {
 ## 12. Producer & Consumer Mapping
 
 **Producer** (implements the port):
-- `CortexMethodologySource` in `@method/agent-runtime` (PRD-058 / PRD-064).
-- `StdlibSource` in `@method/runtime/ports` (existing; gains no-op lifecycle stubs).
-- `InMemorySource` in `@method/runtime/ports` (existing; gains controllable `onChange`).
+- `CortexMethodologySource` in `@methodts/agent-runtime` (PRD-058 / PRD-064).
+- `StdlibSource` in `@methodts/runtime/ports` (existing; gains no-op lifecycle stubs).
+- `InMemorySource` in `@methodts/runtime/ports` (existing; gains controllable `onChange`).
 
 **Consumer** (depends on the port):
-- `MethodologySessionStore` in `@method/bridge/domains/methodology/` — subscribes
+- `MethodologySessionStore` in `@methodts/bridge/domains/methodology/` — subscribes
   to `onChange` to drop stale routing caches.
-- MCP handlers in `@method/mcp` — `methodology_list`, `methodology_get_routing`,
+- MCP handlers in `@methodts/mcp` — `methodology_list`, `methodology_get_routing`,
   `methodology_load`, etc. (all currently via bridge; equivalent routes in the
   Cortex-hosted agent runtime).
 - Runtime step loader — unchanged; reads via `getMethod`.
@@ -733,5 +733,5 @@ storage, events, appId, inheritance })` and injects into downstream.
 
 **Frozen.** Surface is ready for PRD-064 to break ground. Depends on PRD-057
 (runtime extraction, which moves the base `MethodologySource` port) and PRD-058
-(`@method/agent-runtime` package scaffold). Five open questions in §10.2 are
+(`@methodts/agent-runtime` package scaffold). Five open questions in §10.2 are
 scoped to PRD-064 implementation — none block the contract freeze.

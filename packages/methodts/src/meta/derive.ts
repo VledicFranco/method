@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Implementation Derivation Document (IDD) generation and faithfulness checking.
  *

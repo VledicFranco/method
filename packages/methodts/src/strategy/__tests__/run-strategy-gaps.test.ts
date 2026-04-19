@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Additional runStrategy tests targeting coverage gaps:
  * - Methodology run error → catchAll converts to failed result (lines 67-72)

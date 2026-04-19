@@ -6,7 +6,7 @@ with one import and one call.
 
 This sample is **not published**. It exists as an executable contract: CI
 runs it as part of `npm test`, and it is the go-to reference when onboarding
-a new tenant team to `@method/agent-runtime`.
+a new tenant team to `@methodts/agent-runtime`.
 
 ## Run
 

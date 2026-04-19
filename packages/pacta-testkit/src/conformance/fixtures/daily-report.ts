@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * daily-report — oneshot, no tools, events + schedule. Exercises
  * `ctx.events.publish`, `ctx.schedule.register`, pure-LLM path. PRD-065 §8.3.
  */
 
-import type { AgentResult } from '@method/pacta';
+import type { AgentResult } from '@methodts/pacta';
 import type { ConformanceFixture } from './index.js';
 import { usage, cost } from './index.js';
 

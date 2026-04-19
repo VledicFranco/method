@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for Claude CLI Provider.
  *
@@ -9,7 +10,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
-import type { Pact, AgentRequest, ProviderCapabilities } from '@method/pacta';
+import type { Pact, AgentRequest, ProviderCapabilities } from '@methodts/pacta';
 import { claudeCliProvider } from './claude-cli-provider.js';
 import { buildCliArgs, type CliArgs } from './cli-executor.js';
 import { simpleCodeAgent } from './simple-code-agent.js';

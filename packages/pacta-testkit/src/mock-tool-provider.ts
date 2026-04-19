@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * MockToolProvider — implements ToolProvider with scripted results.
  *
@@ -6,7 +7,7 @@
  * Throws if a tool is called with no remaining responses.
  */
 
-import type { ToolProvider, ToolDefinition, ToolResult } from '@method/pacta';
+import type { ToolProvider, ToolDefinition, ToolResult } from '@methodts/pacta';
 
 export interface MockToolConfig {
   definition: ToolDefinition;

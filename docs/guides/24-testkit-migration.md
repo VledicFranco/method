@@ -12,7 +12,7 @@ touches:
 
 # Guide 24 — Testkit: Migrating from Manual Test Patterns
 
-If you have existing methodology tests written against `@method/methodts` directly (like the e2e tests in `packages/methodts/src/__tests__/`), this guide shows how to incrementally adopt `@method/testkit`.
+If you have existing methodology tests written against `@methodts/methodts` directly (like the e2e tests in `packages/methodts/src/__tests__/`), this guide shows how to incrementally adopt `@methodts/testkit`.
 
 ## Before: Manual Pattern
 
@@ -29,7 +29,7 @@ import type { Method } from "../method/method.js";
 import type { Methodology } from "../methodology/methodology.js";
 import { evaluateTransition } from "../methodology/transition.js";
 import { runMethodology } from "../runtime/run-methodology.js";
-import { MockAgentProvider } from "@method/methodts";
+import { MockAgentProvider } from "@methodts/methodts";
 import type { WorldState } from "../state/world-state.js";
 
 type TaskState = { ... };
@@ -102,7 +102,7 @@ import {
   worldState, assertHolds, assertRejects, assertRoutesTo,
   assertCoherent, assertCompiles, assertTerminates,
   runMethodologyIsolated, scenario,
-} from "@method/testkit";
+} from "@methodts/testkit";
 
 type TaskState = { ... };
 
@@ -153,7 +153,7 @@ it("runs to completion", async () => {
 
 ## Incremental Adoption
 
-You don't have to migrate everything at once. The testkit is additive — it imports from `@method/methodts` and works alongside existing patterns.
+You don't have to migrate everything at once. The testkit is additive — it imports from `@methodts/methodts` and works alongside existing patterns.
 
 ### Step 1: Replace construction boilerplate
 
@@ -214,7 +214,7 @@ scenario(methodology)
 
 ## What You Keep
 
-- **Predicate definitions** (`check`, `and`, `or`, etc.) — same API, just import from `@method/testkit` instead of `@method/methodts`
+- **Predicate definitions** (`check`, `and`, `or`, etc.) — same API, just import from `@methodts/testkit` instead of `@methodts/methodts`
 - **State type definitions** — unchanged
 - **Test structure** (describe/it blocks) — unchanged
 - **Custom assertions** beyond what the testkit provides — unchanged

@@ -15,7 +15,7 @@ domains_affected: [bridge, pacta]
 **Status:** Implemented (all 4 phases — CognitiveProvider, CycleTrace, CognitivePanel, MemoryViewer)
 **Author:** PO + Lysica
 **Date:** 2026-03-28
-**Packages:** `@method/bridge` (L4), `@method/pacta` (L3)
+**Packages:** `@methodts/bridge` (L4), `@methodts/pacta` (L3)
 **Depends on:** PRD 030 (Cognitive Composition), PRD 031 (Memory Module), PRD 032 (Advanced Patterns), PRD 023 (Bridge Domains)
 **Organization:** Vidtecci — vida, ciencia y tecnologia
 

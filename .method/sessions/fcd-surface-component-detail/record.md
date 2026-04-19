@@ -45,8 +45,8 @@ a formal co-design session extension of the IndexStorePort record.
 /**
  * ComponentDetailPort — Port for full component detail retrieval from an FCA-indexed project.
  *
- * Owner:     @method/fca-index
- * Consumer:  @method/mcp (context_detail tool handler)
+ * Owner:     @methodts/fca-index
+ * Consumer:  @methodts/mcp (context_detail tool handler)
  * Direction: fca-index → mcp (unidirectional)
  * Co-designed: 2026-04-09
  * Status:    frozen
@@ -130,7 +130,7 @@ it('component-detail-engine does not import cli/ or mcp/', () => {
     /from ['"]\.\.\/cli\//.test(content) ||
     /@method\/mcp/.test(content),
   );
-  expect(violations, 'query/ imports cli/ or @method/mcp').toHaveLength(0);
+  expect(violations, 'query/ imports cli/ or @methodts/mcp').toHaveLength(0);
 });
 ```
 

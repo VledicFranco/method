@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Sleep API — standalone function for triggering offline consolidation
  * between sessions.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Vitest cases for the mock executor's RunFlow enrichment (PRD 056 C-4).
  *

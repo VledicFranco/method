@@ -17,7 +17,7 @@
 
 ### Layer 2: WHAT
 
-- Q6 (Solution): Three new components: (1) @method/cluster — L3 package with transport-agnostic cluster protocol (membership, resource reporting, work routing). (2) domains/cluster/ — L2 domain in the bridge that integrates the cluster library with the event bus, pool, and health endpoints. (3) method-ctl — L4 CLI application for cluster management. Phased: Tailscale-backed discovery first, SWIM-lite gossip second, work routing third.
+- Q6 (Solution): Three new components: (1) @methodts/cluster — L3 package with transport-agnostic cluster protocol (membership, resource reporting, work routing). (2) domains/cluster/ — L2 domain in the bridge that integrates the cluster library with the event bus, pool, and health endpoints. (3) method-ctl — L4 CLI application for cluster management. Phased: Tailscale-backed discovery first, SWIM-lite gossip second, work routing third.
 
 - Q7 (Alternatives): See PRD Section 4.
 

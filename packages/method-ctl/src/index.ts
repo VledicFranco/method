@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── method-ctl — CLI Entry Point ────────────────────────────────
 //
 // Parse argv, resolve config, dispatch to command handlers.

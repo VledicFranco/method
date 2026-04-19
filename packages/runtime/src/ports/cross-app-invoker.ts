@@ -1,14 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CrossAppInvoker — transport-free port for cross-app strategy invocation (PRD-067).
  *
  * Frozen (Track A simulator surfaces): 2026-04-15 — see
  * `.method/sessions/fcd-design-prd-067-multi-app-strategy/prd.md` §6.1.
  *
- * Owner:    @method/runtime (defines port)
- * Producer: @method/agent-runtime/cortex (CortexCrossAppInvoker — BLOCKED on
- *           Cortex PRD-080) and @method/runtime (InProcessCrossAppInvoker
+ * Owner:    @methodts/runtime (defines port)
+ * Producer: @methodts/agent-runtime/cortex (CortexCrossAppInvoker — BLOCKED on
+ *           Cortex PRD-080) and @methodts/runtime (InProcessCrossAppInvoker
  *           simulator — shipping in this PR)
- * Consumer: @method/runtime/strategy (DagStrategyExecutor cross-app-invoke node dispatch)
+ * Consumer: @methodts/runtime/strategy (DagStrategyExecutor cross-app-invoke node dispatch)
  *
  * Gates:
  *   - G-BOUNDARY: zero `@cortex/*` imports in this file — only port-local types.
@@ -118,8 +119,8 @@ export interface CrossAppInvokerCapabilities {
 
 /**
  * Transport-free port the strategy DAG executor calls to dispatch a
- * `cross-app-invoke` node. The `@method/runtime` layer knows nothing about
- * Cortex; the adapter in `@method/agent-runtime/cortex` implements this port
+ * `cross-app-invoke` node. The `@methodts/runtime` layer knows nothing about
+ * Cortex; the adapter in `@methodts/agent-runtime/cortex` implements this port
  * by calling `ctx.apps.invoke` (Cortex PRD-080).
  *
  * Implementations (per PRD-067 §6.1):

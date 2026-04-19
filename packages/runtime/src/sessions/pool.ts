@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 import { randomUUID } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -11,7 +12,7 @@ import type { FileSystemProvider } from '../ports/file-system.js';
 import type { EventBus } from '../ports/event-bus.js';
 import type { SessionProviderFactory, SessionProviderOptions, StreamEvent as PortStreamEvent } from '../ports/session-pool.js';
 import { createAgentEventAdapter } from '../event-bus/agent-event-adapter.js';
-import type { AgentProvider } from '@method/pacta';
+import type { AgentProvider } from '@methodts/pacta';
 import { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
@@ -384,11 +385,11 @@ export function createPool(options?: PoolOptions): SessionPool {
   ): Promise<AgentProvider> {
     switch (providerName ?? 'anthropic') {
       case 'anthropic': {
-        const { anthropicProvider } = await import('@method/pacta-provider-anthropic');
+        const { anthropicProvider } = await import('@methodts/pacta-provider-anthropic');
         return anthropicProvider({ model: config.model, toolProvider: config.toolProvider });
       }
       case 'ollama': {
-        const { ollamaProvider } = await import('@method/pacta-provider-ollama');
+        const { ollamaProvider } = await import('@methodts/pacta-provider-ollama');
         const provider = ollamaProvider({
           baseUrl: config.baseUrl ?? process.env.OLLAMA_BASE_URL ?? 'http://chobits:11434',
           model: config.model,
@@ -587,7 +588,7 @@ export function createPool(options?: PoolOptions): SessionPool {
         session = handle as unknown as PtySession;
       } else if (effectiveMode === 'cognitive-agent') {
         // PRD 033: Cognitive agent session — runs reasoning cycle internally
-        const { createProviderAdapter } = await import('@method/pacta');
+        const { createProviderAdapter } = await import('@methodts/pacta');
 
         const tools = createRuntimeToolProvider(effectiveWorkdir);
         const model = llm_config?.model ?? (typeof metadata?.model === 'string' ? metadata.model : undefined);

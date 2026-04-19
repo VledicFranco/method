@@ -21,7 +21,7 @@ The generated TLA+ module encodes:
 ## Usage
 
 ```typescript
-import { compileMethodology } from '@method/methodts';
+import { compileMethodology } from '@methodts/methodts';
 
 const tla = compileMethodology(myMethodology);
 // Write tla.tlaString to a .tla file, then run TLC

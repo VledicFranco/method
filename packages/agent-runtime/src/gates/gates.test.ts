@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD-058 §6.6 / §11 acceptance gates — CI-enforced.
  *
@@ -22,7 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import * as agentRuntime from '../index.js';
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 import { createMethodAgent } from '../create-method-agent.js';
 import { makeMockCtx } from '../test-support/mock-ctx.js';
 import { ConfigurationError, IllegalStateError } from '../errors.js';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Meta-Composer — adaptive cognitive load selection (PRD 032, P2).
  *

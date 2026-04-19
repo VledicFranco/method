@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method fixture: output schema validation retry
  *
@@ -5,7 +6,7 @@
  * invalid output (mock), retry with feedback produces valid output.
  */
 
-import type { Pact } from '@method/pacta';
+import type { Pact } from '@methodts/pacta';
 
 export const METHOD_ID = 'output-schema-retry';
 

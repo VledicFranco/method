@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * SessionStore error taxonomy — PRD-061 / S4 §4.4.
  *

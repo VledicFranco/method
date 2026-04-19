@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD-020: Project Isolation Layer — IsolationValidator
  *

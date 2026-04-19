@@ -1,11 +1,11 @@
-# @method/pacta-provider-ollama
+# @methodts/pacta-provider-ollama
 
-Local Ollama server provider for `@method/pacta`. Implements `AgentProvider` by calling the Ollama REST API — enables offline, private, GPU-accelerated LLM inference without external API calls.
+Local Ollama server provider for `@methodts/pacta`. Implements `AgentProvider` by calling the Ollama REST API — enables offline, private, GPU-accelerated LLM inference without external API calls.
 
 ## Usage
 
 ```typescript
-import { ollamaProvider } from '@method/pacta-provider-ollama';
+import { ollamaProvider } from '@methodts/pacta-provider-ollama';
 
 const provider = ollamaProvider({
   baseUrl: 'http://localhost:11434',
@@ -28,4 +28,4 @@ Use this provider for:
 - SLM experiments (RFC 002, RFC 005) — local fine-tuned models
 - Offline development without API key access
 
-For production methodology execution, prefer `@method/pacta-provider-anthropic` or `@method/pacta-provider-claude-cli`.
+For production methodology execution, prefer `@methodts/pacta-provider-anthropic` or `@methodts/pacta-provider-claude-cli`.

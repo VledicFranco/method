@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Method refinement verification — F1-FTH Definition 8.2.
  *

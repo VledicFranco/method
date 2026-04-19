@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * EventReader — cursor-based historical event replay port.
  *

@@ -12,8 +12,8 @@ Ready-to-use cognitive compositions for common agent profiles. Each preset is a 
 ## Usage
 
 ```typescript
-import { enriched } from '@method/pacta/cognitive/presets';
-import { createCognitiveAgent } from '@method/pacta/cognitive/engine';
+import { enriched } from '@methodts/pacta/cognitive/presets';
+import { createCognitiveAgent } from '@methodts/pacta/cognitive/engine';
 
 const agent = createCognitiveAgent({ composition: enriched, provider });
 ```

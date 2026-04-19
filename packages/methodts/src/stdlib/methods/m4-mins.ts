@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M4_MINS — Method Instantiation method (F1-FTH Definition 6.1).
  *

@@ -16,7 +16,7 @@ Single-wave commission touching three files in two packages:
 | Port | Status | Notes |
 |------|--------|-------|
 | `architecture.test.ts` helpers (`collectTsFiles`, `extractImports`) | PASS | Already in file |
-| `@method/methodts/strategy/dag-types.js` (6 types) | PASS | All 6 confirmed present |
+| `@methodts/methodts/strategy/dag-types.js` (6 types) | PASS | All 6 confirmed present |
 | reports domain files | PASS | Documentation only |
 
 ## Produced Ports

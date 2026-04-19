@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ScheduleClient — minimal slice of ctx.schedule consumed by the runtime.
  *

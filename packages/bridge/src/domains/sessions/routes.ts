@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Session domain HTTP routes — CRUD, channels, event aggregation, shutdown.
  *
@@ -18,10 +19,10 @@
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { SessionPool } from '@method/runtime/sessions';
-import { readMessages } from '@method/runtime/sessions';
-import type { ChannelMessage, SessionChannels } from '@method/runtime/sessions';
-import type { ChannelSink } from '@method/runtime/event-bus';
+import type { SessionPool } from '@methodts/runtime/sessions';
+import { readMessages } from '@methodts/runtime/sessions';
+import type { ChannelMessage, SessionChannels } from '@methodts/runtime/sessions';
+import type { ChannelSink } from '@methodts/runtime/event-bus';
 import type { EventBus } from '../../ports/event-bus.js';
 import { lintGlyphBlocks, buildRepairPrompt, patchResponse } from './glyph-lint.js';
 

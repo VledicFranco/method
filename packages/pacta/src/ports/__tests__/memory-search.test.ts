@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Tests for hybrid search in InMemoryMemory (PRD 031, Phase 4).
  *

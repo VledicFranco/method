@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ConversationAdapter — In-memory ConversationPort implementation for the Build Orchestrator.
  *

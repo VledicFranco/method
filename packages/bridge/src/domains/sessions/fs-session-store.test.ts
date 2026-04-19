@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Unit tests for the FS-backed SessionStore adapter.
  */
@@ -12,15 +13,15 @@ import { createFsSessionStore } from './fs-session-store.js';
 import { NodeFileSystemProvider } from '../../ports/file-system.js';
 
 const createNodeFileSystemProvider = (): NodeFileSystemProvider => new NodeFileSystemProvider();
-import { isSessionStoreError } from '@method/runtime/ports';
+import { isSessionStoreError } from '@methodts/runtime/ports';
 import type {
   Checkpoint,
   PersistedSessionSnapshot as SessionSnapshot,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 import {
   DEFAULT_SESSION_STORE_FIXTURES,
   runSessionStoreConformance,
-} from '@method/runtime/sessions';
+} from '@methodts/runtime/sessions';
 
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), 'fs-session-store-'));

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * IndexStorePort — Internal port over the hybrid SQLite + Lance storage layer.
  *

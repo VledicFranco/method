@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 017: Strategy Pipelines — Retro Generator + Routes Tests (Phase 1d)
  *
@@ -20,8 +21,8 @@ import {
   setRetroGeneratorYaml,
   setRetroWriterFs,
   setStrategyParserYaml,
-} from '@method/runtime/strategy';
-import type { StrategyRetro, StrategyExecutionResult, NodeResult, StrategyDAG, ArtifactBundle } from '@method/runtime/strategy';
+} from '@methodts/runtime/strategy';
+import type { StrategyRetro, StrategyExecutionResult, NodeResult, StrategyDAG, ArtifactBundle } from '@methodts/runtime/strategy';
 import { JsYamlLoader } from '../../ports/yaml-loader.js';
 import { NodeFileSystemProvider } from '../../ports/file-system.js';
 import { setStrategyRoutesPorts } from './strategy-routes.js';

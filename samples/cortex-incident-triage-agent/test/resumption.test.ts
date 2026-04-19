@@ -17,7 +17,7 @@ import {
   UnknownSessionError,
   InMemorySessionStore,
   type Resumption,
-} from '@method/agent-runtime';
+} from '@methodts/agent-runtime';
 import { incidentTriagePactResumable } from '../src/pacts/incident-triage.js';
 import { createMockCtx } from './mock-ctx.js';
 

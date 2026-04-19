@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Verification Types + Check Primitives — PRD 048 Cybernetic Verification Loop.
  *
@@ -10,7 +11,7 @@
  * Check primitives are composable predicates over VerificationState:
  *   fileExists(path) && fileContains(path, /export function handleOrderV2/)
  *
- * Reuses the Predicate composition pattern from @method/methodts Gate<S>.
+ * Reuses the Predicate composition pattern from @methodts/methodts Gate<S>.
  *
  * @see docs/prds/048-cybernetic-verification-loop.md
  * @see docs/rfcs/006-anticipatory-monitoring.md — Part IV (Verification)

@@ -1,20 +1,21 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * FsSubStrategySource — filesystem-backed SubStrategySource port.
  *
- * Implements the SubStrategySource port from @method/methodts. Reads strategy
+ * Implements the SubStrategySource port from @methodts/methodts. Reads strategy
  * YAML files from a project's .method/strategies/ directory, parses them into
  * StrategyDAG objects, and returns null when the ID is not found.
  *
  * Injected with FileSystemProvider (G-PORT compliant). Transport-agnostic:
  * no HTTP, WebSocket, or direct fs imports.
  *
- * PRD-057 / S2 §3.2 / C2: moved from @method/bridge/domains/strategies/
+ * PRD-057 / S2 §3.2 / C2: moved from @methodts/bridge/domains/strategies/
  * (renamed from `BridgeSubStrategySource` → `FsSubStrategySource`).
  */
 
 import { join } from 'node:path';
-import type { SubStrategySource, StrategyDAG } from '@method/methodts/strategy/dag-types.js';
-import { parseStrategyYaml } from '@method/methodts/strategy/dag-parser.js';
+import type { SubStrategySource, StrategyDAG } from '@methodts/methodts/strategy/dag-types.js';
+import { parseStrategyYaml } from '@methodts/methodts/strategy/dag-parser.js';
 import type { FileSystemProvider } from '../ports/file-system.js';
 
 export class FsSubStrategySource implements SubStrategySource {

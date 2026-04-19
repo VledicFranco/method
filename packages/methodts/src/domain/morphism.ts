@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * DomainMorphism<S, T> — Structure-preserving map between domain theories.
  *

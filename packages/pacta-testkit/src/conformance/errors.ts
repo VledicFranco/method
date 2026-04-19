@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Infrastructure-level faults for the conformance runner. Check failures are
  * recorded as fields on {@link ComplianceReport}; these errors are thrown only

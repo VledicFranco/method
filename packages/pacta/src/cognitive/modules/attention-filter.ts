@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Attention Filter — multi-sense event filtering for cognitive agents (PRD 032, P8).
  *

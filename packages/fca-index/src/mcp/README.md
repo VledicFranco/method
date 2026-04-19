@@ -1,7 +1,7 @@
 # mcp/ — Standalone MCP Server
 
 Composition root that exposes the three fca-index context tools over MCP
-stdio — independent of `@method/mcp`.
+stdio — independent of `@methodts/mcp`.
 
 ## Role in the FCA
 
@@ -18,7 +18,7 @@ It does **not** import from `scanner/`, `index-store/`, `query/`, `coverage/`,
 
 ## What it registers
 
-Three MCP tools, matching their counterparts in `@method/mcp` but free of any
+Three MCP tools, matching their counterparts in `@methodts/mcp` but free of any
 coupling to methodology/bridge/strategy/experiment concerns:
 
 | Tool | Port | Purpose |
@@ -59,7 +59,7 @@ As a standalone binary via `npx`:
 Or as a programmatic import (e.g., to compose with additional middleware):
 
 ```typescript
-import '@method/fca-index/mcp';
+import '@methodts/fca-index/mcp';
 ```
 
 The server reads configuration from env:
@@ -88,13 +88,13 @@ Without this, tool invocations are denied even when `context_query` is
 discoverable via `ToolSearch`. This is a Claude Code behaviour, not an
 fca-index constraint — documented here because it affects adoption.
 
-## Relationship to `@method/mcp`
+## Relationship to `@methodts/mcp`
 
-`@method/mcp` still exposes the same three tools via its own copy of the
+`@methodts/mcp` still exposes the same three tools via its own copy of the
 formatters. This standalone server duplicates the rendering logic
 intentionally, to keep the two composition roots independent. When a future
-change benefits from unifying them, `@method/mcp` can import from
-`@method/fca-index/mcp`. Until then, keep the two copies in sync for the
+change benefits from unifying them, `@methodts/mcp` can import from
+`@methodts/fca-index/mcp`. Until then, keep the two copies in sync for the
 formatter rendering contract.
 
 ## Observability

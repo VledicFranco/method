@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Cluster Domain Core ─────────────────────────────────────────
 //
 // Orchestrates the MembershipManager lifecycle within the bridge.
@@ -11,7 +12,7 @@ import {
   type DiscoveryProvider,
   type NetworkProvider,
   type ResourceProvider,
-} from '@method/cluster';
+} from '@methodts/cluster';
 import type { ClusterConfig } from './config.js';
 
 // ── Logger Interface ──────────────────────────────────────────────

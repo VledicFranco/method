@@ -1,15 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * ContextQueryPort — Port for semantic context retrieval from an FCA-indexed project.
  *
- * Owned by @method/fca-index. Consumed by @method/mcp (context_query tool handler).
+ * Owned by @methodts/fca-index. Consumed by @methodts/mcp (context_query tool handler).
  * The consumer sends a natural-language query and receives a ranked list of
  * ComponentContext descriptors — paths, part excerpts, and reliability scores.
  *
  * The agent uses these descriptors to decide which files to read next, eliminating
  * the token overhead of file-search heuristics.
  *
- * Owner:     @method/fca-index
- * Consumer:  @method/mcp
+ * Owner:     @methodts/fca-index
+ * Consumer:  @methodts/mcp
  * Direction: fca-index → mcp (unidirectional)
  * Co-designed: 2026-04-08
  * Status:    frozen

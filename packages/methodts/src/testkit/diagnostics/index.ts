@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * testkit/diagnostics/ — Execution trace inspection and formatting utilities.
  *

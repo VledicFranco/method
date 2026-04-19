@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Eviction Policies — pluggable eviction strategies for partition workspaces.
  *

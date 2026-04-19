@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── Routing Configuration ───────────────────────────────────────
 //
 // Zod-validated weight configuration for the CapacityWeightedRouter.

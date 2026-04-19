@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * `@method/agent-runtime/methodology` — CortexMethodologySource public surface
+ * `@methodts/agent-runtime/methodology` — CortexMethodologySource public surface
  * (PRD-064 / S7).
  */
 

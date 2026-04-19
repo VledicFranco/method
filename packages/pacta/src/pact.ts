@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * The Pact — a typed contract for agent deployment.
  *

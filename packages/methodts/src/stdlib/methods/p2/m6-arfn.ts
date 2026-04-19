@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M6_ARFN — Architecture Refinement Method (M6-ARFN v1.0).
  *

@@ -9,7 +9,9 @@
     "test": "tsx --test \"test/**/*.test.ts\""
   },
   "dependencies": {
-    "@method/agent-runtime": "*",
-    "@method/pacta": "*"
-  }
+    "@methodts/agent-runtime": "*",
+    "@methodts/pacta": "*"
+  },
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo"
 }

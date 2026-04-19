@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Partition Write Adapter — routes module writes through PartitionSystem (PRD 045 S-8).
  *

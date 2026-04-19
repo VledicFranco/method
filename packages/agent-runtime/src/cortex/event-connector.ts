@@ -1,15 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexEventConnector — S6 implementation (PRD-063).
  *
- * Translates `@method/runtime` RuntimeEvent emissions into Cortex
+ * Translates `@methodts/runtime` RuntimeEvent emissions into Cortex
  * `ctx.events` envelopes with manifest-declared topics, clearance
  * metadata, bounded buffer, token-bucket rate limit, back-pressure
  * signalling, and audit dual-write on permanent failures.
  *
  * Contract invariants (enforced by gates):
  *   G-CONNECTOR-RUNTIME-IMPORTS-ONLY — this file imports only from
- *     `@method/runtime/ports` and the local cortex subtree. No
- *     `@method/bridge`, no runtime event-bus internals.
+ *     `@methodts/runtime/ports` and the local cortex subtree. No
+ *     `@methodts/bridge`, no runtime event-bus internals.
  *   G-CONNECTOR-TOPIC-ALLOWLIST — only topics in METHOD_TOPIC_REGISTRY
  *     ever reach `ctx.events.emit`.
  *   G-EVENTS-FIRE-AND-FORGET — `ctx.events.emit` rejections never
@@ -19,10 +20,10 @@
  *
  * Fire-and-forget throughout: publish errors NEVER propagate.
  *
- * ── Why no direct @method/runtime/event-bus import? ──
+ * ── Why no direct @methodts/runtime/event-bus import? ──
  * The connector is an `EventConnector` — a sink registered at the
  * composition root. We consume only the public port interface from
- * `@method/runtime/ports` so this package stays a pure library usable
+ * `@methodts/runtime/ports` so this package stays a pure library usable
  * by any composition (bridge, agent-runtime wrapper, tenant-app boot).
  */
 
@@ -33,7 +34,7 @@ import type {
   EventFilter,
   EventDomain,
   EventSeverity,
-} from '@method/runtime/ports';
+} from '@methodts/runtime/ports';
 
 import type {
   CortexAuditFacade,

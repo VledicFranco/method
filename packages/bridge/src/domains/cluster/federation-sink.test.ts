@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cluster Federation Sink — Tests.
  *
@@ -16,7 +17,7 @@ import {
   FakeResources,
   EventRelay,
   type ClusterNode,
-} from '@method/cluster';
+} from '@methodts/cluster';
 import { ClusterDomain, type ClusterLogger } from './core.js';
 import { ClusterFederationSink } from './federation-sink.js';
 import type { ClusterConfig } from './config.js';

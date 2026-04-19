@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * WebSocketSink — Pushes RuntimeEvents to WebSocket subscribers via WsHub (PRD 026).
  *
@@ -13,9 +14,9 @@
  */
 
 // PRD-057 / S2 §3.4 / C3: EventSink + RuntimeEvent port interfaces live in
-// @method/runtime/ports. WebSocketSink stays in bridge because it depends on
+// @methodts/runtime/ports. WebSocketSink stays in bridge because it depends on
 // @fastify/websocket (transport-bound; S2 §5.1).
-import type { EventSink, RuntimeEvent } from '@method/runtime/ports';
+import type { EventSink, RuntimeEvent } from '@methodts/runtime/ports';
 import type { WsHub, Topic } from '../websocket/hub.js';
 
 // ── Domain → Topic mapping (legacy compatibility) ───────────────

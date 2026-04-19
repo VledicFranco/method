@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * PRD 018: Event Triggers — TriggerRouter (Phase 2a-1 + Phase 2a-3)
  *
@@ -7,7 +8,7 @@
  *
  * Phase 2a-3 additions: WebhookTrigger support, hot reload, management API support.
  *
- * Architectural constraint (DR-03): lives entirely in @method/bridge.
+ * Architectural constraint (DR-03): lives entirely in @methodts/bridge.
  * Invokes POST /strategies/execute via internal HTTP call.
  */
 

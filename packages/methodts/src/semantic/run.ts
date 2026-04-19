@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * runSemantic — Execute a SemanticFn against an AgentProvider.
  *

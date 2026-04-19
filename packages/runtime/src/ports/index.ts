@@ -1,4 +1,5 @@
-// PRD-057 / S2 §3.1: @method/runtime/ports — unified public port surface.
+// SPDX-License-Identifier: Apache-2.0
+// PRD-057 / S2 §3.1: @methodts/runtime/ports — unified public port surface.
 
 // ── File system / YAML / native discovery (interfaces only; Node impls in bridge) ──
 export type { FileSystemProvider, DirEntry, FileStat } from './file-system.js';
@@ -110,7 +111,7 @@ export type {
 // NOTE: `NextAction` from `./continuation-envelope.js` is intentionally
 // NOT re-exported here — it collides with the S4 `NextAction` (checkpoint
 // resume hint) above. Consumers import the envelope-scoped variant via
-// `@method/runtime/ports/continuation-envelope` directly, or as
+// `@methodts/runtime/ports/continuation-envelope` directly, or as
 // `ContinuationNextAction` below.
 export type {
   ContinuationEnvelope,

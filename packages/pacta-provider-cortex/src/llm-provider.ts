@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * CortexLLMProvider — routes pacta `AgentProvider.invoke` through
  * `ctx.llm.complete / structured / embed` per S3 §2 and PRD-059 §6.5.
@@ -5,7 +6,7 @@
  * Single authority for cost + tokens: `ctx.llm` (atomic check-and-reserve).
  * Pacta's `budgetEnforcer` runs in predictive-only mode when this provider
  * is wired, driven by `capabilities().budgetEnforcement === 'native'` —
- * see `@method/pacta` BudgetEnforcerOptions (PRD-059 Wave 1).
+ * see `@methodts/pacta` BudgetEnforcerOptions (PRD-059 Wave 1).
  *
  * Compose-time validation (G-LLM-HANDLERS-PRESENT):
  *   - `ctx.llm` must be defined.
@@ -37,7 +38,7 @@ import type {
   AgentProvider,
   Streamable,
   ProviderCapabilities,
-} from '@method/pacta';
+} from '@methodts/pacta';
 import {
   CortexAdapterComposeError,
   type ComposedAdapter,

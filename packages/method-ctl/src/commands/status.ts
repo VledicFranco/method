@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // ── method-ctl status ───────────────────────────────────────────
 //
 // GET /cluster/state from the default bridge, display unified

@@ -1,5 +1,5 @@
 {
-  "name": "@method/pacta-playground",
+  "name": "@methodts/pacta-playground",
   "version": "0.1.0",
   "description": "Pacta playground — simulated agent evaluation environment",
   "type": "module",
@@ -12,7 +12,10 @@
     "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@method/pacta": "*",
-    "@method/pacta-testkit": "*"
-  }
+    "@methodts/pacta": "*",
+    "@methodts/pacta-testkit": "*"
+  },
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo"
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * cli/commands/ — CLI command runner functions.
  *

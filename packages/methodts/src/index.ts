@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
- * @method/methodts — Typed Methodology SDK
+ * @methodts/methodts — Typed Methodology SDK
  *
  * Makes the formal theory (F1-FTH) executable in TypeScript.
  * See docs/prds/021-methodts.md for the full specification.

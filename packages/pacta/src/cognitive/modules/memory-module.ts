@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Memory Module — retrieves relevant knowledge from memory and writes it to workspace.
  *

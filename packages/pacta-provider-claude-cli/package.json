@@ -1,17 +1,40 @@
 {
-  "name": "@method/pacta-provider-claude-cli",
+  "name": "@methodts/pacta-provider-claude-cli",
   "version": "0.1.0",
   "description": "Claude CLI AgentProvider for Pacta — claude --print/--resume",
-  "type": "module",
-  "main": "dist/index.js",
-  "exports": {
-    ".": "./dist/index.js"
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/pacta-provider-claude-cli"
   },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -b",
     "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "@method/pacta": "*"
-  }
+    "@methodts/pacta": "*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module"
 }

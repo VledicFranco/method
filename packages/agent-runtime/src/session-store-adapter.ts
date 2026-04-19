@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Thin session store adapter — PRD-058 §6.4 D6.
  *

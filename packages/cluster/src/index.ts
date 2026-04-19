@@ -1,4 +1,5 @@
-// ── @method/cluster — Public API ────────────────────────────────
+// SPDX-License-Identifier: Apache-2.0
+// ── @methodts/cluster — Public API ────────────────────────────────
 //
 // Transport-agnostic cluster protocol package (L3). Defines
 // membership state machine, resource reporting, and port interfaces

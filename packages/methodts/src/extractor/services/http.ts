@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * HttpService — Effect Layer for HTTP operations.
  *

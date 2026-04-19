@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * M2_MDIS — Method Discovery from Informal Practice (M2-MDIS v1.0).
  *

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Sliding-window rate limiter — mirrors WebhookConnector's approach
  * (PRD-063 §Architecture, S6 §4.4). Deliberately unsophisticated.

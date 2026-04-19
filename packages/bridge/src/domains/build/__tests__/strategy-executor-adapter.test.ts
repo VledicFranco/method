@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * StrategyExecutorAdapter tests — verifies result mapping, strategy lookup,
  * and failure-path handling without standing up a real AgentProvider chain.
@@ -16,7 +17,7 @@ import type {
   NodeResult,
   ArtifactBundle,
   ArtifactVersion,
-} from '@method/methodts/strategy/dag-types.js';
+} from '@methodts/methodts/strategy/dag-types.js';
 
 // ── Fixtures ──
 

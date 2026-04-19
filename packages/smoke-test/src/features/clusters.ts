@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Cluster registry — 8 clusters across 4 layers.
  *

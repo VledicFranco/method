@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reflector v2 — LLM-based structured post-task reflection module.
  *

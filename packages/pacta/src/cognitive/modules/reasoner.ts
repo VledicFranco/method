@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Reasoner Module — invokes the LLM provider to produce reasoning traces.
  *
