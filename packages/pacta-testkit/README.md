@@ -277,6 +277,47 @@ Peer dependency on `@methodts/agent-runtime` is declared **optional**; the
 conformance subpath uses structural type mirrors (`cortex-types.ts`) so
 non-conformance consumers of the testkit do not need to install it.
 
+## Provider Conformance (`./provider-conformance` subpath)
+
+Reusable row runner for pacta `AgentProvider` implementations. Each
+provider package registers its own conformance row in a test file and
+asserts the row passes — capabilities, oneshot mode, and output
+validation are covered by default.
+
+```typescript
+import {
+  runProviderConformanceRow,
+  type ProviderConformanceRow,
+} from '@methodts/pacta-testkit/provider-conformance';
+
+const row: ProviderConformanceRow<string> = {
+  id: 'pacta-provider-foo',
+  expectedCapabilities: {
+    modes: ['oneshot'],
+    streaming: false,
+    resumable: false,
+    budgetEnforcement: 'client',
+    outputValidation: 'client',
+    toolModel: 'none',
+  },
+  makeProvider: () => fooProvider({ transport: mockTransport }),
+  runOneshot: async () => mockOneshotResult,
+  outputSchema: { parse: (raw) => /* … */ },
+};
+
+const report = await runProviderConformanceRow(row);
+if (!report.passed) throw new Error(JSON.stringify(report, null, 2));
+```
+
+**Registered rows (ship with their provider package):**
+
+| Row id | Provider | Test file |
+|---|---|---|
+| `pacta-provider-claude-agent-sdk` | `@methodts/pacta-provider-claude-agent-sdk` | `src/conformance.test.ts` |
+
+New provider packages should add a row in the same shape so the full
+set is easy to audit from a single table.
+
 ## Development
 
 ```bash
