@@ -47,8 +47,63 @@ import type {
   CortexLlmCtx,
 } from './ctx-types.js';
 
-/** Composed ctx slice this transport requires. */
+/**
+ * Composed ctx slice this transport requires — flat intersection.
+ *
+ * Retained for the legacy `cortexAnthropicTransport` factory (see
+ * `@deprecated` note there). New code should prefer the nested
+ * {@link CortexAnthropicTransportCtx} shape consumed by
+ * {@link cortexAnthropicTransportV2}, which mirrors the nested
+ * `CortexCtx` shape used elsewhere on the Cortex surface.
+ */
 type CortexTransportCtx = CortexLlmCtx & CortexAuditCtx;
+
+/**
+ * Narrow runtime view of `ctx.audit` the transport touches. Structurally
+ * identical to {@link CortexAuditCtx} but retained as a local alias so
+ * the V2 ctx parameter can widen in step with the Cortex facade drift
+ * without affecting legacy call sites.
+ */
+interface CortexAnthropicTransportAuditCtx {
+  event(ev: AuditEvent): Promise<void> | void;
+}
+
+/**
+ * Narrow runtime view of `ctx.llm` the V2 transport touches.
+ *
+ * Deliberately narrower than {@link CortexLlmCtx}: the transport's own
+ * code path (proxy → upstream Anthropic) never invokes
+ * `complete/structured/embed` in either degraded or full mode. The only
+ * methods exercised are `reserve`/`settle` (Cortex O1, duck-typed) and
+ * optionally `registerBudgetHandlers`. Keeping this view narrow lets
+ * both narrow SDK redeclarations
+ * (`@methodts/pacta-provider-cortex.CortexLlmCtx`,
+ *  `@methodts/agent-runtime.CortexLlmFacade`) satisfy the V2 contract
+ * without a structural-typing seam — i.e. without the `unknown as` cast
+ * previously needed in the C-4 sample's `adaptCtx` helper. See the
+ * Wave 3 cleanup note in PR #193.
+ */
+interface CortexAnthropicTransportLlmCtx {
+  reserve?(args: { maxCostUsd: number }): Promise<unknown> | unknown;
+  settle?(handle: unknown, actualCostUsd: number): Promise<void> | void;
+  registerBudgetHandlers?: CortexLlmCtx['registerBudgetHandlers'];
+}
+
+/**
+ * Nested ctx shape consumed by {@link cortexAnthropicTransportV2} — the
+ * harmonised shape that matches `CortexCtx` elsewhere on the Cortex
+ * surface (`ctx.llm.*`, `ctx.audit.*`). Prefer this over the legacy
+ * flat-intersection factory.
+ *
+ * The member shapes are the narrow runtime views the transport actually
+ * exercises; both `@methodts/pacta-provider-cortex`'s `CortexLlmCtx` and
+ * `@methodts/agent-runtime`'s `CortexLlmFacade` structurally satisfy
+ * {@link CortexAnthropicTransportLlmCtx} without drift.
+ */
+export interface CortexAnthropicTransportCtx {
+  readonly llm: CortexAnthropicTransportLlmCtx;
+  readonly audit: CortexAnthropicTransportAuditCtx;
+}
 
 /** Optional `log` facade — passed through for diagnostics. */
 interface CortexLogShape {
@@ -417,6 +472,11 @@ function isBudgetExceededError(err: unknown): boolean {
  *
  * Each `setup()` call boots an independent localhost HTTP proxy. Safe
  * to call concurrently from multiple agent invocations.
+ *
+ * @deprecated Use {@link cortexAnthropicTransportV2} with the nested
+ *   `{ llm, audit }` ctx shape. Will be removed in 1.0. This overload
+ *   retained for backward compatibility with consumers wired against
+ *   the Wave 0 flat-intersection surface.
  */
 export function cortexAnthropicTransport(
   ctx: CortexTransportCtx,
@@ -512,6 +572,62 @@ export function cortexAnthropicTransport(
       };
     },
   };
+}
+
+/**
+ * Produce a Cortex-aware AnthropicSdkTransport from the nested
+ * `{ llm, audit }` ctx shape — the harmonised surface that mirrors
+ * `CortexCtx` elsewhere.
+ *
+ * Each `setup()` call boots an independent localhost HTTP proxy. Safe
+ * to call concurrently from multiple agent invocations.
+ *
+ * Implementation-wise this is a thin wrapper: it flattens the nested
+ * ctx into the intersection shape the legacy factory accepts, taking
+ * care to preserve the optional `reserve/settle` methods (Cortex O1)
+ * via duck-typing so the existing `hasReserveSettle` check continues
+ * to work.
+ */
+export function cortexAnthropicTransportV2(
+  ctx: CortexAnthropicTransportCtx,
+  config: CortexAnthropicTransportConfig,
+): AnthropicSdkTransport {
+  // Flatten nested → intersection. The legacy factory's ctx parameter
+  // type insists on `complete/structured/embed` (PRD-068 surface), but
+  // the transport's runtime path never calls them — only
+  // `reserve`/`settle` (Cortex O1, duck-typed) and `event`. Provide
+  // throwing stubs for the unused slots so the type system is happy
+  // and a programmer error (direct ctx.complete call from the
+  // transport internals) would surface loudly rather than silently.
+  const llm = ctx.llm;
+  const audit = ctx.audit;
+  const llmWithReserve = llm as Partial<CortexLlmCtxWithReserve>;
+  const throwNotUsed = (name: string) => (): never => {
+    throw new Error(
+      `[cortexAnthropicTransportV2] ctx.llm.${name} should not be ` +
+        'invoked — the transport forwards directly to upstream Anthropic.',
+    );
+  };
+  const flat: CortexTransportCtx & Partial<CortexLlmCtxWithReserve> = {
+    complete: throwNotUsed('complete') as CortexLlmCtx['complete'],
+    structured: throwNotUsed('structured') as CortexLlmCtx['structured'],
+    embed: throwNotUsed('embed') as CortexLlmCtx['embed'],
+    event: audit.event.bind(audit),
+  };
+  if (llm.registerBudgetHandlers) {
+    flat.registerBudgetHandlers = llm.registerBudgetHandlers.bind(
+      llm as unknown as CortexLlmCtx,
+    );
+  }
+  if (
+    typeof llmWithReserve.reserve === 'function' &&
+    typeof llmWithReserve.settle === 'function'
+  ) {
+    flat.reserve = llmWithReserve.reserve.bind(llm);
+    flat.settle = llmWithReserve.settle.bind(llm);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- internal delegation is intentional
+  return cortexAnthropicTransport(flat, config);
 }
 
 // ── Per-request handler ──────────────────────────────────────────

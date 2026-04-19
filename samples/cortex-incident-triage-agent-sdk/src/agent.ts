@@ -15,7 +15,7 @@
  *   createMethodAgent
  *     └─ tokenExchange  →  audit  →  budgetEnforcer(predictive)  →  outputValidator
  *           └─ claudeAgentSdkProvider
- *                 └─ cortexAnthropicTransport       (HTTP proxy on 127.0.0.1)
+ *                 └─ cortexAnthropicTransportV2     (HTTP proxy on 127.0.0.1)
  *                       └─ ctx.llm.reserve/.settle  (degraded: skip until Cortex O1)
  *                       └─ ctx.audit.event          (per-turn transport audit)
  *                       └─ upstream Anthropic API   (real fetch)
@@ -38,10 +38,8 @@ import {
 } from '@methodts/agent-runtime';
 import { claudeAgentSdkProvider } from '@methodts/pacta-provider-claude-agent-sdk';
 import {
-  cortexAnthropicTransport,
+  cortexAnthropicTransportV2,
   type CortexAnthropicTransportConfig,
-  type CortexAuditCtx,
-  type CortexLlmCtx,
 } from '@methodts/pacta-provider-cortex';
 
 import { incidentTriagePact } from './pacts/incident-triage.js';
@@ -57,65 +55,13 @@ export interface AgentRunResult {
   readonly stopReason: MethodAgentResult<TriageOutput>['stopReason'];
 }
 
-// ── adaptCtx — nested CortexCtx → flat ctx the transport needs ───
+// ── ctx flows straight through to the transport ──────────────────
 //
-// The C-2 transport's ctx parameter was frozen as a flat
-// `CortexLlmCtx & CortexAuditCtx` intersection (i.e. `complete`,
-// `structured`, `embed`, `event` co-located on a single object) per the
-// Wave 0 deviation noted in PR #193. The `createMethodAgent` factory's
-// public surface uses the **nested** `CortexCtx` shape
-// (`ctx.llm.complete`, `ctx.audit.event`, ...). This helper bridges the
-// two without changing either contract.
-//
-// Two structural-typing wrinkles forced a controlled cast at the seam:
-//   1. `@methodts/agent-runtime`'s `CortexLlmFacade.complete` has an
-//      open `[k: string]: unknown` index signature on its request type;
-//      `@methodts/pacta-provider-cortex`'s `CortexLlmCtx.complete` has a
-//      sealed `CompletionRequest`. Each is the **deliberate narrow**
-//      shape its package's consumer relies on — see the gate comment in
-//      `pacta-provider-cortex/src/ctx-types.ts`.
-//   2. The transport requires `structured` and `embed`; the runtime
-//      facade marks them optional. We provide throwing stubs because the
-//      transport's code path here (proxy → upstream Anthropic) never
-//      calls them in degraded mode.
-//
-// Both packages flow into a real Cortex `ctx` at runtime, so the cast is
-// sound; the structural mismatch is purely a type-system seam between
-// two narrow re-declarations of the same upstream surface.
-//
-// When the C-2 ctx shape is harmonised with `CortexCtx` (a Wave 3
-// cleanup PRD), this helper collapses to `(ctx) => ctx.llm` — type cast
-// gone.
-
-type CortexTransportCtx = CortexLlmCtx & CortexAuditCtx;
-
-function adaptCtx(ctx: CortexCtx): CortexTransportCtx {
-  if (!ctx.llm) {
-    throw new Error('adaptCtx: ctx.llm is required by the SDK transport');
-  }
-  if (!ctx.audit) {
-    throw new Error('adaptCtx: ctx.audit is required by the SDK transport');
-  }
-  const llm = ctx.llm;
-  const audit = ctx.audit;
-  // Build a duck-typed flat object. Cast at the narrow seam — see
-  // header comment for why this is sound.
-  const flat = {
-    complete: llm.complete.bind(llm),
-    structured:
-      llm.structured?.bind(llm) ??
-      (async () => {
-        throw new Error('ctx.llm.structured not provided');
-      }),
-    embed:
-      llm.embed?.bind(llm) ??
-      (async () => {
-        throw new Error('ctx.llm.embed not provided');
-      }),
-    event: audit.event.bind(audit),
-  };
-  return flat as unknown as CortexTransportCtx;
-}
+// Wave 3 cleanup (C-4 follow-up): the transport's ctx parameter has
+// been harmonised with the nested `CortexCtx` shape used elsewhere.
+// `cortexAnthropicTransportV2` accepts `{ llm, audit }` directly, so
+// the previous `adaptCtx` helper (and its `unknown as` cast at the
+// flat-intersection seam) has been removed.
 
 // ── Tenant entry — createIncidentTriageAgent ─────────────────────
 
@@ -167,10 +113,13 @@ export function createIncidentTriageAgent(
   const provider =
     options.providerOverride ??
     claudeAgentSdkProvider({
-      transport: cortexAnthropicTransport(adaptCtx(ctx), {
-        handlers: options.transportHandlers ?? DEFAULT_TRANSPORT_HANDLERS,
-        appId: ctx.app.id,
-      }),
+      transport: cortexAnthropicTransportV2(
+        { llm: ctx.llm, audit: ctx.audit },
+        {
+          handlers: options.transportHandlers ?? DEFAULT_TRANSPORT_HANDLERS,
+          appId: ctx.app.id,
+        },
+      ),
     });
 
   return createMethodAgent({
