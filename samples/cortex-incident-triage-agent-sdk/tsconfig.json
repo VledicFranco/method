@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["src", "test"],
+  "references": [
+    { "path": "../../packages/pacta" },
+    { "path": "../../packages/agent-runtime" },
+    { "path": "../../packages/pacta-provider-claude-agent-sdk" },
+    { "path": "../../packages/pacta-provider-cortex" }
+  ]
+}
