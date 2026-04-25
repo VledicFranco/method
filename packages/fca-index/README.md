@@ -65,6 +65,40 @@ for (const component of result.results) {
 }
 ```
 
+### Language support (v0.4.0+)
+
+By default, the scanner detects TypeScript components only. To scan a polyglot
+repo, list the language profiles you need in `.fca-index.yaml`:
+
+```yaml
+# .fca-index.yaml
+languages:
+  - typescript
+  - scala
+  - python
+```
+
+Five built-in profiles ship with v0.4.0: `typescript` (default), `scala`, `python`, `go`,
+and `markdown-only`. Each profile drives file/dir → FCA part classification and component
+qualification rules for one ecosystem. Active profiles are unioned: a directory qualifies
+as a component if any active profile considers it one; a file is classified by the first
+profile rule that matches.
+
+Programmatic SDK usage — pass `LanguageProfile[]` directly when you have a custom profile
+or want to override `.fca-index.yaml`:
+
+```typescript
+import { createDefaultFcaIndex, scalaProfile, typescriptProfile } from '@methodts/fca-index';
+
+const fca = await createDefaultFcaIndex({
+  projectRoot,
+  voyageApiKey,
+  languages: [typescriptProfile, scalaProfile],
+});
+```
+
+For authoring custom profiles, see Guide 40 — fca-index Language Profiles.
+
 ## Public API
 
 ### Factory functions
@@ -102,6 +136,8 @@ interface FcaIndex {
 | `ComponentContext` | Ranked result: path, level, parts, relevanceScore, coverageScore |
 | `ComponentPart` | One FCA part: which part, file path, optional excerpt |
 | `CoverageReport` | Full coverage analysis: summary, mode, per-component breakdown |
+| `LanguageProfile` _(v0.4.0+)_ | Declarative spec for how the scanner detects FCA parts in one language ecosystem |
+| `FilePatternRule` _(v0.4.0+)_ | One filename → `FcaPart` rule used inside `LanguageProfile.filePatterns` |
 
 ### Configuration (`DefaultFcaIndexConfig`)
 
@@ -114,6 +150,7 @@ interface FcaIndex {
 | `indexDir` | `string` | `'.fca-index'` | Directory for SQLite + Lance files (relative to projectRoot) |
 | `embeddingModel` | `string` | `'voyage-3-lite'` | Voyage embedding model |
 | `embeddingDimensions` | `number` | `512` | Embedding vector dimensions |
+| `languages` _(v0.4.0+)_ | `LanguageProfile[]` | `[typescriptProfile]` | Active language profiles. For built-in by name, set `languages:` in `.fca-index.yaml`. |
 
 ## Testkit
 

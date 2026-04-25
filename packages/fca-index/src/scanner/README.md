@@ -1,30 +1,53 @@
 # Scanner Domain — @methodts/fca-index
 
-The scanner domain walks a project's source tree and produces `ScannedComponent[]` — a list of
-FCA components with their detected parts, coverage scores, and documentation text.
+The scanner domain walks a project's source tree and produces `ScannedComponent[]` — a list
+of FCA components with their detected parts, coverage scores, and documentation text.
 
-## FCA Part Detection Heuristics
+## FCA Part Detection — Profile-Driven (v0.4.0+)
 
-Each file in a component directory is matched against these rules, in order.
-**First matching rule wins** — a file satisfies at most one part.
+Since v0.4.0, the rules that decide which file or subdirectory satisfies which FCA part
+are NOT hardcoded — they come from one or more `LanguageProfile`s passed to the scanner.
 
-| File Pattern | FCA Part |
+```
+ProjectScanner ─uses─▶ FcaDetector ─dispatches─▶ LanguageProfile.filePatterns
+                                                  LanguageProfile.subdirPatterns
+                                                  LanguageProfile.componentRule
+```
+
+A `LanguageProfile` (defined in `profiles/types.ts`) carries five things:
+
+| Field | Purpose |
 |---|---|
-| `README.md`, `*.md` (excluding test files) | `documentation` |
-| `index.ts` with `export` keywords | `interface` |
-| `ports/` subdirectory (any `.ts` file) | `port` |
-| `*port.ts`, `*.port.ts`, `*-port.ts` | `port` |
-| `*.test.ts`, `*.spec.ts`, `*.contract.test.ts` | `verification` |
-| `observability/` subdirectory | `observability` |
-| `*.metrics.ts`, `*.observability.ts` | `observability` |
-| `arch/` subdirectory | `architecture` |
-| `architecture.ts` | `architecture` |
-| `domain/` subdirectory | `domain` |
-| `*-domain.ts` | `domain` |
-| Any `.ts` file in a subdirectory | `boundary` |
+| `sourceExtensions` | File extensions for source files (e.g. `['.ts']`, `['.scala']`). Drives boundary detection + L1 single-file detection. |
+| `packageMarkers` | Files whose presence at a directory root marks it as L3 (e.g. `package.json`, `build.sbt`). |
+| `filePatterns` | Ordered `RegExp → FcaPart` rules applied to every file. First match across all active profiles wins per file. |
+| `subdirPatterns` | `dirName → FcaPart` rules. A direct child directory whose name matches contributes the corresponding part. |
+| `componentRule` | `interfaceFile?` (e.g. `index.ts`, `package.scala`, `__init__.py`, `doc.go`) and `minSourceFiles` for component qualification. |
+| `extractInterfaceExcerpt?` / `extractDocBlock?` | Optional language-specific extractors used by `DocExtractor`. Defaults to a generic first-600-chars excerpt when absent. |
 
-Subdirectory-based rules (ports/, observability/, arch/, domain/) are evaluated using the first
-`.ts` file found in that subdirectory as the representative `filePath`.
+Active profiles are passed as the optional 4th constructor argument to `ProjectScanner`
+(and 2nd argument to `FcaDetector`/`DocExtractor`). When omitted, the default is
+`[typescriptProfile]` — preserving v0.3.x behavior bit-for-bit.
+
+### TypeScript profile rules (default — same as v0.3.x)
+
+| File / Subdir | FCA Part |
+|---|---|
+| `README.md`, `*.md` (excluding `*.test.md`) | `documentation` |
+| `index.ts` (with `export` keyword) | `interface` |
+| `*.test.ts`, `*.spec.ts`, `*.contract.test.ts` | `verification` |
+| `architecture.ts` | `architecture` |
+| `*.metrics.ts`, `*.observability.ts` | `observability` |
+| `*port.ts` (incl. `*.port.ts`, `*-port.ts`) | `port` |
+| `*-domain.ts` | `domain` |
+| `ports/` subdirectory | `port` |
+| `observability/` subdirectory | `observability` |
+| `arch/` subdirectory | `architecture` |
+| `domain/` subdirectory | `domain` |
+| Any subdirectory containing source files | `boundary` |
+
+For other built-in profiles (Scala, Python, Go, markdown-only) and for authoring custom
+profiles, see **Guide 40 — fca-index Language Profiles**.
 
 ## ScannedComponent Type
 
@@ -58,53 +81,71 @@ interface ScannedComponent {
 
 ## Level Detection Logic
 
-Each candidate directory is assigned an FCA level using these rules (checked in order):
+Level is decided per directory using the union of all active profiles:
 
-1. **L3** — directory contains a `package.json` file (is a package)
-2. **L2** — directory is named `src/` AND contains `index.ts`
-3. **L1** — directory contains exactly 1 TypeScript file and no subdirectories
-4. **L2** — otherwise (default for well-structured components)
+1. **L3** — directory contains any active profile's `packageMarkers` entry
+   (e.g. `package.json` for TS, `build.sbt` / `*.sbt` for Scala, `pyproject.toml` /
+   `setup.py` / `setup.cfg` for Python, `go.mod` / `go.sum` for Go).
+2. **L2** — directory is named `src/` AND contains an interface file from any active profile
+   (`index.ts`, `package.scala`, `__init__.py`, `doc.go`).
+3. **L1** — directory contains exactly 1 source file (any active extension) and no subdirectories.
+4. **L2** — otherwise (default for well-structured components).
 
 ## How to Use ProjectScanner
-
-ProjectScanner requires constructor injection of three dependencies:
 
 ```typescript
 import { ProjectScanner } from './project-scanner.js';
 import { FcaDetector } from './fca-detector.js';
 import { CoverageScorer } from './coverage-scorer.js';
+import { typescriptProfile, scalaProfile } from './profiles/index.js';
 import type { FileSystemPort } from '../ports/internal/file-system.js';
 
 // Provide a FileSystemPort implementation (e.g., NodeFileSystem for production)
 const fs: FileSystemPort = new NodeFileSystem();
 
+// Default — TypeScript only
 const scanner = new ProjectScanner(
   fs,
-  new FcaDetector(fs),
+  new FcaDetector(fs),                     // implicit [typescriptProfile]
   new CoverageScorer(),
 );
 
-const components = await scanner.scan({
+// Polyglot — TypeScript + Scala
+const polyglot = new ProjectScanner(
+  fs,
+  new FcaDetector(fs, [typescriptProfile, scalaProfile]),
+  new CoverageScorer(),
+  [typescriptProfile, scalaProfile],
+);
+
+const components = await polyglot.scan({
   projectRoot: '/path/to/project',
-  sourcePatterns: ['src/**', 'packages/*/src/**'],  // glob patterns
-  requiredParts: ['interface', 'documentation'],     // for coverage scoring
+  sourcePatterns: ['src/**', 'modules/**'],
+  requiredParts: ['interface', 'documentation'],
   excludePatterns: [],
 });
 ```
+
+In production, use the `createFcaIndex` / `createDefaultFcaIndex` factories from the
+package root — they handle the wiring and resolve `languages: [...]` from
+`.fca-index.yaml` automatically.
 
 ### ProjectScanConfig
 
 | Field | Default | Description |
 |---|---|---|
 | `projectRoot` | (required) | Absolute path to project root |
-| `sourcePatterns` | `['src/**', 'packages/*/src/**']` | Glob patterns for source trees |
-| `excludePatterns` | `[]` | Patterns to exclude |
+| `sourcePatterns` | TS-only: `['src/**', 'packages/*/src/**']`; polyglot: also `'modules/**', 'apps/**'` | Glob patterns for source trees |
+| `excludePatterns` | `[]` | Patterns to exclude (in addition to TS test/dts excludes) |
 | `requiredParts` | `['interface', 'documentation']` | Parts required for 100% coverage |
 | `coverageThreshold` | `0.8` | Production mode graduation threshold |
+| `languages` | `undefined` | Names of built-in profiles to apply (e.g. `['typescript', 'scala']`). Defaults to `['typescript']` when absent. |
 
 ## Testing
 
 Scanner code uses `InMemoryFileSystem` for unit tests — no real filesystem access required.
+On-disk fixtures live under `packages/fca-index/tests/fixtures/sample-fca-{lang}/` and are
+exercised by `fixtures-scan.test.ts` against the real `NodeFileSystem`.
 
 ```typescript
 import { InMemoryFileSystem } from './test-helpers/in-memory-fs.js';
@@ -115,8 +156,9 @@ const fs = new InMemoryFileSystem({
 });
 ```
 
-See `fca-detector.test.ts`, `doc-extractor.test.ts`, `coverage-scorer.test.ts`, and
-`project-scanner.test.ts` for full test coverage.
+See `fca-detector.test.ts`, `doc-extractor.test.ts`, `coverage-scorer.test.ts`,
+`project-scanner.test.ts`, `profiles/profiles.test.ts`, `polyglot-scan.test.ts`, and
+`fixtures-scan.test.ts` for full coverage.
 
 ## Architecture Constraint (G-PORT-SCANNER)
 

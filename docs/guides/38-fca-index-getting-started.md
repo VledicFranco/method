@@ -266,3 +266,25 @@ excludePatterns:
 | `indexDir` | `string` | `'.fca-index'` | Index storage directory (relative to project root) |
 | `sourcePatterns` | `string[]` | `['src/**', 'packages/*/src/**', ...]` | Glob patterns for FCA source trees |
 | `excludePatterns` | `string[]` | `[]` | Project-specific exclusions |
+| `languages` _(v0.4.0+)_ | `string[]` | `['typescript']` | Built-in language profiles to apply. See "Polyglot projects" below. |
+
+## Polyglot projects (v0.4.0+)
+
+By default, the scanner detects TypeScript components only. To scan a project with multiple languages — say a TS frontend and a Scala backend in the same repo — list the language profiles in `.fca-index.yaml`:
+
+```yaml
+# .fca-index.yaml
+languages:
+  - typescript
+  - scala
+```
+
+Or as an inline flow list:
+
+```yaml
+languages: [typescript, scala]
+```
+
+Five built-in profiles ship: `typescript` (default), `scala`, `python`, `go`, and `markdown-only`. Each profile carries language-specific file/dir → FCA part rules and component qualification logic. When multiple profiles are active, the scanner unions their rules — a directory qualifies as a component if any active profile considers it one, and each file is classified by the first profile rule that matches.
+
+For a worked example of authoring a custom `LanguageProfile`, the full per-language rule reference, and migration notes, see **Guide 40 — fca-index Language Profiles**.

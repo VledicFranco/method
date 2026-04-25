@@ -101,4 +101,43 @@ Two factory functions with different tradeoffs:
 | `G-PORT-SCANNER` | `scanner/` must not import from `query/`, `coverage/`, or `index-store/` directly | architecture test (`src/architecture.test.ts`) |
 | `G-PORT-QUERY` | `query/` and `coverage/` must not import from `scanner/` or `cli/` | architecture test |
 | `G-BOUNDARY-CLI` | `cli/` must not be imported by `query/`, `coverage/`, or `scanner/` (infra deps stay at the edge) | architecture test |
+| `G-BOUNDARY-DETAIL` | `query/` must not import from `cli/` or `@methodts/mcp` | architecture test |
+| `G-BOUNDARY-COMPLIANCE` | `compliance/` must not import from `cli/` or `@methodts/mcp` | architecture test |
+| `G-BOUNDARY-MCP` | `mcp/` composition root must not reach into domain internals | architecture test |
 | `G-LAYER` | `@methodts/fca-index` must not import from `@methodts/mcp` or `@methodts/bridge` | package.json + architecture test |
+| `G-PORT-OBSERVABILITY` | Domain code must not write to `process.stderr` directly — use `ObservabilityPort` | architecture test |
+
+## Language profiles (v0.4.0+)
+
+The scanner is parameterised by an ordered list of `LanguageProfile`s. A profile is a pure-data record describing one language ecosystem:
+
+| Field | Purpose |
+|---|---|
+| `sourceExtensions` | File extensions for source files (drives boundary + L1 detection). |
+| `packageMarkers` | Files that mark a directory as L3 (`package.json`, `build.sbt`, `pyproject.toml`, `go.mod`, …). |
+| `filePatterns` | Ordered `RegExp → FcaPart` rules — first match wins per file. |
+| `subdirPatterns` | `dirName → FcaPart` rules for child directories. |
+| `componentRule` | `interfaceFile?` + `minSourceFiles` for component qualification. |
+| `extractInterfaceExcerpt?` / `extractDocBlock?` | Language-specific extractors for the embedding doc text. |
+
+Five built-in profiles ship in v0.4.0: `typescript` (default — preserves v0.3.x behavior), `scala`, `python`, `go`, `markdown-only`. They're exposed via the public surface as `BUILT_IN_PROFILES`, individual exports (`typescriptProfile`, `scalaProfile`, …), and the runtime resolver `resolveLanguageProfiles(names)`.
+
+The flow:
+
+```
+.fca-index.yaml ─┐                                    ┌─▶ FcaDetector
+  languages:     ├─▶ DefaultManifestReader            │
+    - typescript │      │                             │
+    - scala      │      ▼                             │
+                 │   ProjectScanConfig.languages ──┐  │
+                 │      (string[])                 │  │
+FcaIndexConfig.  │      │                          ▼  │
+languages: ──────┼──▶ resolveLanguageProfiles ─▶ effective: LanguageProfile[]
+  (LP[])         │                                    │
+                 ▼                                    └─▶ ProjectScanner
+            createFcaIndex                                (uses union for level/qualification)
+```
+
+When both YAML and programmatic `languages` are set, the programmatic list comes first; the YAML-resolved profiles are appended.
+
+The `LanguageProfile` shape is **frozen** as of v0.4.0 — the same discipline as the external ports. Adding a built-in profile requires shipping a fixture under `tests/fixtures/sample-fca-<lang>/` and a unit-test entry in `profiles/profiles.test.ts`.
