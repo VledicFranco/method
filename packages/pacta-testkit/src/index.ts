@@ -70,3 +70,18 @@ export type {
   ProviderConformanceRow,
   ProviderConformanceReport,
 } from './provider-conformance/index.js';
+
+// Diagnostic helpers (PRD 059)
+export {
+  describeModule,
+  describeSignals,
+  describeWorkspace,
+  diffStates,
+  signalSummary,
+  describeTrace,
+} from './diagnostics.js';
+export type { DescribableTrace } from './diagnostics.js';
+
+// TestCycleRunner — module-driver with trace collection (PRD 059)
+export { TestCycleRunner } from './test-cycle-runner.js';
+export type { TestCycleTrace } from './test-cycle-runner.js';
