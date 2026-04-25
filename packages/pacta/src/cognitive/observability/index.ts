@@ -11,5 +11,8 @@
 export { TraceAssembler } from './assembler.js';
 export { TraceRingBuffer } from './ring-buffer.js';
 export type { TraceRingBufferOptions } from './ring-buffer.js';
-export { SqliteTraceStore } from './sqlite-store.js';
-export type { SqliteTraceStoreOptions } from './sqlite-store.js';
+
+// SqliteTraceStore lives in @methodts/pacta-trace-sqlite (sibling package).
+// Pacta's G-PORT gate forbids native deps in the framework package, so the
+// SQLite implementation is isolated to its own package. Import path:
+//   import { SqliteTraceStore } from '@methodts/pacta-trace-sqlite';

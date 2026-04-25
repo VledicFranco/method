@@ -1,0 +1,44 @@
+{
+  "name": "@methodts/pacta-trace-sqlite",
+  "version": "0.1.0",
+  "description": "SQLite-backed TraceStore for the @methodts/pacta hierarchical trace pipeline (PRD 058)",
+  "license": "Apache-2.0",
+  "author": "Francisco Aramburo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VledicFranco/method.git",
+    "directory": "packages/pacta-trace-sqlite"
+  },
+  "homepage": "https://github.com/VledicFranco/method#readme",
+  "bugs": {
+    "url": "https://github.com/VledicFranco/method/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "tsx --test \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@methodts/pacta": "*",
+    "better-sqlite3": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module"
+}

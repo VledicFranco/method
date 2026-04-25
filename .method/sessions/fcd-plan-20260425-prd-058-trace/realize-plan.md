@@ -415,6 +415,7 @@ status: pending
 Total: 5 commissions, 4 waves (including Wave 0)
 Wave 0:  COMPLETE 2026-04-25  (orchestrator)
 Wave 1:  C-1 COMPLETE 2026-04-25, C-2 COMPLETE 2026-04-25, C-3 COMPLETE 2026-04-25
+Wave 2:  C-4 COMPLETE 2026-04-25 (extracted to @methodts/pacta-trace-sqlite due to pacta G-PORT gate)
 Wave 2:  C-4 pending  (depends C-1, C-2, C-3)
 Wave 3:  C-5 pending  (depends C-1, C-2, C-4)
 

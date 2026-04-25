@@ -6,6 +6,7 @@
     { "path": "packages/mcp" },
     { "path": "packages/pacta" },
     { "path": "packages/pacta-testkit" },
+    { "path": "packages/pacta-trace-sqlite" },
     { "path": "packages/pacta-provider-claude-cli" },
     { "path": "packages/pacta-playground" },
     { "path": "packages/pacta-provider-anthropic" },
