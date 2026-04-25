@@ -266,3 +266,46 @@ excludePatterns:
 | `indexDir` | `string` | `'.fca-index'` | Index storage directory (relative to project root) |
 | `sourcePatterns` | `string[]` | `['src/**', 'packages/*/src/**', ...]` | Glob patterns for FCA source trees |
 | `excludePatterns` | `string[]` | `[]` | Project-specific exclusions |
+| `languages` _(v0.4.0+)_ | `string[]` | `['typescript']` | Built-in language profiles to apply. See "Polyglot projects" below. |
+
+## Polyglot projects (v0.4.0+)
+
+By default, the scanner detects TypeScript components only. To scan a project with multiple languages — say a TS frontend and a Scala backend in the same repo — list the language profiles in `.fca-index.yaml`:
+
+```yaml
+# .fca-index.yaml
+languages:
+  - typescript
+  - scala
+```
+
+Or as an inline flow list:
+
+```yaml
+languages: [typescript, scala]
+```
+
+Five built-in profiles ship: `typescript` (default), `scala`, `python`, `go`, and `markdown-only`. Each profile carries language-specific file/dir → FCA part rules and component qualification logic. When multiple profiles are active, the scanner unions their rules — a directory qualifies as a component if any active profile considers it one, and each file is classified by the first profile rule that matches.
+
+### Default `sourcePatterns` differ between TS-only and polyglot
+
+When you don't set `sourcePatterns` in `.fca-index.yaml`, the scanner derives defaults from the active profile list:
+
+| Active profiles | Default `sourcePatterns` |
+|---|---|
+| `[typescript]` (the v0.3.x default) | `['src/**', 'packages/*/src/**']` |
+| Anything else (polyglot or non-TS) | `['src/**', 'packages/**/src/**', 'modules/**', 'apps/**']` |
+
+The polyglot defaults use `packages/**/src/**` (recursive) so nested layouts like `packages/apps/<pkg>/src/**` (common in larger monorepos) are reached without custom config. The implicit `**/node_modules/**` exclude prevents the broader walk from descending into transitive dependencies.
+
+If your repo has source roots outside these patterns (e.g. `services/<svc>/src/**`, `cmd/**`), set `sourcePatterns` explicitly:
+
+```yaml
+languages: [typescript, scala]
+sourcePatterns:
+  - src/**
+  - services/*/src/**
+  - cmd/**
+```
+
+For a worked example of authoring a custom `LanguageProfile`, the full per-language rule reference, file-classification ordering rules, and migration notes, see **Guide 40 — fca-index Language Profiles**.

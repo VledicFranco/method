@@ -13,9 +13,10 @@
  */
 
 import { FcaDetector } from './scanner/fca-detector.js';
-import { DocExtractor } from './scanner/doc-extractor.js';
 import { CoverageScorer } from './scanner/coverage-scorer.js';
 import { ProjectScanner } from './scanner/project-scanner.js';
+import type { LanguageProfile } from './scanner/profiles/index.js';
+import { resolveLanguageProfiles } from './scanner/profiles/index.js';
 import { QueryEngine } from './query/query-engine.js';
 import { ComponentDetailEngine } from './query/component-detail-engine.js';
 import { ComplianceEngine } from './compliance/compliance-engine.js';
@@ -55,6 +56,21 @@ export interface FcaIndexConfig {
    * @default 20
    */
   batchSize?: number;
+
+  /**
+   * Active language profiles for the scanner. Pass `LanguageProfile[]`
+   * directly (built-in or custom). When omitted, the scanner uses the
+   * `typescript` profile only — preserving v0.3.x behavior. To use built-in
+   * profiles by name, set `languages` in `.fca-index.yaml` instead and let
+   * the manifest reader resolve them; this field is the SDK escape hatch
+   * for custom profiles.
+   *
+   * If `ProjectScanConfig.languages` is also set (from `.fca-index.yaml`),
+   * those names are resolved and APPENDED to this list.
+   *
+   * @since v0.4.0
+   */
+  languages?: LanguageProfile[];
 }
 
 export interface FcaIndexPorts {
@@ -101,14 +117,6 @@ export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): Fc
     batchSize = 20,
   } = config;
 
-  // Wire scanner domain
-  const detector = new FcaDetector(fileSystem);
-  // DocExtractor is instantiated internally by FcaDetector, but ProjectScanner
-  // needs it explicitly as well via the detector + scorer combo.
-  const _extractor = new DocExtractor(fileSystem);
-  const scorer = new CoverageScorer();
-  const scanner = new ProjectScanner(fileSystem, detector, scorer);
-
   // Wire query domain
   const queryEngine = new QueryEngine(store, embedder, fileSystem, { projectRoot, coverageThreshold }, observability);
 
@@ -127,6 +135,22 @@ export function createFcaIndex(config: FcaIndexConfig, ports: FcaIndexPorts): Fc
   async function scan(): Promise<{ componentCount: number }> {
     // Read project scan config via the manifest reader port
     const scanConfig = await manifestReader.read(projectRoot);
+
+    // Resolve the effective profile list: programmatic config.languages
+    // (LanguageProfile[]) plus any names from scanConfig.languages
+    // (resolved via the built-in registry). Empty → undefined → scanner
+    // falls back to DEFAULT_LANGUAGES (= [typescript]).
+    const programmatic = config.languages ?? [];
+    const fromManifest = scanConfig.languages
+      ? resolveLanguageProfiles(scanConfig.languages)
+      : [];
+    const effective = [...programmatic, ...fromManifest];
+    const languages = effective.length > 0 ? effective : undefined;
+
+    // Wire scanner domain with the effective profile set
+    const detector = new FcaDetector(fileSystem, languages);
+    const scorer = new CoverageScorer();
+    const scanner = new ProjectScanner(fileSystem, detector, scorer, languages);
 
     // Clear existing entries for this project before re-indexing
     await store.clear(projectRoot);
@@ -179,6 +203,13 @@ export interface DefaultFcaIndexConfig {
   indexDir?: string;        // default: '.fca-index'
   embeddingModel?: string;  // default: 'voyage-3-lite'
   embeddingDimensions?: number; // default: 512
+  /**
+   * Active language profiles for the scanner. See {@link FcaIndexConfig.languages}.
+   * For built-in profiles by name only, prefer the `languages:` field in
+   * `.fca-index.yaml` (resolved automatically by the manifest reader).
+   * @since v0.4.0
+   */
+  languages?: LanguageProfile[];
   /**
    * Observability sink. Defaults to StderrObservabilitySink — structured JSON
    * lines to stderr (matches the pre-port `[fca-index.*]` log format).
@@ -239,7 +270,7 @@ export async function createDefaultFcaIndex(config: DefaultFcaIndexConfig): Prom
   await mkdir(dbPath, { recursive: true });
 
   return createFcaIndex(
-    { projectRoot, coverageThreshold, requiredParts },
+    { projectRoot, coverageThreshold, requiredParts, languages: config.languages },
     { fileSystem: fs, embedder, store, manifestReader, observability },
   );
 }

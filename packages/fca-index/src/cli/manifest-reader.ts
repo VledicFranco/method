@@ -35,19 +35,26 @@ export class DefaultManifestReader implements ManifestReaderPort {
 
   private parseConfig(yaml: string): Partial<ProjectScanConfig> {
     const result: Partial<ProjectScanConfig> = {};
-    let currentArrayKey: 'sourcePatterns' | 'excludePatterns' | 'requiredParts' | null = null;
+    let currentArrayKey:
+      | 'sourcePatterns'
+      | 'excludePatterns'
+      | 'requiredParts'
+      | 'languages'
+      | null = null;
 
     for (const line of yaml.split('\n')) {
       // YAML list item — must check first to preserve array collection state
       const listMatch = line.match(/^\s+-\s+(.+)$/);
       if (listMatch && currentArrayKey) {
-        const value = listMatch[1].trim();
+        const value = stripYamlScalar(listMatch[1].trim());
         if (currentArrayKey === 'sourcePatterns') {
           (result.sourcePatterns ??= []).push(value);
         } else if (currentArrayKey === 'excludePatterns') {
           (result.excludePatterns ??= []).push(value);
         } else if (currentArrayKey === 'requiredParts') {
           (result.requiredParts ??= []).push(value as FcaPart);
+        } else if (currentArrayKey === 'languages') {
+          (result.languages ??= []).push(value);
         }
         continue;
       }
@@ -77,6 +84,12 @@ export class DefaultManifestReader implements ManifestReaderPort {
           case 'indexDir':
             result.indexDir = value;
             break;
+          case 'languages': {
+            // Inline flow form: languages: [typescript, scala]
+            const parsed = parseInlineFlowList(value);
+            if (parsed) result.languages = parsed;
+            break;
+          }
         }
         continue;
       }
@@ -85,7 +98,12 @@ export class DefaultManifestReader implements ManifestReaderPort {
       const arrayKeyMatch = line.match(/^(\w+):\s*$/);
       if (arrayKeyMatch) {
         const key = arrayKeyMatch[1];
-        if (key === 'sourcePatterns' || key === 'excludePatterns' || key === 'requiredParts') {
+        if (
+          key === 'sourcePatterns' ||
+          key === 'excludePatterns' ||
+          key === 'requiredParts' ||
+          key === 'languages'
+        ) {
           currentArrayKey = key;
         }
       }
@@ -93,4 +111,28 @@ export class DefaultManifestReader implements ManifestReaderPort {
 
     return result;
   }
+}
+
+/**
+ * Parse a YAML inline flow list like `[typescript, scala]` into a string[].
+ * Returns null if the value isn't a flow list (caller falls through). Strips
+ * surrounding quotes from each item.
+ */
+function parseInlineFlowList(raw: string): string[] | null {
+  if (!raw.startsWith('[') || !raw.endsWith(']')) return null;
+  const inner = raw.slice(1, -1).trim();
+  if (inner === '') return [];
+  return inner.split(',').map(s => stripYamlScalar(s.trim()));
+}
+
+/** Remove surrounding single or double quotes from a YAML scalar. */
+function stripYamlScalar(value: string): string {
+  if (value.length >= 2) {
+    const first = value[0];
+    const last = value[value.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return value.slice(1, -1);
+    }
+  }
+  return value;
 }

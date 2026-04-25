@@ -2,19 +2,28 @@
 /**
  * FcaDetector — Detects which FCA parts are present in a component directory.
  *
- * Part detection rules (first matching rule wins for each file):
- *   documentation  : README.md, *.md (excluding *.test.ts, *.spec.ts patterns)
- *   interface      : index.ts with export keywords
- *   port           : ports/**​/*.ts, *port.ts, *.port.ts, *-port.ts
- *   verification   : *.test.ts, *.spec.ts, *.contract.test.ts, architecture.test.ts
- *   observability  : *.metrics.ts, *.observability.ts, observability/**
- *   architecture   : architecture.ts, architecture.test.ts, arch/**
- *   domain         : domain/**, *-domain.ts
- *   boundary       : any TS file in a subdirectory (directory presence)
+ * Detection is profile-driven (since v0.4.0). The detector accepts an ordered
+ * list of `LanguageProfile`s and applies their file/subdirectory rules. The
+ * union of detected parts across profiles is returned. Within a single file,
+ * the FIRST matching rule across all profiles wins; profile order matters
+ * only when two profiles have overlapping patterns.
+ *
+ * Default profile: `typescript` — the v0.3.x rule set is implemented as the
+ * `typescriptProfile` constant, so callers that pass no profile or only
+ * `typescript` get pre-v0.4 behavior unchanged.
+ *
+ * Subdirectory rules: a child directory whose name matches a profile's
+ * `subdirPatterns` key contributes the corresponding part. The first source
+ * file (any `sourceExtension` from any profile) inside that subdirectory is
+ * used as the locator. The "boundary" part is implicit: any subdirectory
+ * containing at least one source file (per any active profile) marks the
+ * parent component as having a `boundary` part.
  */
 
-import type { FileSystemPort } from '../ports/internal/file-system.js';
+import type { FileSystemPort, DirEntry } from '../ports/internal/file-system.js';
 import type { FcaPart, ComponentPart } from '../ports/context-query.js';
+import type { LanguageProfile } from './profiles/index.js';
+import { DEFAULT_LANGUAGES } from './profiles/index.js';
 import { DocExtractor } from './doc-extractor.js';
 
 export interface FcaDetectorConfig {
@@ -23,9 +32,22 @@ export interface FcaDetectorConfig {
 
 export class FcaDetector {
   private readonly extractor: DocExtractor;
+  private readonly languages: ReadonlyArray<LanguageProfile>;
+  private readonly sourceExtensions: ReadonlyArray<string>;
 
-  constructor(private readonly fs: FileSystemPort) {
-    this.extractor = new DocExtractor(fs);
+  constructor(
+    private readonly fs: FileSystemPort,
+    languages?: ReadonlyArray<LanguageProfile>,
+  ) {
+    this.languages = languages && languages.length > 0 ? languages : DEFAULT_LANGUAGES;
+    this.extractor = new DocExtractor(fs, this.languages);
+    // Union of all source extensions across active profiles, used to identify
+    // "any source file" for boundary/subdir detection.
+    const exts = new Set<string>();
+    for (const profile of this.languages) {
+      for (const ext of profile.sourceExtensions) exts.add(ext);
+    }
+    this.sourceExtensions = Array.from(exts);
   }
 
   /**
@@ -37,34 +59,33 @@ export class FcaDetector {
     const detectedParts: ComponentPart[] = [];
     const assignedParts = new Set<FcaPart>();
 
-    // We iterate all entries; for each file we determine which part it satisfies
     for (const entry of entries) {
       if (entry.isDirectory) {
-        // Check subdirectory-based parts: ports/, observability/, arch/, domain/
+        // Subdirectory-based parts (ports/, observability/, arch/, domain/ —
+        // exact set comes from the active profiles).
         const dirPart = this.classifySubDir(entry.name);
         if (dirPart && !assignedParts.has(dirPart)) {
-          // Find first TS file in the subdir for the filepath
           const subFiles = await this.safeReadDir(entry.path);
-          const firstTs = subFiles.find(e => !e.isDirectory && e.name.endsWith('.ts'));
-          if (firstTs) {
-            const excerpt = await this.safeExtract(firstTs.path, dirPart);
-            detectedParts.push({ part: dirPart, filePath: firstTs.path, excerpt });
+          const firstSource = this.findFirstSourceFile(subFiles);
+          if (firstSource) {
+            const excerpt = await this.safeExtract(firstSource.path, dirPart);
+            detectedParts.push({ part: dirPart, filePath: firstSource.path, excerpt });
             assignedParts.add(dirPart);
           }
         }
-        // Check boundary: any subdirectory with TS files counts
+        // Boundary: any subdirectory with at least one source file (in any
+        // active profile's extensions) counts.
         if (!assignedParts.has('boundary')) {
           const subFiles = await this.safeReadDir(entry.path);
-          const hasTsFiles = subFiles.some(e => !e.isDirectory && e.name.endsWith('.ts'));
-          if (hasTsFiles) {
-            const firstTs = subFiles.find(e => !e.isDirectory && e.name.endsWith('.ts'))!;
-            const excerpt = await this.safeExtract(firstTs.path, 'boundary');
-            detectedParts.push({ part: 'boundary', filePath: firstTs.path, excerpt });
+          const firstSource = this.findFirstSourceFile(subFiles);
+          if (firstSource) {
+            const excerpt = await this.safeExtract(firstSource.path, 'boundary');
+            detectedParts.push({ part: 'boundary', filePath: firstSource.path, excerpt });
             assignedParts.add('boundary');
           }
         }
       } else {
-        // File-based detection
+        // File-based detection — first matching rule across all profiles wins.
         const part = await this.classifyFile(entry.name, entry.path);
         if (part && !assignedParts.has(part)) {
           const excerpt = await this.safeExtract(entry.path, part);
@@ -77,68 +98,48 @@ export class FcaDetector {
     return detectedParts;
   }
 
+  /**
+   * Find the first part the file matches across all active profiles.
+   * Profile order matters only when two profiles match the same file — the
+   * earlier-listed profile wins.
+   */
   private async classifyFile(name: string, filePath: string): Promise<FcaPart | null> {
-    // Rule order matters — first matching rule wins
-
-    // documentation: README.md or *.md (not test files)
-    if (name === 'README.md' || (name.endsWith('.md') && !name.endsWith('.test.md'))) {
-      return 'documentation';
-    }
-
-    // verification: *.test.ts, *.spec.ts, *.contract.test.ts, architecture.test.ts
-    if (
-      name.endsWith('.test.ts') ||
-      name.endsWith('.spec.ts') ||
-      name.endsWith('.contract.test.ts')
-    ) {
-      return 'verification';
-    }
-
-    // architecture: architecture.ts
-    if (name === 'architecture.ts') {
-      return 'architecture';
-    }
-
-    // observability: *.metrics.ts, *.observability.ts
-    if (name.endsWith('.metrics.ts') || name.endsWith('.observability.ts')) {
-      return 'observability';
-    }
-
-    // port: *port.ts, *.port.ts, *-port.ts
-    if (
-      name.endsWith('port.ts') ||
-      name.endsWith('.port.ts') ||
-      name.endsWith('-port.ts') ||
-      /port\.ts$/.test(name)
-    ) {
-      return 'port';
-    }
-
-    // domain: *-domain.ts
-    if (name.endsWith('-domain.ts')) {
-      return 'domain';
-    }
-
-    // interface: index.ts with export keywords
-    if (name === 'index.ts') {
-      const content = await this.fs.readFile(filePath, 'utf-8');
-      if (/\bexport\b/.test(content)) {
-        return 'interface';
+    for (const profile of this.languages) {
+      for (const rule of profile.filePatterns) {
+        if (!rule.pattern.test(name)) continue;
+        if (rule.condition === 'has-export') {
+          const content = await this.fs.readFile(filePath, 'utf-8');
+          if (!/\bexport\b/.test(content)) continue;
+        }
+        return rule.part;
       }
     }
-
     return null;
   }
 
+  /**
+   * Map a subdirectory name to its FCA part using the active profiles. First
+   * profile whose `subdirPatterns` contains the dir name wins.
+   */
   private classifySubDir(dirName: string): FcaPart | null {
-    if (dirName === 'ports') return 'port';
-    if (dirName === 'observability') return 'observability';
-    if (dirName === 'arch') return 'architecture';
-    if (dirName === 'domain') return 'domain';
+    for (const profile of this.languages) {
+      const part = profile.subdirPatterns[dirName];
+      if (part) return part;
+    }
     return null;
   }
 
-  private async safeReadDir(dir: string) {
+  /**
+   * Locate the first directory entry whose name ends with one of the
+   * union-of-all-active-profiles' source extensions.
+   */
+  private findFirstSourceFile(entries: DirEntry[]): DirEntry | undefined {
+    return entries.find(
+      e => !e.isDirectory && this.sourceExtensions.some(ext => e.name.endsWith(ext)),
+    );
+  }
+
+  private async safeReadDir(dir: string): Promise<DirEntry[]> {
     try {
       return await this.fs.readDir(dir);
     } catch {

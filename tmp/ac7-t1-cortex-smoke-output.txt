@@ -1,0 +1,29 @@
+[ac7] Starting scan of t1-cortex with [typescript, scala] …
+[ac7] Scan complete: 301 components in 18.6s
+[ac7] Total component paths in coverage report: 301
+
+[ac7] Required Scala dirs:
+  PASS  modules/api → modules/api/src/main/scala/com/t1/cortex/api
+  PASS  modules/apps/connectors → modules/apps/connectors/src/main/scala/com/t1/cortex/apps/connectors
+
+[ac7] Required TS dirs:
+  PASS  packages/cortex-app → packages/cortex-app/src
+  PASS  packages/apps/atlas → packages/apps/atlas/src
+
+[ac7] Level breakdown: L3=1, L2=290, total=301
+
+[ac7] Sample component paths (first 12):
+  modules/api/src/main/scala/com/t1/cortex/api
+  modules/api/src/main/scala/com/t1/cortex/api/admin
+  modules/api/src/main/scala/com/t1/cortex/api/admin/auth
+  modules/api/src/main/scala/com/t1/cortex/api/admin/governance
+  modules/api/src/main/scala/com/t1/cortex/api/admin/models
+  modules/api/src/main/scala/com/t1/cortex/api/admin/routes
+  modules/api/src/main/scala/com/t1/cortex/api/admin/services
+  modules/api/src/main/scala/com/t1/cortex/api/admin/validation
+  modules/api/src/main/scala/com/t1/cortex/api/agent
+  modules/api/src/main/scala/com/t1/cortex/api/auth
+  modules/api/src/main/scala/com/t1/cortex/api/auth/mcp
+  modules/api/src/main/scala/com/t1/cortex/api/errors
+
+[ac7] PASS — all required Scala and TS dirs present in the index.
