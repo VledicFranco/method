@@ -94,8 +94,17 @@ async function main(): Promise<void> {
       const { FcaDetector } = await import('../scanner/fca-detector.js');
       const { CoverageScorer } = await import('../scanner/coverage-scorer.js');
       const { ProjectScanner } = await import('../scanner/project-scanner.js');
+      const { resolveLanguageProfiles } = await import('../scanner/profiles/index.js');
 
-      const scanner = new ProjectScanner(fs, new FcaDetector(fs), new CoverageScorer());
+      // Resolve language profiles from the YAML manifest (defaults to
+      // [typescript] when omitted — preserved by the scanner's internal
+      // DEFAULT_LANGUAGES fallback). Without this wiring the CLI silently
+      // ignores the YAML `languages` field and runs in TS-only mode.
+      const languages = scanConfig.languages
+        ? resolveLanguageProfiles(scanConfig.languages)
+        : undefined;
+
+      const scanner = new ProjectScanner(fs, new FcaDetector(fs, languages), new CoverageScorer(), languages);
       const indexer = new Indexer(scanner, embedder, store, manifestReader);
 
       await runScanCommand(indexer, { projectRoot, verbose });
