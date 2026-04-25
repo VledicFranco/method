@@ -123,6 +123,22 @@ export type {
 
 export type { TraceRecord, TraceSink } from './trace.js';
 
+// ── Hierarchical trace types (PRD 058) ──────────────────────────
+
+export type { TraceEvent, TraceEventKind } from './trace-events.js';
+export type {
+  CycleTrace,
+  PhaseTrace,
+  OperationTrace,
+  TraceStats,
+} from './trace-cycle.js';
+export type { TraceStream } from './trace-stream.js';
+export type {
+  TraceStore,
+  TraceStoreQueryOptions,
+  TraceStoreStatsOptions,
+} from './trace-store.js';
+
 // ── Control policy ───────────────────────────────────────────────
 
 export type { ControlPolicy, ControlPolicyViolation } from './control-policy.js';

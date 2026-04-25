@@ -8,6 +8,7 @@
 
 import type { ModuleId, MonitoringSignal } from './module.js';
 import type { TokenUsage } from '../../pact.js';
+import type { TraceEvent } from './trace-events.js';
 
 // ── Trace Record ─────────────────────────────────────────────────
 
@@ -43,7 +44,25 @@ export interface TraceRecord {
 
 // ── Trace Sink ───────────────────────────────────────────────────
 
-/** Port interface for consuming trace records. */
+/**
+ * Port interface for consuming trace records and (optionally) hierarchical
+ * trace events.
+ *
+ * `onTrace` is the legacy flat-record path (preserved for back-compat with
+ * existing callers). `onEvent` is the additive hierarchical path introduced
+ * in PRD 058 — sinks that handle only flat records may leave it `undefined`.
+ * Producers prefer `onEvent` when both are available.
+ *
+ * @see docs/prds/058-hierarchical-trace-observability.md (Surface 3)
+ */
 export interface TraceSink {
+  /** Receive a flat per-step trace record (legacy). */
   onTrace(record: TraceRecord): void;
+
+  /**
+   * Receive a hierarchical trace event (PRD 058). Optional — sinks that
+   * only consume flat records leave this `undefined`. May be sync or
+   * async; producers should not block the cognitive hot path on a slow sink.
+   */
+  onEvent?(event: TraceEvent): void | Promise<void>;
 }

@@ -12,6 +12,10 @@ export * from './algebra/index.js';
 // Engine (cycle + composition + adapter)
 export * from './engine/index.js';
 
+// Observability (PRD 058 — hierarchical trace assembler, ring buffer, SQLite store)
+// Skeletons in Wave 0; implementations in Waves 1-2.
+export * from './observability/index.js';
+
 // Modules are not re-exported from the domain barrel.
 // They are imported directly by consumers who need specific module factories:
 //   import { createReasoner } from '@methodts/pacta/cognitive/modules/reasoner.js';
