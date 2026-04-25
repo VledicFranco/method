@@ -5,9 +5,9 @@ import {
   RecordingContextQueryPort,
   RecordingCoverageReportPort,
   RecordingComponentDetailPort,
-} from '@methodts/fca-index/testkit';
-import { ContextQueryError, CoverageReportError, ComponentDetailError } from '@methodts/fca-index';
-import type { ComponentContext } from '@methodts/fca-index';
+} from '@fractal-co-design/fca-index/testkit';
+import { ContextQueryError, CoverageReportError, ComponentDetailError } from '@fractal-co-design/fca-index';
+import type { ComponentContext } from '@fractal-co-design/fca-index';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

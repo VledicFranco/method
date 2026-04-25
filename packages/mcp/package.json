@@ -30,7 +30,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@methodts/fca-index": "*",
+    "@fractal-co-design/fca-index": "^1.0.0",
     "@methodts/methodts": "*",
     "@modelcontextprotocol/sdk": "^1.10.2",
     "zod": "^3.0.0"

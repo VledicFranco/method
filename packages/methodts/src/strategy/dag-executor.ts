@@ -89,7 +89,7 @@ export interface DagNodeExecutor {
  *
  * A context-load node retrieves relevant FCA components from fca-index
  * before downstream methodology nodes execute. The bridge wires a concrete
- * ContextLoadExecutorImpl that imports @methodts/fca-index. methodts never
+ * ContextLoadExecutorImpl that imports @fractal-co-design/fca-index. methodts never
  * knows about the index internals — only this interface.
  *
  * Owner:    @methodts/methodts (defines contract)

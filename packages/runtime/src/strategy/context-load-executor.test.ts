@@ -22,8 +22,8 @@ import type {
   ContextQueryRequest,
   ContextQueryResult,
   ComponentContext,
-} from '@methodts/fca-index';
-import { ContextQueryError } from '@methodts/fca-index';
+} from '@fractal-co-design/fca-index';
+import { ContextQueryError } from '@fractal-co-design/fca-index';
 import type { ContextLoadNodeConfig } from '@methodts/methodts/strategy/dag-types.js';
 import { ContextLoadError } from '@methodts/methodts/strategy/dag-executor.js';
 
