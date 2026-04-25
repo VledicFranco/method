@@ -21,7 +21,20 @@
  * extension point for new languages. Built-in profiles (`typescript`, `scala`,
  * `python`, `go`, `markdown-only`) ship with the package and can be referenced
  * by name in `.fca-index.yaml`. Custom profiles can be passed programmatically
- * via `FcaIndexConfig.languages`.
+ * via `FcaIndexConfig.languages` — YAML accepts only built-in profile names.
+ *
+ * Stability policy:
+ *   - The `LanguageProfile` shape itself is frozen. Adding or removing fields
+ *     is a breaking change (semver-major).
+ *   - Built-in profile rules MAY be extended (e.g. recognizing a new test-file
+ *     suffix, supporting a new package marker) as semver-minor when the change
+ *     is purely additive — existing classifications are preserved.
+ *   - Built-in rule changes that RECLASSIFY existing files (e.g. moving a
+ *     pattern from `verification` to `domain`) are semver-major because they
+ *     shift downstream query results for projects that index without an
+ *     explicit `languages` config.
+ *   - Adding a new built-in profile to `BUILT_IN_PROFILES` is semver-minor.
+ *   - Removing a built-in profile is semver-major.
  *
  * Status: frozen 2026-04-25.
  */
@@ -57,11 +70,17 @@ export interface LanguageProfile {
   sourceExtensions: string[];
 
   /**
-   * File names that mark a directory as an L3 package root (e.g.
-   * `['package.json']` for npm, `['build.sbt', '*.sbt']` for sbt). Wildcards
-   * are NOT supported — list each marker filename explicitly. For pattern
-   * matching, use the `*.sbt`-style entries: any file whose basename matches
-   * the marker (using simple suffix glob) qualifies.
+   * File names that mark a directory as an L3 package root. Two pattern forms
+   * are supported:
+   *   - **Exact match:** `'package.json'`, `'pom.xml'` match only those exact
+   *     filenames.
+   *   - **Suffix glob:** a leading `*` matches any filename ending in the
+   *     remainder. `'*.sbt'` matches `build.sbt`, `'project.sbt'`, etc.
+   *
+   * No prefix matching, brace expansion, or full glob syntax (e.g.
+   * `'*.{py,pyi}'`, `'requirements*.txt'`) — list each filename explicitly
+   * if multiple exact names apply (e.g. Python uses `['pyproject.toml',
+   * 'setup.py', 'setup.cfg']` as three entries).
    */
   packageMarkers: string[];
 
@@ -81,9 +100,10 @@ export interface LanguageProfile {
    * Rules for whether a directory qualifies as an FCA component for this
    * language.
    *
-   *   `interfaceFile` — when set, a directory containing this exact file
-   *      (case-sensitive) qualifies as a component regardless of source
-   *      file count.
+   *   `interfaceFile` — when set, a directory containing this filename
+   *      qualifies as a component regardless of source file count. Matched
+   *      case-INsensitively so `Index.ts` and `index.ts` both qualify
+   *      (cross-platform safety on Windows + Mac case-preserving filesystems).
    *   `minSourceFiles` — minimum number of source files (matching
    *      `sourceExtensions`) required to qualify.
    */

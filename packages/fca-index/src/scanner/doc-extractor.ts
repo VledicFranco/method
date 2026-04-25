@@ -54,7 +54,7 @@ export class DocExtractor {
     if (
       profile &&
       part === 'interface' &&
-      profile.componentRule.interfaceFile === fileName &&
+      profile.componentRule.interfaceFile?.toLowerCase() === fileName.toLowerCase() &&
       profile.extractInterfaceExcerpt
     ) {
       return profile.extractInterfaceExcerpt(content).slice(0, MAX_EXCERPT).trimEnd();

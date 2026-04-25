@@ -69,10 +69,28 @@ const DEFAULT_EXCLUDE_PATTERNS: string[] = [
   '**/*.test.ts',
   '**/*.spec.ts',
   '**/*.d.ts',
+  // node_modules is universally undesired — added to defaults in v0.4.0 when
+  // polyglot patterns broadened to `packages/**/src/**`. Without this exclude
+  // the broader pattern would walk into every transitive dependency's src.
+  '**/node_modules/**',
 ];
 
 /** Default source patterns when no profiles are active beyond TypeScript. */
 const TS_DEFAULT_SOURCE_PATTERNS = ['src/**', 'packages/*/src/**'];
+
+/**
+ * Default source patterns for polyglot or non-TypeScript-only scans. Uses
+ * `packages/**\/src/**` (recursive) instead of `packages/*\/src/**` so nested
+ * monorepo layouts like `packages/apps/<pkg>/src/**` are reached without
+ * requiring custom `sourcePatterns` config. The `**\/node_modules/**` exclude
+ * in DEFAULT_EXCLUDE_PATTERNS prevents walking into transitive deps.
+ */
+const POLYGLOT_DEFAULT_SOURCE_PATTERNS = [
+  'src/**',
+  'packages/**/src/**',
+  'modules/**',
+  'apps/**',
+];
 
 export class ProjectScanner {
   private readonly languages: ReadonlyArray<LanguageProfile>;
@@ -133,10 +151,13 @@ export class ProjectScanner {
     const isTsOnly =
       this.languages.length === 1 && this.languages[0].name === 'typescript';
     if (isTsOnly) return TS_DEFAULT_SOURCE_PATTERNS;
-    // For polyglot or non-TS scans, broaden the search: `src/**` plus each
-    // common monorepo root. We rely on the per-language `componentRule` to
-    // filter out non-component directories.
-    return ['src/**', 'packages/*/src/**', 'modules/**', 'apps/**'];
+    // For polyglot or non-TS scans, broaden the search to common monorepo
+    // roots. `packages/**\/src/**` (recursive) catches both flat layouts
+    // (`packages/<pkg>/src/**`) and nested ones (`packages/apps/<pkg>/src/**`)
+    // — see PRD 057 §AC-7 for the cortex case. We rely on the per-language
+    // `componentRule` and the default `**\/node_modules/**` exclude to keep
+    // the walk bounded.
+    return POLYGLOT_DEFAULT_SOURCE_PATTERNS;
   }
 
   private async collectCandidateDirs(
@@ -222,8 +243,9 @@ export class ProjectScanner {
     const entries = await this.fs.readDir(dir).catch(() => []);
     for (const profile of this.languages) {
       if (profile.componentRule.interfaceFile) {
+        const target = profile.componentRule.interfaceFile.toLowerCase();
         const has = entries.some(
-          e => !e.isDirectory && e.name === profile.componentRule.interfaceFile,
+          e => !e.isDirectory && e.name.toLowerCase() === target,
         );
         if (has) return true;
       }
@@ -250,13 +272,12 @@ export class ProjectScanner {
 
     // L2: src/ subdirectory containing any profile's interface file.
     const dirName = dir.split('/').pop() ?? '';
-    const hasAnyInterface = this.languages.some(profile =>
-      profile.componentRule.interfaceFile
-        ? entries.some(
-            e => !e.isDirectory && e.name === profile.componentRule.interfaceFile,
-          )
-        : false,
-    );
+    const hasAnyInterface = this.languages.some(profile => {
+      const target = profile.componentRule.interfaceFile?.toLowerCase();
+      return target
+        ? entries.some(e => !e.isDirectory && e.name.toLowerCase() === target)
+        : false;
+    });
     if (dirName === 'src' && hasAnyInterface) return 'L2';
 
     // L1: single source file (any active extension), no subdirs.

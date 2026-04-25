@@ -44,6 +44,14 @@ You can mix any subset: a TS+Scala monorepo uses
 
 ## Selecting profiles
 
+> **Custom profiles are SDK-only.** YAML accepts only built-in profile
+> *names* (string array). To register a custom `LanguageProfile`, pass it to
+> `createFcaIndex`/`createDefaultFcaIndex` programmatically — see
+> [Programmatically](#programmatically) below. There is no YAML syntax for
+> declaring a custom profile because `LanguageProfile` carries function
+> fields (`extractInterfaceExcerpt`, `extractDocBlock`) that are not
+> serializable.
+
 ### Via `.fca-index.yaml`
 
 The simplest route — list built-in profile names. Order matters when two
@@ -88,6 +96,49 @@ await fca.scan();
 
 If both `.fca-index.yaml` and `FcaIndexConfig.languages` are set, the
 programmatic profiles come first and the YAML-resolved ones are appended.
+Concretely:
+
+```typescript
+// .fca-index.yaml has: languages: [typescript]
+// SDK call:
+const fca = await createDefaultFcaIndex({
+  projectRoot, voyageApiKey,
+  languages: [scalaProfile],   // SDK-supplied
+});
+// Effective active profiles, in order: [scalaProfile, typescriptProfile]
+// → Scala rules are tried first when classifying any file the two profiles
+//   both claim.
+```
+
+This means SDK callers always get final say on profile precedence, and YAML
+config is treated as additive defaults. To exclude YAML profiles entirely,
+omit `languages:` from the manifest or pass an explicit empty list in code
+contexts that bypass the manifest.
+
+## File classification ordering
+
+When two active profiles claim the same file (e.g. both `typescript` and
+`scala` include `*.md` in their `filePatterns`), the **first profile in the
+active list wins**. The "active list" is the resolved `LanguageProfile[]`
+after merging programmatic + YAML, in the order described above.
+
+Concrete example — `README.md` in a directory scanned with
+`languages: [typescript, scala]`:
+
+| Profile order | First-matching profile | File classified by |
+|---|---|---|
+| `[typescript, scala]` | typescript | typescript's `*.md` rule |
+| `[scala, typescript]` | scala | scala's `*.md` rule |
+
+For most cases the difference is invisible because both profiles assign
+`README.md` to the `documentation` part. But if you author a custom profile
+that classifies `*.md` differently (e.g. as `architecture` for ADR
+files), profile order determines which classification wins.
+
+After a part has been attributed once for a component (by the first
+matching file), subsequent files matching the same part are ignored — same
+as v0.3.x. So profile order matters at the *file* granularity, not at the
+*part* granularity.
 
 ## Authoring a custom `LanguageProfile`
 

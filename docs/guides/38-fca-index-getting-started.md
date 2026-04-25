@@ -287,4 +287,25 @@ languages: [typescript, scala]
 
 Five built-in profiles ship: `typescript` (default), `scala`, `python`, `go`, and `markdown-only`. Each profile carries language-specific file/dir → FCA part rules and component qualification logic. When multiple profiles are active, the scanner unions their rules — a directory qualifies as a component if any active profile considers it one, and each file is classified by the first profile rule that matches.
 
-For a worked example of authoring a custom `LanguageProfile`, the full per-language rule reference, and migration notes, see **Guide 40 — fca-index Language Profiles**.
+### Default `sourcePatterns` differ between TS-only and polyglot
+
+When you don't set `sourcePatterns` in `.fca-index.yaml`, the scanner derives defaults from the active profile list:
+
+| Active profiles | Default `sourcePatterns` |
+|---|---|
+| `[typescript]` (the v0.3.x default) | `['src/**', 'packages/*/src/**']` |
+| Anything else (polyglot or non-TS) | `['src/**', 'packages/**/src/**', 'modules/**', 'apps/**']` |
+
+The polyglot defaults use `packages/**/src/**` (recursive) so nested layouts like `packages/apps/<pkg>/src/**` (common in larger monorepos) are reached without custom config. The implicit `**/node_modules/**` exclude prevents the broader walk from descending into transitive dependencies.
+
+If your repo has source roots outside these patterns (e.g. `services/<svc>/src/**`, `cmd/**`), set `sourcePatterns` explicitly:
+
+```yaml
+languages: [typescript, scala]
+sourcePatterns:
+  - src/**
+  - services/*/src/**
+  - cmd/**
+```
+
+For a worked example of authoring a custom `LanguageProfile`, the full per-language rule reference, file-classification ordering rules, and migration notes, see **Guide 40 — fca-index Language Profiles**.
