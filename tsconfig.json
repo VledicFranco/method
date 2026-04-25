@@ -13,6 +13,7 @@
     { "path": "packages/pacta-provider-claude-agent-sdk" },
     { "path": "packages/pacta-provider-cortex" },
     { "path": "packages/pacta-provider-ollama" },
+    { "path": "packages/pacta-provider-openai-compat" },
     { "path": "packages/cluster" },
     { "path": "packages/runtime" },
     { "path": "packages/agent-runtime" },
