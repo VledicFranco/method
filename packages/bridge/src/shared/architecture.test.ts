@@ -500,9 +500,9 @@ describe('G-PRD051-TAXONOMY: providers use ProviderError taxonomy from @methodts
   });
 });
 
-// ── G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @methodts/fca-index ──
+// ── G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @fractal-co-design/fca-index ──
 
-describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @methodts/fca-index', () => {
+describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @fractal-co-design/fca-index', () => {
   it('methodts strategy domain does not import fca-index directly', () => {
     const strategyDir = join(METHODTS_SRC, 'strategy');
     const files = collectTsFiles(strategyDir).filter(f => !isTestFile(f));
@@ -510,7 +510,7 @@ describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @methodts/fca-
     for (const file of files) {
       const imports = extractImports(file);
       for (const imp of imports) {
-        if (imp.specifier.includes('@methodts/fca-index')) {
+        if (imp.specifier.includes('@fractal-co-design/fca-index')) {
           violations.push(
             `${relative(METHODTS_SRC, file).replace(/\\/g, '/')}:${imp.line} — imports '${imp.specifier}'`,
           );
@@ -518,7 +518,7 @@ describe('G-LAYER-CONTEXT-LOAD: methodts/strategy does not import @methodts/fca-
       }
     }
     assert.deepStrictEqual(violations, [], [
-      'G-LAYER-CONTEXT-LOAD violation: methodts/strategy must not import @methodts/fca-index.',
+      'G-LAYER-CONTEXT-LOAD violation: methodts/strategy must not import @fractal-co-design/fca-index.',
       'Use the ContextLoadExecutor port (defined in dag-executor.ts) instead.',
       '',
       ...violations,

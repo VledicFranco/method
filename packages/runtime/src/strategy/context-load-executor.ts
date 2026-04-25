@@ -3,11 +3,11 @@
  * ContextLoadExecutorImpl — runtime implementation of the ContextLoadExecutor port.
  *
  * Implements the co-designed surface between methodts (DagStrategyExecutor) and
- * @methodts/fca-index. Adapts ContextQueryPort → ContextLoadExecutor, mapping
+ * @fractal-co-design/fca-index. Adapts ContextQueryPort → ContextLoadExecutor, mapping
  * ComponentContext → RetrievedComponent.
  *
  * Layer: L3 (runtime) — correctly imports both @methodts/methodts (L2) and
- * @methodts/fca-index (L3 sibling). Neither lower layer knows about the other.
+ * @fractal-co-design/fca-index (L3 sibling). Neither lower layer knows about the other.
  *
  * Co-design record: .method/sessions/fcd-surface-context-load-executor/record.md
  *
@@ -21,8 +21,8 @@ import type {
 } from '@methodts/methodts/strategy/dag-executor.js';
 import type { ContextLoadNodeConfig } from '@methodts/methodts/strategy/dag-types.js';
 import { ContextLoadError } from '@methodts/methodts/strategy/dag-executor.js';
-import type { ContextQueryPort, ComponentContext, FcaPart } from '@methodts/fca-index';
-import { ContextQueryError } from '@methodts/fca-index';
+import type { ContextQueryPort, ComponentContext, FcaPart } from '@fractal-co-design/fca-index';
+import { ContextQueryError } from '@fractal-co-design/fca-index';
 
 export class ContextLoadExecutorImpl implements ContextLoadExecutor {
   constructor(private readonly queryPort: ContextQueryPort) {}

@@ -20,9 +20,11 @@ Published under the [`@methodts`](https://www.npmjs.com/org/methodts) npm scope:
 | [`@methodts/runtime`](packages/runtime) | L3 | Cortex-agnostic runtime — strategy executor, ports |
 | [`@methodts/agent-runtime`](packages/agent-runtime) | L3 | Tenant-app public API — `createMethodAgent` factory |
 | [`@methodts/mcp`](packages/mcp) | L3 | MCP protocol adapter |
-| [`@methodts/fca-index`](packages/fca-index) | L3 | Fractal Component Architecture indexer |
+| [`@fractal-co-design/fca-index`](packages/fca-index) | L3 | Fractal Component Architecture indexer (migrated from `@methodts/fca-index@0.4.x` — see [packages/fca-index/MOVED.md](packages/fca-index/MOVED.md)) |
 
 The `bridge`, `method-ctl`, `pacta-playground`, and `smoke-test` packages are internal to this repo and are not published.
+
+> **fca-index migration (2026-04-25):** `@methodts/fca-index` has moved to the [Fractal Co-Design](https://github.com/VledicFranco/fractal-co-design) project as `@fractal-co-design/fca-index@1.0.0`. Method-2's local `packages/fca-index/` will remain in place for the deprecation window; downstream consumers (`mcp`, `runtime`, `bridge`) have been re-pointed at the new package. See [packages/fca-index/MOVED.md](packages/fca-index/MOVED.md).
 
 ## Releasing
 

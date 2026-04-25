@@ -24,7 +24,7 @@ import { createValidationMiddleware } from "./validate-project-access.js";
 import { theoryInput, sessionIdProperty } from "./schemas.js";
 import { bridgeHandlers } from "./bridge-tools.js";
 import { experimentHandlers, EXPERIMENT_TOOLS } from "./experiment-tools.js";
-import { createDefaultFcaIndex } from "@methodts/fca-index";
+import { createDefaultFcaIndex } from "@fractal-co-design/fca-index";
 import { createContextTools, CONTEXT_TOOLS } from "./context-tools.js";
 
 // Path resolution
