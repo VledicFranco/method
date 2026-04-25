@@ -16,6 +16,9 @@ export * from './engine/index.js';
 // Skeletons in Wave 0; implementations in Waves 1-2.
 export * from './observability/index.js';
 
+// SLM cascade (PRD 057 — N-tier provider, HTTP bridge, SLM-as-AgentProvider)
+export * from './slm/index.js';
+
 // Modules are not re-exported from the domain barrel.
 // They are imported directly by consumers who need specific module factories:
 //   import { createReasoner } from '@methodts/pacta/cognitive/modules/reasoner.js';

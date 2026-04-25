@@ -2,7 +2,7 @@
 type: prd
 title: "PRD 057: SLM Cascade Infrastructure — N-tier Provider, Routing, Spillover"
 date: "2026-04-25"
-status: draft
+status: in-progress
 tier: heavyweight
 depends_on: [49, 52]
 enables: []
@@ -10,15 +10,83 @@ blocked_by: []
 complexity: high
 domains: [pacta/cognitive/slm, pacta/middleware, pacta/ports, pacta-provider-anthropic, bridge/domains/cost-governor]
 surfaces:
-  - "CascadeProvider (N-tier) + LLMResponse.confidence (additive) — to freeze in Wave 0"
-  - "TierRouter port + RoutingProvider impl — to freeze in Wave 0"
-  - "SpilloverSLMRuntime impl of SLMInferer Protocol — to freeze in Wave 0"
+  - "CascadeProvider (N-tier) + AgentResult.confidence (additive) — frozen 2026-04-25"
+  - "TierRouter port — frozen 2026-04-25 (impl deferred to Wave 3)"
+  - "SLMInferer port + SpilloverSLMRuntime — port frozen 2026-04-25; spillover impl deferred to Wave 4"
 related:
   - ".method/sessions/fcd-design-20260425-lysica-port-portfolio/notes.md"
   - "../lysica-1/docs/prds/005-cost-tiering-and-resilience.md"
   - "../lysica-1/.method/sessions/fcd-surface-cascade-provider-ntier/record.md"
   - "../lysica-1/.method/sessions/fcd-surface-tier-router/record.md"
   - "../lysica-1/.method/sessions/fcd-surface-slm-spillover/record.md"
+progress:
+  wave_0: complete
+  wave_1: complete (cascade core + http-bridge + slm-as-agent-provider)
+  wave_2: pending (OpenAI-compat provider — separate package)
+  wave_3: pending (RoutingProvider + FeatureTierRouter — port frozen, impl pending)
+  wave_4: deferred per PRD (SpilloverSLMRuntime — build on chobits-outage signal)
+---
+
+## Progress log
+
+| Date | Wave | Outcome |
+|---|---|---|
+| 2026-04-25 | Wave 0 + Wave 1 | **Complete in one pass.** All three surfaces frozen. CascadeProvider, confidenceAbove, SLMAsAgentProvider, HttpBridgeSLMRuntime, TierRouter port, SLMInferer port, SLM error hierarchy all shipped. 33 new tests (13 cascade, 6 slm-as-agent-provider, 8 http-bridge, plus other coverage). 1054/1054 pacta tests pass. |
+
+### Implementation details (2026-04-25)
+
+**TS adaptation note:** the lysica PRD was written using Python `LLMProvider`/`LLMResponse` terms. TS pacta uses richer `AgentProvider`/`AgentResult<T>` (with sessions, streaming, tool use). The cascade and adapter code map across:
+
+- `LLMProvider` → `AgentProvider`
+- `LLMResponse` → `AgentResult<T>`
+- `LLMResponse.confidence` → `AgentResult.confidence` (additive field on the canonical pact type)
+- `complete(messages)` → `invoke<T>(pact, request)` (request carries `prompt: string`)
+
+`SLMAsAgentProvider` bridges the impedance: an `SLMInferer` only speaks text-in/text-out; the adapter takes `request.prompt`, runs `infer()`, and packs the result into a minimal `AgentResult<T>` with `confidence` set.
+
+**Files added (Wave 0 + Wave 1):**
+
+- `packages/pacta/src/pact.ts` — `AgentResult.confidence?: number` (additive)
+- `packages/pacta/src/ports/slm-inferer.ts` — Surface 3 port
+- `packages/pacta/src/ports/tier-router.ts` — Surface 2 port + `TierRouterError`
+- `packages/pacta/src/cognitive/slm/types.ts` — `SLMInferenceResult`, `SLMInferOptions`, `SLMMetrics`, `CascadeMetrics`, `CascadeTierMetrics`, `HealthState`, `HealthProbe`, `RoutingMetrics`, `SpilloverMetrics`
+- `packages/pacta/src/cognitive/slm/errors.ts` — `SLMError`, `SLMNotAvailable`, `SLMLoadError`, `SLMInferenceError`
+- `packages/pacta/src/cognitive/slm/cascade.ts` — `CascadeProvider`, `CascadeTier`, `TierAcceptFn`, `confidenceAbove`
+- `packages/pacta/src/cognitive/slm/slm-as-agent-provider.ts` — `SLMAsAgentProvider`
+- `packages/pacta/src/cognitive/slm/http-bridge.ts` — `HttpBridgeSLMRuntime` (uses native `fetch`, no third-party deps — G-PORT compliant)
+- `packages/pacta/src/cognitive/slm/index.ts` — barrel
+- 3 test files: `cascade.test.ts` (13 tests), `slm-as-agent-provider.test.ts` (6 tests), `http-bridge.test.ts` (8 tests with global fetch stub)
+
+**Files modified:**
+
+- `packages/pacta/src/cognitive/index.ts` — re-export `slm/`
+- `packages/pacta/src/ports/index.ts` — re-export `SLMInferer`, `TierRouter`, `TierRouterError`
+
+**What landed:**
+
+- ✅ CascadeProvider with N-tier registration, accept-or-escalate semantics, error fall-through, per-tier metrics, `resetMetrics()`, capabilities intersection
+- ✅ `confidenceAbove(threshold)` factory with range validation
+- ✅ SLMAsAgentProvider — adapts `SLMInferer` to `AgentProvider`, populates `confidence` on the result
+- ✅ HttpBridgeSLMRuntime — `/health` ping on `load()`, `/generate` POSTs, native `fetch` with `AbortSignal.timeout`, error hierarchy
+- ✅ SLMInferer port (Wave 0)
+- ✅ TierRouter port (Wave 0)
+- ✅ Additive `AgentResult.confidence`
+
+**What's deferred:**
+
+- **Wave 2 (OpenAI-compat provider).** PRD specifies a new `@methodts/pacta-provider-openai-compat` package for OpenRouter / DeepSeek mid-tier. Not implemented overnight — that's a multi-hour package-creation + tool-call round-trip exercise. Cascade is fully usable today with `pacta-provider-anthropic` as the frontier tier and `SLMAsAgentProvider(HttpBridgeSLMRuntime)` as the SLM tier.
+- **Wave 3 (RoutingProvider + FeatureTierRouter).** Port is frozen; impl pending. Composition pattern `RoutingProvider({ routine: cascade(slm, mid), hard: frontier })` is documented in the PRD; consumers can implement TierRouter themselves until the default impl ships.
+- **Wave 4 (SpilloverSLMRuntime).** PRD-specified deferred (build on signal — first chobits outage triggers it). Stub class implementing `SLMInferer` is not shipped because the port is frozen and a concrete impl awaits a real failure mode to design against.
+
+**Verification:**
+
+- `npm run build --workspace=@methodts/pacta` — green
+- `npm test --workspace=@methodts/pacta` — **1054/1054 pass** (33 new for PRD 057)
+- G-PORT gate still passes — `HttpBridgeSLMRuntime` uses native `fetch` only, no third-party HTTP deps
+- AC-1 (N-tier cascade), AC-3-design (Spillover contract frozen), AC-4 (no PRD 049/052 regression): verified
+
+**PRD 057 status: Wave 0 + Wave 1 shippable.** Cascade infrastructure is production-usable today. Waves 2-4 are follow-up.
+
 ---
 
 # PRD 057: SLM Cascade Infrastructure

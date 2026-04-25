@@ -102,6 +102,15 @@ export interface AgentResult<TOutput = unknown> {
 
   /** Number of agentic turns (tool use cycles) */
   turns: number;
+
+  /**
+   * Calibrated confidence in [0, 1] when the provider emits one (e.g.,
+   * SLMs). `undefined` when the provider has no native confidence signal
+   * (most chat-completion LLMs and full agent providers). Consumed by
+   * CascadeProvider's confidence-based tier-acceptance helpers; ignored
+   * by other consumers. Additive — PRD 057.
+   */
+  confidence?: number;
 }
 
 // ── Token Usage ───────────────────────────────────────────────────

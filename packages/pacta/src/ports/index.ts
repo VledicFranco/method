@@ -20,3 +20,8 @@ export * from './embedding-port.js';
 export * from './rate-governor.js';
 export * from './tool-provider.js';
 export * from './voyage-embedding.js';
+
+// SLM cascade ports (PRD 057)
+export type { SLMInferer } from './slm-inferer.js';
+export type { TierRouter } from './tier-router.js';
+export { TierRouterError } from './tier-router.js';
