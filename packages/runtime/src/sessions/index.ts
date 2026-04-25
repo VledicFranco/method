@@ -67,6 +67,11 @@ export { CognitiveEventBusSink } from './cognitive-sink.js';
 export { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';
 export type { CognitiveEventContext } from './cognitive-sink.js';
 
+// ── Trace event-bus sink (PRD 058 C-5) ──────────────────────────
+
+export { TraceEventBusSink } from './trace-sink.js';
+export type { TraceEventContext } from './trace-sink.js';
+
 // ── Channels + diagnostics ──────────────────────────────────────
 
 export {

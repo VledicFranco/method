@@ -22,7 +22,7 @@ progress:
   wave_0: complete
   wave_1: complete (C-1, C-2, C-3)
   wave_2: complete (C-4 — extracted into @methodts/pacta-trace-sqlite)
-  wave_3: pending
+  wave_3: framework-complete (C-5 — TraceEventBusSink shipped; bridge composition-root wiring is opt-in deployment work)
 ---
 
 ## Progress log
@@ -34,6 +34,7 @@ progress:
 | 2026-04-25 | Wave 1 / C-2 | **Complete.** `cycle.ts` emits `cycle-start`, `phase-start/end`, `cycle-end` when any TraceSink declares `onEvent`. `try/finally` guarantees `cycle-end` on every exit path. 5 new tests. 1005/1005 pacta tests pass. AC-1 + AC-6 regression verified. |
 | 2026-04-25 | Wave 1 / C-3 | **Complete.** `tracingMiddleware()` emits OPERATION TraceEvents around `AgentProvider.invoke()` calls. Fire-and-forget on the sink (verified: hot-path latency ≤ slow-sink latency). Result returned unchanged (observability-only contract). 7 new tests. 1014/1014 pacta tests pass. AC-5 verified. **Wave 1 complete.** |
 | 2026-04-25 | Wave 2 / C-4 | **Complete.** `SqliteTraceStore` extracted into a new sibling package `@methodts/pacta-trace-sqlite` (pacta's `G-PORT` gate forbids native deps — `better-sqlite3` lives outside the framework package). 8 unit tests + 2 integration tests (cycle.ts → SqliteTraceStore round-trip). 1012 pacta + 10 trace-sqlite = 1022 tests pass. AC-3 (round-trip + retention + query + stats) verified. **Wave 2 complete.** |
+| 2026-04-25 | Wave 3 / C-5 (framework) | **Framework piece complete.** `TraceEventBusSink` in `@methodts/runtime/sessions` translates pacta `TraceEvent`s onto the Universal Event Bus (`domain: 'trace'`, `type: 'trace.cycle_start'/'trace.phase_end'/...`). Mirrors the `CognitiveEventBusSink` pattern. Bridge composition-root wiring (passing the sink into per-session cognitive cycles) is the orchestrator follow-up — small change in `server-entry.ts` once the deployment opts in. 6 new tests, 640/640 runtime tests pass. **Wave 3 framework complete; bridge wiring deferred to deployment opt-in.** |
 
 ### Wave 0 complete (2026-04-25)
 
