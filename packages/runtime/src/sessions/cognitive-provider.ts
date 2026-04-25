@@ -20,6 +20,7 @@ import type {
   ProviderAdapter,
   WorkspaceManager,
   ToolProvider,
+  TraceSink,
 } from '@methodts/pacta';
 import { moduleId, createWorkspace } from '@methodts/pacta';
 import type { PtySession, SessionStatus, StreamChunkCallback } from './print-session.js';
@@ -58,6 +59,15 @@ export interface CognitiveSessionOptions {
   initialPrompt?: string;
   /** Optional CognitiveSink for emitting typed CognitiveEvents to the bridge event bus (PRD 026). */
   cognitiveSink?: CognitiveSink;
+  /**
+   * Optional TraceSinks for hierarchical TraceEvents (PRD 058 Wave 3). The
+   * bridge composition root constructs a per-session `TraceEventBusSink` (and
+   * optionally a `TraceRingBuffer`) and passes them here. Held by the session
+   * for downstream tracing wiring (cycle.ts / tracingMiddleware) — when the
+   * list is empty or absent, no TraceEvent emission happens, and the cost is
+   * exactly one captured reference.
+   */
+  traceSinks?: TraceSink[];
 }
 
 // ── Cost estimation constants ───────────────────────────────────
@@ -68,7 +78,18 @@ const OUTPUT_COST_PER_TOKEN = 15.0 / 1_000_000;
 // ── Factory ─────────────────────────────────────────────────────
 
 export function createCognitiveSession(options: CognitiveSessionOptions): PtySession {
-  const { id, workdir, onEvent, adapter, tools, config: cfg, initialPrompt, cognitiveSink } = options;
+  const { id, workdir, onEvent, adapter: rawAdapter, tools, config: cfg, initialPrompt, cognitiveSink, traceSinks } = options;
+
+  // PRD 058 Wave 3: when any TraceSink declares `onEvent`, wrap the adapter so
+  // every LLM invocation emits an OPERATION TraceEvent (mirrors what
+  // `tracingMiddleware` does for the formal pacta cycle path). The bridge has
+  // its own manual cycle loop instead of calling `cycle.ts`, so this is the
+  // observability hook that lets per-session `TraceEventBusSink` / `TraceRingBuffer`
+  // see actual events end-to-end.
+  //
+  // No-op when traceSinks is absent or empty, or when no sink declares
+  // `onEvent` — preserves the default-off contract.
+  const adapter = wrapAdapterWithTracing(rawAdapter, traceSinks, id);
   const maxCycles = cfg?.maxCycles ?? 15;
   const maxToolsPerCycle = cfg?.maxToolsPerCycle ?? 5;
   const wsCapacity = cfg?.workspaceCapacity ?? 8;
@@ -270,4 +291,78 @@ export function createCognitiveSession(options: CognitiveSessionOptions): PtySes
   }
 
   return session;
+}
+
+// ── PRD 058 Wave 3: provider-adapter tracing wrapper ─────────────
+//
+// Wraps a `ProviderAdapter` so each invocation emits an OPERATION TraceEvent
+// to every supplied sink that declares `onEvent`. Mirrors the shape produced
+// by `pacta`'s `tracingMiddleware` (kind: 'operation', durationMs, usage,
+// model) so consumers can treat both event streams uniformly. When no
+// event-aware sink exists, returns the original adapter — zero overhead.
+function wrapAdapterWithTracing(
+  adapter: ProviderAdapter,
+  traceSinks: TraceSink[] | undefined,
+  sessionId: string,
+): ProviderAdapter {
+  if (!traceSinks || traceSinks.length === 0) return adapter;
+  const eventSinks = traceSinks.filter(
+    (s): s is TraceSink & { onEvent: NonNullable<TraceSink['onEvent']> } =>
+      typeof s.onEvent === 'function',
+  );
+  if (eventSinks.length === 0) return adapter;
+
+  let invocationSeq = 0;
+  const cycleId = `bridge-cognitive-${sessionId}`;
+
+  return {
+    async invoke(snapshot, callConfig) {
+      const startedAt = Date.now();
+      let result: Awaited<ReturnType<ProviderAdapter['invoke']>> | undefined;
+      let errorMessage: string | undefined;
+      try {
+        result = await adapter.invoke(snapshot, callConfig);
+        return result;
+      } catch (err: unknown) {
+        errorMessage = err instanceof Error ? err.message : String(err);
+        throw err;
+      } finally {
+        const endedAt = Date.now();
+        const durationMs = endedAt - startedAt;
+        const data: Record<string, unknown> = {
+          operation: 'agent-invoke',
+          startedAt,
+          durationMs,
+        };
+        if (result) {
+          data.inputTokens = result.usage.inputTokens;
+          data.outputTokens = result.usage.outputTokens;
+          data.totalTokens = result.usage.totalTokens;
+          data.costUsd = result.cost.totalUsd;
+          const models = Object.keys(result.cost.perModel);
+          if (models.length > 0) data.model = models[0];
+        }
+        if (errorMessage !== undefined) data.error = errorMessage;
+
+        const event = {
+          eventId: `${cycleId}-op-${++invocationSeq}`,
+          cycleId,
+          kind: 'operation' as const,
+          name: 'agent-invoke',
+          timestamp: endedAt,
+          durationMs,
+          data,
+        };
+
+        for (const sink of eventSinks) {
+          try {
+            const r = sink.onEvent(event);
+            if (r instanceof Promise) {
+              r.catch(() => { /* fire-and-forget — never block the LLM hot path */ });
+            }
+          } catch { /* swallow sink errors */ }
+        }
+      }
+    },
+  };
 }

@@ -38,7 +38,7 @@ import {
   CognitiveEventBusSink,
 } from '@methodts/runtime/sessions';
 import type { EventBus } from '@methodts/runtime/ports';
-import type { AgentProvider } from '@methodts/pacta';
+import type { AgentProvider, TraceSink } from '@methodts/pacta';
 
 export interface CreateBridgeSessionProviderFactoryOptions {
   /**
@@ -61,7 +61,7 @@ export function createBridgeSessionProviderFactory(
 
   return {
     async createSession(opts: SessionProviderOptions): Promise<PtySessionHandle> {
-      const { sessionId, mode, workdir, metadata, onEvent, cognitiveConfig, cognitiveSink } = opts;
+      const { sessionId, mode, workdir, metadata, onEvent, cognitiveConfig, cognitiveSink, traceSinks } = opts;
 
       if (mode === 'cognitive-agent') {
         const { createProviderAdapter } = await import('@methodts/pacta');
@@ -87,6 +87,11 @@ export function createBridgeSessionProviderFactory(
           adapter,
           tools,
           cognitiveSink: cognitiveSink as CognitiveEventBusSink | undefined,
+          // PRD 058 Wave 3: forward per-session TraceSinks (TraceEventBusSink and
+          // optional ring buffers) into the cognitive session. Cast back from
+          // the port-level `unknown[]` boundary to the concrete pacta TraceSink
+          // shape — the composition root is the only producer.
+          traceSinks: traceSinks as TraceSink[] | undefined,
           config: pickCognitiveConfig(cfgRecord),
           initialPrompt: typeof cfgRecord.initialPrompt === 'string' ? cfgRecord.initialPrompt : undefined,
           onEvent: (event: StreamEvent) => {
@@ -118,6 +123,7 @@ export function createBridgeSessionProviderFactory(
         model: effectiveModel,
       });
       void cognitiveSink; // print-mode does not currently consume the cognitive sink.
+      void traceSinks; // print-mode emits no hierarchical trace events (PRD 058 Wave 3).
       return session as PtySession;
     },
   };

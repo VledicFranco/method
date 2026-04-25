@@ -14,6 +14,7 @@ import type { SessionProviderFactory, SessionProviderOptions, StreamEvent as Por
 import { createAgentEventAdapter } from '../event-bus/agent-event-adapter.js';
 import type { AgentProvider } from '@methodts/pacta';
 import { CognitiveEventBusSink as CognitiveSink } from './cognitive-sink.js';
+import { TraceEventBusSink } from './trace-sink.js';
 
 // ── PRD 006: Session chain types ──────────────────────────────
 
@@ -554,6 +555,22 @@ export function createPool(options?: PoolOptions): SessionPool {
           ? new CognitiveSink(eventBus, { sessionId, experimentId: experiment_id, runId: run_id })
           : cognitiveSink;
 
+        // PRD 058 Wave 3: per-session TraceEventBusSink — translates pacta
+        // hierarchical TraceEvents into RuntimeEvents on `domain: 'trace'`.
+        // Constructed unconditionally for cognitive sessions when the bus is
+        // present so any downstream consumer (WebSocket, persistence, sqlite
+        // store, ring buffer) can subscribe without further wiring. Cost is a
+        // single object allocation when nobody listens (no event-aware sink
+        // ⇒ adapter wrap is skipped inside the cognitive provider).
+        const sessionTraceSinks = (effectiveMode === 'cognitive-agent' && eventBus)
+          ? [new TraceEventBusSink(eventBus, {
+              sessionId,
+              ...(typeof metadata?.project_id === 'string' ? { projectId: metadata.project_id } : {}),
+              ...(experiment_id ? { experimentId: experiment_id } : {}),
+              ...(run_id ? { runId: run_id } : {}),
+            })]
+          : undefined;
+
         const factoryOptions: SessionProviderOptions = {
           sessionId,
           mode: effectiveMode,
@@ -579,6 +596,7 @@ export function createPool(options?: PoolOptions): SessionPool {
           },
           cognitiveConfig: cognitive_config as Record<string, unknown> | undefined,
           cognitiveSink: sessionCognitiveSink,
+          traceSinks: sessionTraceSinks,
         };
 
         const handle = await options.providerFactory.createSession(factoryOptions);
@@ -609,12 +627,24 @@ export function createPool(options?: PoolOptions): SessionPool {
           ? new CognitiveSink(eventBus, { sessionId, experimentId: experiment_id, runId: run_id })
           : cognitiveSink;
 
+        // PRD 058 Wave 3: per-session TraceEventBusSink (legacy/no-factory path).
+        // Mirror of the providerFactory branch — same default-on contract.
+        const sessionTraceSinks = eventBus
+          ? [new TraceEventBusSink(eventBus, {
+              sessionId,
+              ...(typeof metadata?.project_id === 'string' ? { projectId: metadata.project_id } : {}),
+              ...(experiment_id ? { experimentId: experiment_id } : {}),
+              ...(run_id ? { runId: run_id } : {}),
+            })]
+          : undefined;
+
         session = createCognitiveSession({
           id: sessionId,
           workdir: effectiveWorkdir,
           adapter,
           tools,
           cognitiveSink: sessionCognitiveSink,
+          traceSinks: sessionTraceSinks,
           config: {
             name: cognitive_config?.name,
             patterns: cognitive_patterns,

@@ -159,6 +159,14 @@ export interface SessionProviderOptions {
   cognitiveConfig?: Record<string, unknown>;
   /** Optional sink for typed cognitive events (PRD 041 experiment lab). Shape defined in sessions subpath. */
   cognitiveSink?: unknown;
+  /**
+   * Optional sinks for hierarchical TraceEvents (PRD 058 Wave 3). Composition
+   * root constructs per-session `TraceEventBusSink` (and any other
+   * `TraceSink`s, e.g. ring buffers, sqlite stores) and threads them through
+   * here so the cognitive session can hand them to the cycle / tracing
+   * middleware. Shape defined in sessions subpath (`TraceSink[]` from pacta).
+   */
+  traceSinks?: unknown[];
 }
 
 /**
