@@ -1,0 +1,95 @@
+session_id: "com-20260425-0200-fca-index-language-profiles"
+methodology: "P2-SD"
+method: "com"
+date: "2026-04-25"
+prd: "057"
+branch: "feat/fca-index-language-profiles"
+pr: 200
+final_commit: "e5f79a4"
+
+hardest_decision: |
+  How to wire the polyglot sourcePatterns for the t1-cortex AC-7 smoke test
+  without modifying that read-only repo. Two options were on the table:
+
+    (a) Write a temporary .fca-index.yaml at the t1-cortex root for the
+        duration of the scan, then delete it. Exercises the full default
+        manifest-reader path including YAML parsing of `languages: [...]`.
+
+    (b) Use the createFcaIndex (non-default) factory with a custom in-memory
+        ManifestReader that returns the polyglot config directly. Keeps
+        t1-cortex pristine but bypasses the YAML codepath in the smoke test
+        (which is instead covered by manifest-reader.test.ts).
+
+  Picked (b) — the read-only constraint was explicit in the mandate, and the
+  YAML codepath has dedicated unit tests. Trade-off: AC-7 now exercises the
+  programmatic-config path; AC-6 + manifest-reader.test.ts cover the YAML
+  path. Both paths converge in the factory's effective-profile-list assembly.
+
+observations:
+  - |
+    The `LanguageProfile` shape pre-agreed in the mandate held up unchanged
+    through implementation — no surprise constraint emerged that forced a
+    field addition. Extractors as optional callbacks (`extractInterfaceExcerpt?`,
+    `extractDocBlock?`) gave a clean fall-through to a generic excerpt for
+    any file an active profile didn't claim.
+  - |
+    The mandate's three Phase A discrepancies (test count 158 vs actual 229;
+    PRD slot 055 vs actually-occupied; "4 architecture gates" vs actual 8)
+    were all resolvable by fact-checking against current files. None required
+    user escalation — they were all "the spec was written before the code grew".
+    Documenting the rebase in the PRD body and PR comment was sufficient.
+  - |
+    Refactoring the scanner to be profile-driven without breaking any of the
+    229 existing tests was the validation that the LanguageProfile abstraction
+    was correctly carved. The TypeScript profile reproduces v0.3.x behavior
+    bit-for-bit because every regex was lifted directly from the
+    pre-refactor `classifyFile`/`classifySubDir` switch ladder.
+  - |
+    The Voyage free-tier rate limit was a non-issue for the t1-cortex smoke
+    (~19s for 301 components). The mandate's expected "2-3 min" was
+    conservative. If a future scan is larger, the scan time becomes the
+    dominant feedback latency for AC-7 iterations — worth caching the index
+    across runs if that becomes painful.
+
+card_feedback:
+  essence: |
+    The "Faithfulness > simplicity > registry integrity" essence helped here
+    — when the temptation arose to "simplify" by collapsing the profile
+    extractors into one regex-driven branch, faithfulness to per-language
+    semantics (ScalaDoc vs JSDoc vs Python docstring vs godoc) won. The
+    profile-per-file structure is more code than a single regex would be,
+    but it's faithful to each language's actual conventions.
+  delivery_rules: |
+    DR-15 (port discipline) was directly relevant: scanner/profiles/* needed
+    no node:fs imports because all I/O routes through the existing
+    FileSystemPort. The five new profile files compile under the G-PORT-SCANNER
+    gate without any port additions or exemptions — clean evidence that the
+    port pattern from PRD 023/024 generalised beyond its original use case.
+    DR-09 (real-fixture tests) drove the disk-fixture test suite: in-memory
+    tests prove the algorithm; on-disk fixtures prove the path normalization
+    on Windows. Both are required.
+
+proposed_deltas: []
+
+acceptance_gates:
+  AC-1: "PASS — 229/229 baseline tests pass with default (TypeScript) profile"
+  AC-2: "PASS — per-profile unit tests (32) + disk-fixture tests (5) for all 5 built-ins"
+  AC-3: "PASS — polyglot-scan.test.ts (3 tests) + polyglot fixture"
+  AC-4: "PASS — all 8 architecture gates green (mandate said 4 — actual count is 8)"
+  AC-5: "PASS — ContextQueryPort/CoverageReportPort/ManifestReaderPort interfaces unchanged; ProjectScanConfig gains additive optional `languages?: string[]`"
+  AC-6: "PASS — manifest-reader.test.ts (12 tests) covers block + inline-flow YAML forms"
+  AC-7: "PASS — t1-cortex smoke detects all 4 required dirs (modules/api, modules/apps/connectors, packages/cortex-app, packages/apps/atlas) in 301 components / 19s"
+  AC-8: "PASS — PRD 057, Guide 40, scanner README rewrite, package README + arch + getting-started updates"
+
+phase_iterations:
+  A: 1
+  A_plus: 1
+  B: 5  # T1+T2 / T3+T4 / T5+T6 / T7 / T8 + AC-7 smoke
+  C: 1  # final hygiene/gate re-run
+
+decisions_used: 1
+escalations: 0
+out_of_scope_findings:
+  - "samples/cortex-incident-triage-agent*/ — pre-existing TS errors when node_modules absent (master baseline)"
+  - "packages/mcp/src/context-tools.ts — pre-existing TS errors, only when fca-index dist absent"
+  - "packages/method-ctl/bin/method-ctl.js — line-ending normalization on npm install (not committed)"
