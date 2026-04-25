@@ -98,6 +98,22 @@ export interface ProjectScanConfig {
    * @default '.fca-index'
    */
   indexDir?: string;
+
+  /**
+   * Names of built-in language profiles to apply when scanning. Profiles drive
+   * file/dir → FCA part classification and component qualification rules.
+   * Built-in names (v0.4.0+): `'typescript'`, `'scala'`, `'python'`, `'go'`,
+   * `'markdown-only'`. Order matters when two profiles match the same file —
+   * the earlier-listed profile wins.
+   *
+   * To register a custom `LanguageProfile` programmatically, pass it via
+   * `FcaIndexConfig.languages` (the SDK accepts `LanguageProfile[]` directly;
+   * YAML stays simple and only references built-in profiles by name).
+   *
+   * @default ['typescript']
+   * @since v0.4.0
+   */
+  languages?: string[];
 }
 
 // ── Error types ─────────────────────────────────────────────────────────────

@@ -66,3 +66,17 @@ export type { DefaultFcaIndexConfig } from './factory.js';
 // Observability port (frozen 2026-04-13)
 export type { ObservabilityPort, ObservabilityEvent } from './ports/observability.js';
 export { NullObservabilitySink, scoped } from './ports/observability.js';
+
+// Language profiles — declarative scanner customization (frozen 2026-04-25, v0.4.0)
+export type { LanguageProfile, FilePatternRule } from './scanner/profiles/index.js';
+export {
+  BUILT_IN_PROFILES,
+  DEFAULT_LANGUAGES,
+  LanguageProfileError,
+  resolveLanguageProfiles,
+  typescriptProfile,
+  scalaProfile,
+  pythonProfile,
+  goProfile,
+  markdownOnlyProfile,
+} from './scanner/profiles/index.js';
