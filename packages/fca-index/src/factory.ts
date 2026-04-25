@@ -13,7 +13,6 @@
  */
 
 import { FcaDetector } from './scanner/fca-detector.js';
-import { DocExtractor } from './scanner/doc-extractor.js';
 import { CoverageScorer } from './scanner/coverage-scorer.js';
 import { ProjectScanner } from './scanner/project-scanner.js';
 import type { LanguageProfile } from './scanner/profiles/index.js';
