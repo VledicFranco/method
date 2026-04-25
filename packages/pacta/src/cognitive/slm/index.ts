@@ -6,9 +6,9 @@
  *   confidenceAbove — TierAcceptFn factory keyed on result.confidence
  *   SLMAsAgentProvider — adapts an SLMInferer into an AgentProvider
  *   HttpBridgeSLMRuntime — SLMInferer that calls a remote serve-slm.py
- *
- * Spillover (deferred to Wave 4) and routing (deferred to Wave 3) ship
- * in subsequent commits.
+ *   RoutingProvider — pre-call dispatch via TierRouter (Wave 3)
+ *   FeatureTierRouter — rule-based TierRouter (Wave 3)
+ *   SpilloverSLMRuntime — primary + fallback SLM with health probing (Wave 4)
  *
  * @see docs/prds/057-slm-cascade-infrastructure.md
  */
@@ -21,6 +21,22 @@ export type { SLMAsAgentProviderOptions } from './slm-as-agent-provider.js';
 
 export { HttpBridgeSLMRuntime } from './http-bridge.js';
 export type { HttpBridgeSLMRuntimeOptions } from './http-bridge.js';
+
+export { RoutingProvider } from './routing-provider.js';
+export type { RoutingProviderConfig } from './routing-provider.js';
+
+export {
+  FeatureTierRouter,
+  keywordMatch,
+  lengthAbove,
+} from './feature-tier-router.js';
+export type {
+  FeatureRule,
+  FeatureTierRouterConfig,
+} from './feature-tier-router.js';
+
+export { SpilloverSLMRuntime } from './spillover.js';
+export type { SpilloverConfig } from './spillover.js';
 
 export type {
   SLMInferenceResult,
