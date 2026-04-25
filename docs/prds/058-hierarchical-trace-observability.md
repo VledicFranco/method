@@ -20,7 +20,7 @@ related:
   - "../lysica-1/src/lysica/observability/"
 progress:
   wave_0: complete
-  wave_1: pending
+  wave_1: in-progress (C-1 done; C-2, C-3 pending)
   wave_2: pending
   wave_3: pending
 ---
@@ -30,6 +30,7 @@ progress:
 | Date | Wave | Outcome |
 |---|---|---|
 | 2026-04-25 | Wave 0 | **Complete.** All three surfaces frozen as concrete TS files. Build green, all 988 pacta tests pass, 4 G-TRACE-* gate assertions pass. See [progress notes](#wave-0-complete-2026-04-25). |
+| 2026-04-25 | Wave 1 / C-1 | **Complete.** TraceAssembler + TraceRingBuffer implemented with 12 new tests (5 assembler, 7 ring-buffer). 1000/1000 pacta tests pass. AC-2 + AC-4 verified. |
 
 ### Wave 0 complete (2026-04-25)
 

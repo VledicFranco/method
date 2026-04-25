@@ -414,7 +414,7 @@ status: pending
 ```
 Total: 5 commissions, 4 waves (including Wave 0)
 Wave 0:  COMPLETE 2026-04-25  (orchestrator)
-Wave 1:  C-1 pending, C-2 pending, C-3 pending  (parallel — unblocked)
+Wave 1:  C-1 COMPLETE 2026-04-25, C-2 pending, C-3 pending  (parallel)
 Wave 2:  C-4 pending  (depends C-1, C-2, C-3)
 Wave 3:  C-5 pending  (depends C-1, C-2, C-4)
 

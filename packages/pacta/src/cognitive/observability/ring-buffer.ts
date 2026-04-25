@@ -2,14 +2,20 @@
 /**
  * TraceRingBuffer — bounded buffer + fan-out subscriptions for live streaming.
  *
- * Wave 0 skeleton — implementation lands in Wave 1 (commission C-1).
- * See `docs/prds/058-hierarchical-trace-observability.md` (Surface 3 +
- * Wave 1 plan).
+ * Implements both `TraceSink` (writes) and `TraceStream` (live subscriptions).
+ * Bounded by `maxSize`; oldest events evicted on overflow. Multiple concurrent
+ * subscribers each get their own internal queue; subscribers whose queue
+ * saturates (`subscriberQueueLimit`) are dropped to prevent backpressure.
+ *
+ * @see docs/prds/058-hierarchical-trace-observability.md (Wave 1, C-1)
  */
 
 import type { TraceEvent } from '../algebra/trace-events.js';
 import type { TraceSink, TraceRecord } from '../algebra/trace.js';
 import type { TraceStream } from '../algebra/trace-stream.js';
+
+const DEFAULT_MAX_SIZE = 1024;
+const DEFAULT_SUBSCRIBER_QUEUE_LIMIT = 100;
 
 export interface TraceRingBufferOptions {
   /** Max events retained. Oldest evicted on overflow. Default 1024. */
@@ -18,39 +24,132 @@ export interface TraceRingBufferOptions {
   readonly subscriberQueueLimit?: number;
 }
 
-/**
- * Bounded ring buffer that implements both `TraceSink` (writes) and
- * `TraceStream` (live subscriptions). Slow subscribers are dropped.
- */
+/** Internal subscriber state. */
+interface Subscriber {
+  /** FIFO queue of pending events. */
+  readonly queue: TraceEvent[];
+  /** Set when subscribe()'s iterator is awaiting the next event. */
+  resolver: ((value: IteratorResult<TraceEvent>) => void) | null;
+  /** True after the iterator's return() has been called. */
+  closed: boolean;
+}
+
 export class TraceRingBuffer implements TraceSink, TraceStream {
-  constructor(_options?: TraceRingBufferOptions) {
-    // implementation in Wave 1
+  private readonly maxSize: number;
+  private readonly subscriberQueueLimit: number;
+  private readonly buffer: TraceEvent[] = [];
+  private readonly subscribers = new Set<Subscriber>();
+
+  constructor(options?: TraceRingBufferOptions) {
+    this.maxSize = options?.maxSize ?? DEFAULT_MAX_SIZE;
+    this.subscriberQueueLimit = options?.subscriberQueueLimit ?? DEFAULT_SUBSCRIBER_QUEUE_LIMIT;
   }
 
-  /** Current number of events buffered. */
   get bufferSize(): number {
-    throw new Error('TraceRingBuffer: not implemented (PRD-058 Wave 1, commission C-1)');
+    return this.buffer.length;
   }
 
-  /** Active subscriber count. */
   get subscriberCount(): number {
-    throw new Error('TraceRingBuffer: not implemented (PRD-058 Wave 1, commission C-1)');
+    return this.subscribers.size;
   }
 
+  /** Legacy flat path — accepted but not stored. Use onEvent for hierarchical events. */
   onTrace(_record: TraceRecord): void {
-    throw new Error('TraceRingBuffer: not implemented (PRD-058 Wave 1, commission C-1)');
+    // Intentional no-op. The ring buffer specializes in TraceEvents per PRD 058.
   }
 
-  onEvent(_event: TraceEvent): void {
-    throw new Error('TraceRingBuffer: not implemented (PRD-058 Wave 1, commission C-1)');
+  /** Append an event and fan out to all live subscribers. */
+  onEvent(event: TraceEvent): void {
+    // Append, evict oldest if over capacity.
+    this.buffer.push(event);
+    while (this.buffer.length > this.maxSize) this.buffer.shift();
+
+    // Fan out.
+    const dead: Subscriber[] = [];
+    for (const sub of this.subscribers) {
+      if (sub.closed) {
+        dead.push(sub);
+        continue;
+      }
+      // If iterator is awaiting, resolve it directly without queueing.
+      if (sub.resolver) {
+        const r = sub.resolver;
+        sub.resolver = null;
+        r({ value: event, done: false });
+        continue;
+      }
+      // Otherwise enqueue. Drop subscriber if over the limit.
+      if (sub.queue.length >= this.subscriberQueueLimit) {
+        dead.push(sub);
+        continue;
+      }
+      sub.queue.push(event);
+    }
+    for (const d of dead) this.subscribers.delete(d);
   }
 
+  /**
+   * Subscribe to live trace events. Returns an async iterator. Exiting the
+   * iterator (e.g., `break` in `for await`) cleans up the subscription.
+   *
+   * Slow subscribers (queue saturates `subscriberQueueLimit`) are dropped.
+   * The dropped subscriber's iterator yields one more `done: true` and ends.
+   */
   subscribe(): AsyncIterable<TraceEvent> {
-    throw new Error('TraceRingBuffer: not implemented (PRD-058 Wave 1, commission C-1)');
+    const subscriber: Subscriber = {
+      queue: [],
+      resolver: null,
+      closed: false,
+    };
+    this.subscribers.add(subscriber);
+    const subscribers = this.subscribers;
+
+    return {
+      [Symbol.asyncIterator](): AsyncIterator<TraceEvent> {
+        return {
+          next(): Promise<IteratorResult<TraceEvent>> {
+            if (subscriber.closed) {
+              return Promise.resolve({ value: undefined, done: true });
+            }
+            const queued = subscriber.queue.shift();
+            if (queued !== undefined) {
+              return Promise.resolve({ value: queued, done: false });
+            }
+            // No event ready — install resolver.
+            return new Promise<IteratorResult<TraceEvent>>((resolve) => {
+              subscriber.resolver = resolve;
+            });
+          },
+          return(): Promise<IteratorResult<TraceEvent>> {
+            subscriber.closed = true;
+            // Wake any pending awaiter.
+            if (subscriber.resolver) {
+              const r = subscriber.resolver;
+              subscriber.resolver = null;
+              r({ value: undefined, done: true });
+            }
+            subscribers.delete(subscriber);
+            return Promise.resolve({ value: undefined, done: true });
+          },
+          throw(err?: unknown): Promise<IteratorResult<TraceEvent>> {
+            subscriber.closed = true;
+            if (subscriber.resolver) {
+              const r = subscriber.resolver;
+              subscriber.resolver = null;
+              r({ value: undefined, done: true });
+            }
+            subscribers.delete(subscriber);
+            return Promise.reject(err);
+          },
+        };
+      },
+    };
   }
 
-  /** Recent N events, newest last. */
-  recent(_n?: number): readonly TraceEvent[] {
-    throw new Error('TraceRingBuffer: not implemented (PRD-058 Wave 1, commission C-1)');
+  /** Recent N events from the buffer (newest last). If `n` is undefined, returns all buffered. */
+  recent(n?: number): readonly TraceEvent[] {
+    if (n === undefined) return [...this.buffer];
+    if (n <= 0) return [];
+    return this.buffer.slice(-n);
   }
 }
