@@ -467,3 +467,134 @@ describe('CognitiveCycle', () => {
     assert.equal(directiveEvents.length, 0, 'No monitor_directive_applied event when Monitor did not intervene');
   });
 });
+
+// ── PRD 058 — hierarchical TraceEvent emission ─────────────────────
+
+import type { TraceEvent, TraceSink, TraceRecord } from '../../algebra/index.js';
+
+class CapturingEventSink implements TraceSink {
+  events: TraceEvent[] = [];
+  records: TraceRecord[] = [];
+  onTrace(record: TraceRecord): void {
+    this.records.push(record);
+  }
+  onEvent(event: TraceEvent): void {
+    this.events.push(event);
+  }
+}
+
+class FlatOnlySink implements TraceSink {
+  records: TraceRecord[] = [];
+  onTrace(record: TraceRecord): void {
+    this.records.push(record);
+  }
+  // onEvent intentionally undefined
+}
+
+describe('CognitiveCycle — PRD 058 hierarchical TraceEvent emission', () => {
+  it('AC-1: emits cycle-start, phase-start/end, cycle-end in deterministic order', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+    const sink = new CapturingEventSink();
+
+    await cycle.run('hello', workspace, [sink]);
+
+    // Sequence shape: cycle-start, then alternating phase-start/end pairs, then cycle-end.
+    assert.ok(sink.events.length >= 4, `expected ≥4 events, got ${sink.events.length}`);
+    assert.equal(sink.events[0].kind, 'cycle-start');
+    assert.equal(sink.events[sink.events.length - 1].kind, 'cycle-end');
+
+    // All events share one cycleId.
+    const cycleId = sink.events[0].cycleId;
+    for (const e of sink.events) {
+      assert.equal(e.cycleId, cycleId, 'all events share cycleId');
+    }
+
+    // Check phase-start and phase-end pairing per phase name.
+    const starts = sink.events.filter((e) => e.kind === 'phase-start').map((e) => e.name);
+    const ends = sink.events.filter((e) => e.kind === 'phase-end').map((e) => e.name);
+    assert.deepEqual(ends, starts, 'phase-start and phase-end occur in matching order');
+
+    // cycle-start carries inputText.
+    assert.equal((sink.events[0].data as any)?.inputText, 'hello');
+
+    // cycle-end carries durationMs.
+    const cycleEnd = sink.events[sink.events.length - 1];
+    assert.equal(cycleEnd.kind, 'cycle-end');
+    assert.equal(typeof cycleEnd.durationMs, 'number');
+  });
+
+  it('AC-1 phase data: phase-end carries duration', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+    const sink = new CapturingEventSink();
+
+    await cycle.run('test', workspace, [sink]);
+
+    const phaseEnds = sink.events.filter((e) => e.kind === 'phase-end');
+    assert.ok(phaseEnds.length >= 3, 'at least 3 phase-end events');
+    for (const pe of phaseEnds) {
+      assert.equal(typeof pe.durationMs, 'number');
+      assert.ok(pe.durationMs! >= 0, `phase-end ${pe.name} has non-negative durationMs`);
+      assert.equal(pe.phase, pe.name);
+    }
+  });
+
+  it('AC-6 regression: cycle without event-aware sink emits no TraceEvents', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+    const flat = new FlatOnlySink();
+
+    const result = await cycle.run('test', workspace, [flat]);
+
+    // Legacy onTrace path still works.
+    assert.ok(flat.records.length > 0, 'flat trace records still produced');
+    // No TraceEvents on a sink that doesn't declare onEvent.
+    assert.equal((flat as unknown as { events?: unknown[] }).events, undefined);
+    // Cycle still returned a valid result.
+    assert.ok(result.phasesExecuted.length > 0);
+  });
+
+  it('AC-1 multiple sinks: emits to every event-aware sink', async () => {
+    const modules = defaultModules();
+    const config = defaultConfig();
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+    const a = new CapturingEventSink();
+    const b = new CapturingEventSink();
+
+    await cycle.run('test', workspace, [a, b]);
+
+    assert.equal(a.events.length, b.events.length);
+    assert.deepEqual(
+      a.events.map((e) => e.kind),
+      b.events.map((e) => e.kind),
+    );
+  });
+
+  it('emits cycle-end even when an exception escapes the cycle (try/finally guarantee)', async () => {
+    const modules = defaultModules({
+      observer: createStubModule({ id: 'observer', throwOnStep: true }),
+    });
+    // Observer throws and we use 'abort' policy so the cycle records aborted.
+    const config = defaultConfig({ errorPolicy: { default: 'abort' } });
+    const cycle = createCognitiveCycle(modules, config);
+    const workspace = createStubWorkspace();
+    const sink = new CapturingEventSink();
+
+    await cycle.run('test', workspace, [sink]);
+
+    // cycle-start and cycle-end must both be present.
+    const kinds = sink.events.map((e) => e.kind);
+    assert.ok(kinds.includes('cycle-start'));
+    assert.ok(kinds.includes('cycle-end'));
+    // Last event is cycle-end.
+    assert.equal(sink.events[sink.events.length - 1].kind, 'cycle-end');
+  });
+});

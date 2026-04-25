@@ -33,6 +33,7 @@ import type {
   StepError,
   TraceRecord,
   TraceSink,
+  TraceEvent,
   ControlPolicy,
   CognitiveEvent,
   CognitiveCyclePhase,
@@ -336,6 +337,58 @@ export function createCognitiveCycle(
       const partitionLastWriteCycle = new Map<PartitionId, number>();
       let consecutiveCriticalSignals = 0;
 
+      // ── Hierarchical trace event emission (PRD 058) ───────────────
+      // When any sink declares onEvent, emit cycle-start, phase-start,
+      // phase-end, and cycle-end events alongside the legacy onTrace path.
+      // No behaviour change when no sink consumes onEvent.
+      const cycleStartedAt = Date.now();
+      const cycleId = `cycle-${cycleNumber}-${cycleStartedAt}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      const eventSinks = traceSinks.filter(
+        (s): s is TraceSink & { onEvent: NonNullable<TraceSink['onEvent']> } =>
+          typeof s.onEvent === 'function',
+      );
+      let traceEventSeq = 0;
+      function nextEventId(): string {
+        return `${cycleId}-evt-${++traceEventSeq}`;
+      }
+      function emitTraceEvent(event: TraceEvent): void {
+        if (eventSinks.length === 0) return;
+        for (const sink of eventSinks) {
+          try {
+            const r = sink.onEvent(event);
+            if (r instanceof Promise) {
+              r.catch(() => {
+                /* fire-and-forget — never block the cognitive hot path */
+              });
+            }
+          } catch {
+            /* swallow sink errors */
+          }
+        }
+      }
+      let currentPhaseName: string | null = null;
+      let currentPhaseStartedAt = 0;
+      function endCurrentPhase(error?: string): void {
+        if (currentPhaseName === null || eventSinks.length === 0) {
+          currentPhaseName = null;
+          return;
+        }
+        const now = Date.now();
+        emitTraceEvent({
+          eventId: nextEventId(),
+          cycleId,
+          kind: 'phase-end',
+          name: currentPhaseName,
+          timestamp: now,
+          durationMs: now - currentPhaseStartedAt,
+          phase: currentPhaseName,
+          data: error ? { error } : undefined,
+        });
+        currentPhaseName = null;
+      }
+
       function emitEvent(event: CognitiveEvent): void {
         onEvent?.(event);
       }
@@ -348,6 +401,37 @@ export function createCognitiveCycle(
           timestamp: Date.now(),
         };
         emitEvent(event);
+
+        // PRD 058: hierarchical phase boundaries — close previous, open new.
+        if (eventSinks.length > 0) {
+          endCurrentPhase();
+          currentPhaseName = phase;
+          currentPhaseStartedAt = Date.now();
+          emitTraceEvent({
+            eventId: nextEventId(),
+            cycleId,
+            kind: 'phase-start',
+            name: phase,
+            timestamp: currentPhaseStartedAt,
+            phase,
+          });
+        }
+      }
+
+      // PRD 058: emit cycle-start once helpers are wired.
+      if (eventSinks.length > 0) {
+        emitTraceEvent({
+          eventId: nextEventId(),
+          cycleId,
+          kind: 'cycle-start',
+          name: `cycle-${cycleNumber}`,
+          timestamp: cycleStartedAt,
+          data: {
+            cycleNumber,
+            inputText:
+              typeof input === 'string' ? input : JSON.stringify(input ?? ''),
+          },
+        });
       }
 
       function forwardTrace(trace: TraceRecord): void {
@@ -442,6 +526,7 @@ export function createCognitiveCycle(
         };
       }
 
+      try {
       // ── Phase 1: OBSERVE ──────────────────────────────────────
       emitPhase('OBSERVE');
       phasesExecuted.push('OBSERVE');
@@ -841,6 +926,27 @@ export function createCognitiveCycle(
         phasesExecuted,
         aborted,
       };
+      } finally {
+        // PRD 058: emit cycle-end on every exit path (return, throw, abort).
+        if (eventSinks.length > 0) {
+          endCurrentPhase(aborted?.reason);
+          const cycleEndedAt = Date.now();
+          emitTraceEvent({
+            eventId: nextEventId(),
+            cycleId,
+            kind: 'cycle-end',
+            name: `cycle-${cycleNumber}`,
+            timestamp: cycleEndedAt,
+            durationMs: cycleEndedAt - cycleStartedAt,
+            data: {
+              cycleNumber,
+              phaseCount: phasesExecuted.length,
+              signalCount: signals.size,
+              aborted: aborted ? aborted.reason : undefined,
+            },
+          });
+        }
+      }
     },
   };
 }
