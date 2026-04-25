@@ -2,7 +2,7 @@
 type: prd
 title: "PRD 057: SLM Cascade Infrastructure — N-tier Provider, Routing, Spillover"
 date: "2026-04-25"
-status: in-progress
+status: complete
 tier: heavyweight
 depends_on: [49, 52]
 enables: []
@@ -22,9 +22,9 @@ related:
 progress:
   wave_0: complete
   wave_1: complete (cascade core + http-bridge + slm-as-agent-provider)
-  wave_2: pending (OpenAI-compat provider — separate package)
-  wave_3: pending (RoutingProvider + FeatureTierRouter — port frozen, impl pending)
-  wave_4: deferred per PRD (SpilloverSLMRuntime — build on chobits-outage signal)
+  wave_2: complete (@methodts/pacta-provider-openai-compat package — agent B)
+  wave_3: complete (RoutingProvider + FeatureTierRouter — agent C)
+  wave_4: complete (SpilloverSLMRuntime built ahead of signal — agent C)
 ---
 
 ## Progress log
@@ -32,6 +32,9 @@ progress:
 | Date | Wave | Outcome |
 |---|---|---|
 | 2026-04-25 | Wave 0 + Wave 1 | **Complete in one pass.** All three surfaces frozen. CascadeProvider, confidenceAbove, SLMAsAgentProvider, HttpBridgeSLMRuntime, TierRouter port, SLMInferer port, SLM error hierarchy all shipped. 33 new tests (13 cascade, 6 slm-as-agent-provider, 8 http-bridge, plus other coverage). 1054/1054 pacta tests pass. |
+| 2026-04-25 | Wave 2 | **Complete (agent B).** New sibling package `@methodts/pacta-provider-openai-compat`. `OpenAICompatibleProvider` implements `AgentProvider` against any OpenAI-compatible `/v1/chat/completions` endpoint (OpenRouter, Together, Fireworks, Groq, Cerebras). Native fetch + AbortSignal.timeout. Tools/streaming intentionally out of scope (heterogeneous backend support). Per-1K cost rates, optional. 14 unit tests using global fetch stub. |
+| 2026-04-25 | Wave 3 | **Complete (agent C).** `RoutingProvider` (a-priori dispatch via TierRouter, default-fallback on TierRouterError or unknown tier name), `FeatureTierRouter` (rule-based router with `keywordMatch` + `lengthAbove` helpers). Both in `pacta/cognitive/slm/`. Per-tier dispatch + latency metrics with `resetMetrics()`. Capabilities intersection mirrors CascadeProvider. |
+| 2026-04-25 | Wave 4 | **Complete (agent C — built ahead of signal).** `SpilloverSLMRuntime` implements `SLMInferer` with primary + fallback. Health states: `healthy` / `degraded` / `unknown`. Optional active probe via `setInterval(...).unref()` so it never blocks process exit. Inline recovery probe fires synchronously if degraded ≥ `recoveryCheckIntervalMs`. Double-failure errors wrap primary cause via `SLMError`. 38 new tests across W3+W4 suites. **1092/1092 pacta tests pass.** |
 
 ### Implementation details (2026-04-25)
 
