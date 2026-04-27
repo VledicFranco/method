@@ -92,7 +92,7 @@ let _contextLoadExecutor: ContextLoadExecutor | null = null;
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
 if (VOYAGE_API_KEY) {
   const projectRoot = process.cwd();
-  import('@methodts/fca-index').then(({ createDefaultFcaIndex }) =>
+  import('@fractal-co-design/fca-index').then(({ createDefaultFcaIndex }) =>
     createDefaultFcaIndex({ projectRoot, voyageApiKey: VOYAGE_API_KEY })
   ).then((fcaIndex) => {
     _contextLoadExecutor = new ContextLoadExecutorImpl(fcaIndex.query);

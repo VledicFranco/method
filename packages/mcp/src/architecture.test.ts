@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 const PKG_ROOT = resolve(import.meta.dirname, '..');
 const CONTEXT_TOOLS_FILE = `${PKG_ROOT}/src/context-tools.ts`;
 
-describe('G-BOUNDARY-MCP: context-tools.ts uses @methodts/fca-index public API only', () => {
+describe('G-BOUNDARY-MCP: context-tools.ts uses @fractal-co-design/fca-index public API only', () => {
   it('context-tools.ts does not import fca-index internals', () => {
     const content = readFileSync(CONTEXT_TOOLS_FILE, 'utf-8');
     const internalImportPattern = /from ['"][^'"]*packages\/fca-index\/src\//;
