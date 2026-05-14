@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [@methodts/runtime@0.3.1] - 2026-05-14
+
 ### Changed
 
 - `@methodts/runtime`: `@fractal-co-design/fca-index` moved from `dependencies` → `peerDependencies` with `peerDependenciesMeta.optional = true`. Consumers that instantiate `ContextLoadExecutorImpl` from `@methodts/runtime/strategy` must install fca-index themselves; consumers that only use `@methodts/runtime/{ports,sessions,event-bus,scheduling,…}` (e.g. `@methodts/agent-runtime`'s active code path) no longer transitively pull fca-index into their lockfile. Removes the better-sqlite3 native-build burden from every downstream tenant app that doesn't use context-load.
