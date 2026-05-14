@@ -26,11 +26,64 @@ jobs:
       - run: npm run build
       - run: npm test
 
-      # Verify every publishable package version matches the release tag.
-      - name: Verify versions match tag
+      # Determine release mode + target package(s) from the tag shape.
+      #
+      #   v<semver>               → lockstep release: publish ALL non-private workspaces
+      #   <flat-name>-v<semver>   → per-package release: publish ONLY the package whose
+      #                              `name.replace('@','').replace('/','-')` matches
+      #                              `<flat-name>` (e.g. `methodts-runtime-v0.3.1` →
+      #                              `@methodts/runtime`)
+      #
+      # See `scripts/release.mjs` for the matching client-side logic.
+      - name: Resolve release mode + target package
+        id: mode
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          EXPECTED_VERSION="${TAG#v}"
+          if [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "mode=lockstep" >> "$GITHUB_OUTPUT"
+            echo "version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            echo "Release mode: LOCKSTEP (version=${BASH_REMATCH[1]})"
+          elif [[ "$TAG" =~ ^(.+)-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            FLAT="${BASH_REMATCH[1]}"
+            VERSION="${BASH_REMATCH[2]}"
+
+            # Find the package whose flat name matches.
+            TARGET_DIR=""
+            TARGET_NAME=""
+            for pkg in packages/*/package.json; do
+              IS_PRIVATE=$(node -p "require('./$pkg').private || false")
+              if [ "$IS_PRIVATE" = "true" ]; then
+                continue
+              fi
+              PKG_NAME=$(node -p "require('./$pkg').name")
+              PKG_FLAT=$(echo "$PKG_NAME" | sed 's/^@//' | sed 's:/:-:g')
+              if [ "$PKG_FLAT" = "$FLAT" ]; then
+                TARGET_DIR=$(dirname "$pkg")
+                TARGET_NAME="$PKG_NAME"
+                break
+              fi
+            done
+
+            if [ -z "$TARGET_DIR" ]; then
+              echo "::error::Tag '$TAG' did not match any publishable package by flat name '$FLAT'."
+              exit 1
+            fi
+
+            echo "mode=per-package" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "target_dir=$TARGET_DIR" >> "$GITHUB_OUTPUT"
+            echo "target_name=$TARGET_NAME" >> "$GITHUB_OUTPUT"
+            echo "Release mode: PER-PACKAGE (package=$TARGET_NAME, dir=$TARGET_DIR, version=$VERSION)"
+          else
+            echo "::error::Tag '$TAG' is not in a recognized release shape ('v<semver>' or '<flat>-v<semver>')."
+            exit 1
+          fi
+
+      # Lockstep: verify every publishable package shares the tag version.
+      - name: Verify lockstep versions match tag
+        if: steps.mode.outputs.mode == 'lockstep'
+        run: |
+          EXPECTED_VERSION="${{ steps.mode.outputs.version }}"
           MISMATCH=0
           for pkg in packages/*/package.json; do
             IS_PRIVATE=$(node -p "require('./$pkg').private || false")
@@ -40,14 +93,36 @@ jobs:
             PKG_NAME=$(node -p "require('./$pkg').name")
             PKG_VERSION=$(node -p "require('./$pkg').version")
             if [ "$PKG_VERSION" != "$EXPECTED_VERSION" ]; then
-              echo "::error file=$pkg::Version mismatch in $PKG_NAME: expected $EXPECTED_VERSION, got $PKG_VERSION"
+              echo "::error file=$pkg::Lockstep version mismatch in $PKG_NAME: expected $EXPECTED_VERSION, got $PKG_VERSION"
               MISMATCH=1
             fi
           done
           if [ "$MISMATCH" = "1" ]; then exit 1; fi
-          echo "All publishable package versions match $TAG"
+          echo "All publishable package versions match the lockstep tag."
 
-      # Publish all non-private workspaces with provenance.
-      - run: npm publish --workspaces --access public --provenance
+      # Per-package: verify only the targeted package's version matches the tag.
+      - name: Verify per-package version matches tag
+        if: steps.mode.outputs.mode == 'per-package'
+        run: |
+          EXPECTED_VERSION="${{ steps.mode.outputs.version }}"
+          TARGET_DIR="${{ steps.mode.outputs.target_dir }}"
+          PKG_VERSION=$(node -p "require('./$TARGET_DIR/package.json').version")
+          if [ "$PKG_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "::error file=$TARGET_DIR/package.json::Per-package version mismatch: tag expects $EXPECTED_VERSION, package.json has $PKG_VERSION"
+            exit 1
+          fi
+          echo "Per-package version matches the tag."
+
+      # Lockstep publish — all non-private workspaces.
+      - name: Publish all (lockstep)
+        if: steps.mode.outputs.mode == 'lockstep'
+        run: npm publish --workspaces --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Per-package publish — single workspace.
+      - name: Publish single package (per-package)
+        if: steps.mode.outputs.mode == 'per-package'
+        run: npm publish --workspace="${{ steps.mode.outputs.target_dir }}" --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

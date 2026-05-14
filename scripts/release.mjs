@@ -1,7 +1,26 @@
 #!/usr/bin/env node
-// Release script: bumps every publishable package to a new version, updates
-// CHANGELOG.md, commits, tags, pushes, and creates a GitHub release.
-// The Release GitHub Actions workflow then publishes to npm with provenance.
+// Release script. Two modes:
+//
+//   1. LOCKSTEP (default):
+//        node scripts/release.mjs <patch|minor|major>
+//      Bumps every publishable package to a shared next version. Requires
+//      all package versions to already match (errors on drift). Creates
+//      one tag (`v<version>`) and one GitHub release.
+//
+//   2. PER-PACKAGE:
+//        node scripts/release.mjs <patch|minor|major> --package <name>
+//      Bumps a SINGLE publishable package's own current version. Tolerates
+//      drift in OTHER packages. Creates a per-package tag (`<flat>-v<version>`
+//      where `<flat>` is the package name with `@` stripped and `/` → `-`).
+//      The Release workflow inspects the tag shape and publishes only the
+//      named package. Useful when one package needs a fix but the rest of
+//      the monorepo is mid-stream (e.g., `@methodts/runtime` patch while
+//      `@methodts/fca-index` is mid-rename to `@fractal-co-design/fca-index`).
+//
+// Both modes commit the version bump + a CHANGELOG entry, push the commit
+// and tag, then create a GitHub release. The `Release` Actions workflow
+// (.github/workflows/release.yml) is triggered by the release and handles
+// the actual `npm publish --provenance`.
 
 import { execSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -18,11 +37,27 @@ function fail(msg) {
   process.exit(1);
 }
 
-// --- Validate arguments ---
-const bump = process.argv[2];
-if (!['patch', 'minor', 'major'].includes(bump)) {
-  console.log('Usage: node scripts/release.mjs <patch|minor|major>');
+// --- Parse arguments ---
+const args = process.argv.slice(2);
+const usage = 'Usage: node scripts/release.mjs <patch|minor|major> [--package <name>]';
+if (args.length === 0) {
+  console.log(usage);
   process.exit(1);
+}
+const bump = args[0];
+if (!['patch', 'minor', 'major'].includes(bump)) {
+  console.log(usage);
+  process.exit(1);
+}
+let targetPackageName = null;
+for (let i = 1; i < args.length; i++) {
+  if (args[i] === '--package') {
+    if (i + 1 >= args.length) fail('--package requires a package name (e.g., @methodts/runtime).');
+    targetPackageName = args[i + 1];
+    i++;
+  } else {
+    fail(`Unknown argument: ${args[i]}\n${usage}`);
+  }
 }
 
 // --- Validate environment ---
@@ -66,30 +101,73 @@ for (const entry of readdirSync(packagesDir)) {
 
 if (PUBLISHABLE.length === 0) fail('No publishable packages found.');
 
-// --- Read current version (use first publishable as the source of truth) ---
-const currentVersion = PUBLISHABLE[0].json.version;
-if (!currentVersion) fail(`Could not read current version from ${PUBLISHABLE[0].path}.`);
+// Helper: package name → flat tag prefix (strip `@`, `/` → `-`).
+const flatNameOf = (name) => name.replace(/^@/, '').replace(/\//g, '-');
 
-// All publishable packages must share the same version.
-for (const pkg of PUBLISHABLE) {
-  if (pkg.json.version !== currentVersion) {
-    fail(`Version drift: ${pkg.name} is ${pkg.json.version}, expected ${currentVersion}. Run \`node scripts/release-resync.mjs\` (TODO) or fix manually.`);
+// --- Compute next version + selected target(s) ---
+function nextVersionOf(current) {
+  const [major, minor, patch] = current.split('.').map(Number);
+  switch (bump) {
+    case 'major': return `${major + 1}.0.0`;
+    case 'minor': return `${major}.${minor + 1}.0`;
+    case 'patch': return `${major}.${minor}.${patch + 1}`;
   }
+  throw new Error(`unreachable bump=${bump}`);
 }
 
-// --- Compute next version ---
-const [major, minor, patch] = currentVersion.split('.').map(Number);
-let nextVersion;
-switch (bump) {
-  case 'major': nextVersion = `${major + 1}.0.0`; break;
-  case 'minor': nextVersion = `${major}.${minor + 1}.0`; break;
-  case 'patch': nextVersion = `${major}.${minor}.${patch + 1}`; break;
+let targetPackages;          // array of PUBLISHABLE entries getting bumped
+let nextVersion;             // single string when lockstep, per-pkg map when per-package
+let tag;                     // primary tag identifier
+let releaseTitle;            // human-readable
+let changelogHeading;        // entry inserted under ## [Unreleased]
+
+if (targetPackageName) {
+  // ─── PER-PACKAGE MODE ───────────────────────────────────────────────
+  const pkg = PUBLISHABLE.find(p => p.name === targetPackageName);
+  if (!pkg) {
+    const available = PUBLISHABLE.map(p => p.name).join(', ');
+    fail(`Package '${targetPackageName}' not found among publishable packages: ${available}`);
+  }
+  const current = pkg.json.version;
+  if (!current) fail(`Could not read current version from ${pkg.path}.`);
+  const next = nextVersionOf(current);
+
+  targetPackages = [pkg];
+  nextVersion = next;
+  tag = `${flatNameOf(pkg.name)}-v${next}`;
+  releaseTitle = `${pkg.name}@${next}`;
+  changelogHeading = `## [${pkg.name}@${next}] - ${new Date().toISOString().split('T')[0]}`;
+
+  console.log(`Per-package release: bumping ${pkg.name} ${current} → ${next} (${bump})\n`);
+} else {
+  // ─── LOCKSTEP MODE ──────────────────────────────────────────────────
+  const currentVersion = PUBLISHABLE[0].json.version;
+  if (!currentVersion) fail(`Could not read current version from ${PUBLISHABLE[0].path}.`);
+
+  for (const pkg of PUBLISHABLE) {
+    if (pkg.json.version !== currentVersion) {
+      fail(
+        `Version drift: ${pkg.name} is ${pkg.json.version}, expected ${currentVersion}.\n`
+        + `  Options:\n`
+        + `    (a) Re-align all publishable package.json versions manually, OR\n`
+        + `    (b) Use per-package mode for the single bump:\n`
+        + `        node scripts/release.mjs ${bump} --package <name>`
+      );
+    }
+  }
+
+  const next = nextVersionOf(currentVersion);
+  targetPackages = PUBLISHABLE;
+  nextVersion = next;
+  tag = `v${next}`;
+  releaseTitle = tag;
+  changelogHeading = `## [${next}] - ${new Date().toISOString().split('T')[0]}`;
+
+  console.log(`Lockstep release: bumping ${PUBLISHABLE.length} packages ${currentVersion} → ${next} (${bump})\n`);
 }
 
-console.log(`Bumping ${PUBLISHABLE.length} packages: ${currentVersion} → ${nextVersion} (${bump})\n`);
-
-// --- Update all publishable package.json files ---
-for (const pkg of PUBLISHABLE) {
+// --- Update target package.json files ---
+for (const pkg of targetPackages) {
   pkg.json.version = nextVersion;
   writeFileSync(pkg.path, JSON.stringify(pkg.json, null, 2) + '\n');
   console.log(`  updated  packages/${pkg.dir}/package.json`);
@@ -98,17 +176,17 @@ for (const pkg of PUBLISHABLE) {
 // --- Update CHANGELOG.md ---
 const changelogPath = join(root, 'CHANGELOG.md');
 const changelog = readFileSync(changelogPath, 'utf-8');
-const today = new Date().toISOString().split('T')[0];
-const newSection = `## [Unreleased]\n\n## [${nextVersion}] - ${today}`;
 if (!changelog.includes('## [Unreleased]')) {
   fail('CHANGELOG.md is missing the `## [Unreleased]` section.');
 }
-const updatedChangelog = changelog.replace('## [Unreleased]', newSection);
+const updatedChangelog = changelog.replace(
+  '## [Unreleased]',
+  `## [Unreleased]\n\n${changelogHeading}`,
+);
 writeFileSync(changelogPath, updatedChangelog);
 console.log('  updated  CHANGELOG.md');
 
 // --- Git commit and tag ---
-const tag = `v${nextVersion}`;
 run('git add -A');
 run(`git commit -m "chore: release ${tag}"`);
 console.log(`  commit   chore: release ${tag}`);
@@ -122,7 +200,7 @@ run('git push --tags');
 console.log('  pushed   commit + tag');
 
 // --- Create GitHub release ---
-run(`gh release create ${tag} --title "${tag}" --generate-notes`);
+run(`gh release create ${tag} --title "${releaseTitle}" --generate-notes`);
 console.log(`  release  ${tag}`);
 
 console.log(`\nRelease ${tag} dispatched. Watch the workflow: https://github.com/VledicFranco/method/actions`);
