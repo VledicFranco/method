@@ -68,12 +68,20 @@
     "@methodts/types": "*",
     "@methodts/methodts": "*",
     "@methodts/pacta": "*",
-    "@fractal-co-design/fca-index": "^1.0.0",
     "js-yaml": "^4.1.1",
     "zod": "^3.23.8"
   },
+  "peerDependencies": {
+    "@fractal-co-design/fca-index": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@fractal-co-design/fca-index": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@methodts/pacta-testkit": "*",
+    "@fractal-co-design/fca-index": "^1.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
     "tsx": "^4.19.2",

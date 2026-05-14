@@ -21,8 +21,32 @@ import type {
 } from '@methodts/methodts/strategy/dag-executor.js';
 import type { ContextLoadNodeConfig } from '@methodts/methodts/strategy/dag-types.js';
 import { ContextLoadError } from '@methodts/methodts/strategy/dag-executor.js';
-import type { ContextQueryPort, ComponentContext, FcaPart } from '@fractal-co-design/fca-index';
-import { ContextQueryError } from '@fractal-co-design/fca-index';
+// `@fractal-co-design/fca-index` is a peer optional dep — consumers that
+// instantiate `ContextLoadExecutorImpl` must install it themselves. Pulling
+// it in as a hard dependency dragged better-sqlite3 (native; needs python3
+// + node-gyp at install time) into every transitive consumer including
+// tenant apps that never touch the context-load path. Types are imported
+// statically (erased at runtime); the only value the executor uses is the
+// `ContextQueryError` constructor, which we duck-type at the call site so
+// the module loads even when fca-index isn't installed at all.
+import type {
+  ContextQueryPort,
+  ComponentContext,
+  FcaPart,
+  ContextQueryError as ContextQueryErrorType,
+} from '@fractal-co-design/fca-index';
+
+/** Structural shape of fca-index's `ContextQueryError`. Duck-typed so this
+  * module doesn't need fca-index at runtime; the property names + values
+  * are part of fca-index's frozen public surface (`name === 'ContextQueryError'`
+  * + a discriminated `code` field). */
+function isContextQueryError(err: unknown): err is ContextQueryErrorType {
+  return (
+    err instanceof Error
+    && (err as { name?: unknown }).name === 'ContextQueryError'
+    && typeof (err as { code?: unknown }).code === 'string'
+  );
+}
 
 export class ContextLoadExecutorImpl implements ContextLoadExecutor {
   constructor(private readonly queryPort: ContextQueryPort) {}
@@ -41,7 +65,7 @@ export class ContextLoadExecutorImpl implements ContextLoadExecutor {
         parts: config.filterParts as FcaPart[] | undefined,
       });
     } catch (err) {
-      if (err instanceof ContextQueryError && err.code === 'INDEX_NOT_FOUND') {
+      if (isContextQueryError(err) && err.code === 'INDEX_NOT_FOUND') {
         throw new ContextLoadError(
           `context-load: no index found for project '${projectRoot}'. Run 'fca-index scan' first.`,
           'INDEX_NOT_FOUND',
